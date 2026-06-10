@@ -1,3 +1,5 @@
+// Runs before every request. Protects /dashboard and redirects logged-in users away from auth pages.
+// Uses Next.js 16 Proxy convention (replaces middleware.ts).
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

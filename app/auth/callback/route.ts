@@ -1,3 +1,5 @@
+// Auth callback — handles redirects from Supabase after email confirmation or OAuth.
+// Exchanges the code for a session and creates the User row if this is a first-time sign-in.
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
