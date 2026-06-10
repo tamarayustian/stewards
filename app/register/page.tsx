@@ -57,6 +57,9 @@ export default function RegisterPage() {
           {state?.error && (
             <p className="text-sm text-red-600">{state.error}</p>
           )}
+          {state?.success && (
+            <p className="text-sm text-emerald-600">{state.success}</p>
+          )}
 
           <button
             type="submit"

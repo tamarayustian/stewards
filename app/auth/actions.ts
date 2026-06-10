@@ -54,10 +54,13 @@ export async function signup(_prev: unknown, formData: FormData) {
         data: { id, email, name },
       });
     }
+
+    revalidatePath('/', 'layout');
+    redirect('/dashboard');
   }
 
-  revalidatePath('/', 'layout');
-  redirect('/dashboard');
+  // No session means email confirmation is required
+  return { success: 'Check your email for a confirmation link.' };
 }
 
 export async function login(_prev: unknown, formData: FormData) {
