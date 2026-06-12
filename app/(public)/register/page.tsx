@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useState, useActionState, startTransition } from 'react';
 import { Sprout, MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { signup } from '@/app/auth/actions';
@@ -11,6 +11,44 @@ import { Label } from '@/components/ui/label';
 
 export default function RegisterPage() {
   const [state, action, pending] = useActionState(signup, undefined);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  function validate(formData: FormData) {
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+    const newErrors: Record<string, string> = {};
+
+    if (!name || name.trim().length === 0) {
+      newErrors.name = 'Name is required.';
+    }
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address.';
+    }
+
+    if (!password || password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters.';
+    }
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    if (validate(formData)) {
+      startTransition(() => {
+        action(formData);
+      });
+    }
+  }
 
   if (state?.success) {
     return (
@@ -31,7 +69,12 @@ export default function RegisterPage() {
             <p className="text-center text-xs text-muted-foreground">
               Didn&apos;t receive it? Check your spam folder or try signing up again.
             </p>
-            <Button variant="outline" className="w-full" nativeButton={false} render={<Link href="/login" />}>
+            <Button
+              variant="outline"
+              className="w-full"
+              nativeButton={false}
+              render={<Link href="/login" />}
+            >
               Go to sign in
             </Button>
           </CardContent>
@@ -51,20 +94,32 @@ export default function RegisterPage() {
           <CardDescription>Enter your details to get started</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={action} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input id="name" name="name" required />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" required />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" type="password" required minLength={6} />
+              <p className="text-xs text-muted-foreground">At least 6 characters</p>
+              {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <Input id="confirmPassword" name="confirmPassword" type="password" required />
+              {errors.confirmPassword && (
+                <p className="text-xs text-destructive">{errors.confirmPassword}</p>
+              )}
             </div>
 
             {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
