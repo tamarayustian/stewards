@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# database
 /lib/generated/prisma
+
+# AI tools
+.opencode/
+.cursor/
+.impeccable/
