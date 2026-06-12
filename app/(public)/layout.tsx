@@ -15,10 +15,10 @@ export default function PublicLayout({
           <span className="text-lg font-semibold">Stewards</span>
         </Link>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" render={<Link href="/login" />}>
+          <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
             Sign in
           </Button>
-          <Button render={<Link href="/register" />}>Get started</Button>
+          <Button nativeButton={false} render={<Link href="/register" />}>Get started</Button>
         </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>

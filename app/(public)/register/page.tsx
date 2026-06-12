@@ -31,7 +31,7 @@ export default function RegisterPage() {
             <p className="text-center text-xs text-muted-foreground">
               Didn&apos;t receive it? Check your spam folder or try signing up again.
             </p>
-            <Button variant="outline" className="w-full" render={<Link href="/login" />}>
+            <Button variant="outline" className="w-full" nativeButton={false} render={<Link href="/login" />}>
               Go to sign in
             </Button>
           </CardContent>

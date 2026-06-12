@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import db from '@/lib/db';
 import { createServerClient } from '@/lib/supabase';
-import { LogOut, Sprout, Users, Wallet } from 'lucide-react';
+import { LogOut, Plus, Sprout, Users, Wallet } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
           </Avatar>
           <form action={signout}>
-            <Button type="submit" variant="ghost" size="icon">
+            <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
               <LogOut className="size-4" />
             </Button>
           </form>
@@ -102,6 +102,10 @@ export default async function DashboardPage() {
                 Create or join a group to start splitting expenses.
               </p>
             </div>
+            <Button>
+              <Plus className="size-4" />
+              Create your first group
+            </Button>
           </CardContent>
         </Card>
       </main>
