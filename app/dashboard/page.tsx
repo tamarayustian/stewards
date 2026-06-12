@@ -1,13 +1,13 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { Sprout, LogOut, Users, Wallet } from 'lucide-react';
-import { createServerClient } from '@/lib/supabase';
-import db from '@/lib/db';
 import { signout } from '@/app/auth/actions';
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import db from '@/lib/db';
+import { createServerClient } from '@/lib/supabase';
+import { LogOut, Sprout, Users, Wallet } from 'lucide-react';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 function getInitials(name: string) {
   return name
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
           </Avatar>
           <form action={signout}>
-            <Button variant="ghost" size="icon">
+            <Button type="submit" variant="ghost" size="icon">
               <LogOut className="size-4" />
             </Button>
           </form>

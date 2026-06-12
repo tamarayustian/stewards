@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import db from '@/lib/db';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import db from '@/lib/db';
 
 export async function signup(_prev: unknown, formData: FormData) {
   const email = formData.get('email') as string;
@@ -58,7 +58,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   }
 
   // No session means email confirmation is required
-  return { success: 'Check your email for a confirmation link.' };
+  return { success: email };
 }
 
 export async function login(_prev: unknown, formData: FormData) {
