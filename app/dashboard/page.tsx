@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import db from '@/lib/db';
-import { createServerClient } from '@/lib/supabase';
+import { createServerClientReadOnly } from '@/lib/supabase';
 import { LogOut, Plus, Sprout, Users, Wallet } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -20,7 +20,7 @@ function getInitials(name: string) {
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClientReadOnly(cookieStore);
 
   const {
     data: { user },
