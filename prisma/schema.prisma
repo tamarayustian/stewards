@@ -10,13 +10,15 @@ datasource db {
 model User {
   id        String   @id @default(uuid())
   name      String
-  email     String   @unique
+  email     String?  @unique
   avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   deletedAt DateTime?
 
-  groups GroupMember[]
+  groups        GroupMember[]
+  paidExpenses  Expense[]     @relation("PaidExpenses")
+  splits        ExpenseSplit[]
 }
 
 model Group {
@@ -27,7 +29,8 @@ model Group {
   updatedAt   DateTime @updatedAt
   deletedAt   DateTime?
 
-  members GroupMember[]
+  members   GroupMember[]
+  expenses  Expense[]
 }
 
 model GroupMember {
@@ -41,4 +44,36 @@ model GroupMember {
   user    User   @relation(fields: [userId], references: [id])
 
   @@unique([groupId, userId])
+}
+
+model Expense {
+  id        String   @id @default(uuid())
+  groupId   String?
+  group     Group?   @relation(fields: [groupId], references: [id])
+  paidById  String
+  paidBy    User     @relation("PaidExpenses", fields: [paidById], references: [id])
+  amount    Decimal  @db.Decimal(12, 2)
+  currency  String   @default("HKD")
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  splits ExpenseSplit[]
+
+  @@index([groupId])
+  @@index([paidById])
+}
+
+model ExpenseSplit {
+  id        String   @id @default(uuid())
+  expenseId String
+  expense   Expense  @relation(fields: [expenseId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Decimal  @db.Decimal(12, 2)
+  settledAt DateTime?
+
+  @@unique([expenseId, userId])
+  @@index([userId])
 }
