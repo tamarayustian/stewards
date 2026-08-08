@@ -82,9 +82,16 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
             </div>
             <span className="text-sm font-semibold">Stewards</span>
           </div>
-          <Avatar size="sm">
-            <AvatarFallback>{userInitials}</AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-1">
+            <form action={signout}>
+              <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
+                <LogOut className="size-4" />
+              </Button>
+            </form>
+            <Avatar size="sm">
+              <AvatarFallback>{userInitials}</AvatarFallback>
+            </Avatar>
+          </div>
         </header>
 
         <main className="flex flex-1 flex-col overflow-y-auto">{children}</main>
