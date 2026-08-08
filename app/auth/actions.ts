@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import db from '@/lib/db';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { ensureUserRow } from '@/lib/users';
 
 export async function signup(_prev: unknown, formData: FormData) {
   const email = formData.get('email') as string;
@@ -43,16 +43,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   }
 
   if (data.user && data.session) {
-    const { id } = data.user;
-
-    const existing = await db.user.findUnique({ where: { id } });
-
-    if (!existing) {
-      await db.user.create({
-        data: { id, email, name },
-      });
-    }
-
+    await ensureUserRow(data.user);
     revalidatePath('/', 'layout');
     redirect('/dashboard');
   }
@@ -81,13 +72,17 @@ export async function login(_prev: unknown, formData: FormData) {
     },
   );
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (data.user) {
+    await ensureUserRow(data.user);
   }
 
   revalidatePath('/', 'layout');

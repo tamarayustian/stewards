@@ -1,9 +1,9 @@
 // Auth callback — handles redirects from Supabase after email confirmation or OAuth.
-// Exchanges the code for a session and creates the User row if this is a first-time sign-in.
+// Exchanges the code for a session and creates/merges the User row on first sign-in.
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import db from '@/lib/db';
+import { ensureUserRow } from '@/lib/users';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -32,20 +32,7 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      const { id, email, user_metadata } = data.user;
-
-      const existing = await db.user.findUnique({ where: { id } });
-
-      if (!existing && email) {
-        await db.user.create({
-          data: {
-            id,
-            email,
-            name: (user_metadata?.name as string) ?? email.split('@')[0],
-          },
-        });
-      }
-
+      await ensureUserRow(data.user);
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
