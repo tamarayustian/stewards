@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useActionState } from 'react';
 import { Users, ReceiptText, UserPlus, Link2 } from 'lucide-react';
 
-import { addFriend, createExpense } from '@/app/(app)/actions';
+import { addFriend, createExpense, editExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,16 @@ interface UserOption {
   id: string;
   name: string;
 }
+
+export type InitialExpense = {
+  id: string;
+  groupId: string | null;
+  amount: string;
+  note: string | null;
+  paidById: string;
+  participants: Participant[];
+  splits: Record<string, string>;
+};
 
 interface Participant {
   id: string;
@@ -64,24 +74,44 @@ export function AddExpenseForm({
   groups,
   users,
   currentUserId,
+  initialExpense,
 }: {
   groups: GroupOption[];
   users: UserOption[];
   currentUserId: string;
+  initialExpense?: InitialExpense;
 }) {
-  const [mode, setMode] = useState<Mode>(groups.length > 0 ? 'group' : 'direct');
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id ?? '');
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [mode, setMode] = useState<Mode>(
+    initialExpense
+      ? initialExpense.groupId
+        ? 'group'
+        : 'direct'
+      : groups.length > 0
+        ? 'group'
+        : 'direct',
+  );
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    initialExpense?.groupId ?? groups[0]?.id ?? '',
+  );
+  const [selectedUsers, setSelectedUsers] = useState<string[]>(
+    initialExpense
+      ? initialExpense.participants.filter((p) => p.id !== currentUserId).map((p) => p.id)
+      : [],
+  );
   const [friends, setFriends] = useState<UserOption[]>(users);
   const [friendName, setFriendName] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
-  const [totalAmount, setTotalAmount] = useState('');
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
-  const [customized, setCustomized] = useState(false);
-  const [payerId, setPayerId] = useState<string>(currentUserId);
-  const [state, action, pending] = useActionState(createExpense, undefined);
+  const [totalAmount, setTotalAmount] = useState(initialExpense?.amount ?? '');
+  const [amounts, setAmounts] = useState<Record<string, string>>(initialExpense?.splits ?? {});
+  const [note, setNote] = useState(initialExpense?.note ?? '');
+  const [customized, setCustomized] = useState(Boolean(initialExpense));
+  const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
+  const [state, action, pending] = useActionState(
+    initialExpense ? editExpense : createExpense,
+    undefined,
+  );
   const [addPending, startAddTransition] = useTransition();
   const router = useRouter();
 
@@ -100,7 +130,12 @@ export function AddExpenseForm({
     name: m.id === currentUserId ? 'You' : m.name,
   }));
 
-  const participants: Participant[] = mode === 'group' ? groupParticipants : directParticipants;
+  // Editing locks the participant set to the expense's original splits.
+  const participants: Participant[] = initialExpense
+    ? initialExpense.participants
+    : mode === 'group'
+      ? groupParticipants
+      : directParticipants;
 
   const payerOptions: Participant[] = [
     { id: currentUserId, name: 'You' },
@@ -174,6 +209,7 @@ export function AddExpenseForm({
   }
 
   function participantsRefresh(): Participant[] {
+    if (initialExpense) return participants;
     return mode === 'group'
       ? groupParticipants
       : [
@@ -283,48 +319,54 @@ export function AddExpenseForm({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ReceiptText className="size-5 text-primary" />
-            Add an expense
+            {initialExpense ? 'Edit expense' : 'Add an expense'}
           </CardTitle>
           <CardDescription>
-            Split a shared cost with a group or directly with friends.
+            {initialExpense
+              ? 'Update the amount, who paid, or the split amounts.'
+              : 'Split a shared cost with a group or directly with friends.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form action={action} className="space-y-5">
+            {initialExpense && <input type="hidden" name="expenseId" value={initialExpense.id} />}
+
             {/* Mode selector */}
-            <div role="radiogroup" aria-label="Split with" className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === 'group'}
-                onClick={() => chooseMode('group')}
-                className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
-                  mode === 'group'
-                    ? 'bg-primary/10 text-primary ring-primary/30'
-                    : 'text-muted-foreground ring-border hover:bg-muted'
-                }`}
-              >
-                <Users className="size-4" />
-                In a group
-              </button>
-              <button
-                type="button"
-                role="radio"
-                aria-checked={mode === 'direct'}
-                onClick={() => chooseMode('direct')}
-                className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
-                  mode === 'direct'
-                    ? 'bg-primary/10 text-primary ring-primary/30'
-                    : 'text-muted-foreground ring-border hover:bg-muted'
-                }`}
-              >
-                <ReceiptText className="size-4" />
-                Direct
-              </button>
-            </div>
+            {!initialExpense && (
+              <div role="radiogroup" aria-label="Split with" className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === 'group'}
+                  onClick={() => chooseMode('group')}
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
+                    mode === 'group'
+                      ? 'bg-primary/10 text-primary ring-primary/30'
+                      : 'text-muted-foreground ring-border hover:bg-muted'
+                  }`}
+                >
+                  <Users className="size-4" />
+                  In a group
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === 'direct'}
+                  onClick={() => chooseMode('direct')}
+                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
+                    mode === 'direct'
+                      ? 'bg-primary/10 text-primary ring-primary/30'
+                      : 'text-muted-foreground ring-border hover:bg-muted'
+                  }`}
+                >
+                  <ReceiptText className="size-4" />
+                  Direct
+                </button>
+              </div>
+            )}
 
             {/* Group picker */}
-            {mode === 'group' && (
+            {!initialExpense && mode === 'group' && (
               <div className="space-y-2">
                 <Label>Group</Label>
                 <select
@@ -343,7 +385,7 @@ export function AddExpenseForm({
             )}
 
             {/* Direct friend picker */}
-            {mode === 'direct' && (
+            {!initialExpense && mode === 'direct' && (
               <div className="space-y-2">
                 <Label>Split with</Label>
                 <p className="text-xs text-muted-foreground">
@@ -519,7 +561,14 @@ export function AddExpenseForm({
 
             <div className="space-y-2">
               <Label htmlFor="note">Note</Label>
-              <Input id="note" name="note" type="text" placeholder="Dinner at the cafe" />
+              <Input
+                id="note"
+                name="note"
+                type="text"
+                placeholder="Dinner at the cafe"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </div>
 
             {diff !== 0 && (
@@ -537,7 +586,13 @@ export function AddExpenseForm({
             {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
 
             <Button type="submit" disabled={pending} className="w-full">
-              {pending ? 'Adding expense...' : 'Add expense'}
+              {initialExpense
+                ? pending
+                  ? 'Saving changes...'
+                  : 'Save changes'
+                : pending
+                  ? 'Adding expense...'
+                  : 'Add expense'}
             </Button>
             <Button
               type="button"

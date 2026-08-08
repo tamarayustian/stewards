@@ -29,7 +29,7 @@ tsc --noEmit          # Type check (no script for this)
 - `app/(public)/` — shared layout (header + footer) for landing/login/register pages. `/register` reads `?name=&email=` query params to prefill the form (wrapped in `Suspense` for `useSearchParams`).
 - `app/auth/actions.ts` — colocated server actions for signup/login/signout.
 - `app/auth/callback/route.ts` — handles email confirmation code exchange.
-- `app/(app)/actions.ts` — server actions: `createExpense` (direct + group; form picks **who paid** and a per-person amount for each participant; sums must equal the total), `addFriend` (creates a name/email contact and returns it to the client), `deleteGroup`, `deleteExpense` (soft delete via `deletedAt`).
+- `app/(app)/actions.ts` — server actions: `createExpense` (direct + group; form picks **who paid** and a per-person amount for each participant; sums must equal the total), `editExpense` (edit amount / who paid / note / per-person splits; participant set is **locked** to the expense's original splits — TODO: allow add/drop), `addFriend` (creates a name/email contact and returns it to the client), `deleteGroup`, `deleteExpense` (soft delete via `deletedAt`).
   - Expense split semantics: each participant's `amount` is **what they owe back to the payer** — "payer covered it" = payer `0.00`, borrower = full amount. Dashboard "You owe" is the current user's share on expenses someone else paid.
 - `lib/db.ts` — Prisma singleton with `Pool` + `PrismaPg` adapter, SSL `rejectUnauthorized: false`.
 - `lib/supabase.ts` — browser + server supabase client factories (`createServerClient` has cookie read/write; `createServerClientReadOnly` is for Server Components).

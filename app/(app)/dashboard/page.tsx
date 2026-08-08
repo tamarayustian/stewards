@@ -1,4 +1,4 @@
-import { Plus, ReceiptText, Users, Wallet } from 'lucide-react';
+import { Pencil, Plus, ReceiptText, Users, Wallet } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -128,6 +128,17 @@ export default async function DashboardPage() {
                     </p>
                   )}
                 </div>
+                <Button
+                  nativeButton={false}
+                  render={<Link href={`/expenses/${item.id}/edit`} />}
+                  variant="outline"
+                  size="icon"
+                  className="size-7"
+                  title="Edit expense"
+                  aria-label="Edit expense"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
                 <DeleteExpenseButton expenseId={item.id} />
               </div>
             ))}
