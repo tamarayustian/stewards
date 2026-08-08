@@ -1,17 +1,21 @@
 'use client';
 
-import { useState, useActionState, startTransition } from 'react';
+import { Suspense, useState, useActionState, startTransition } from 'react';
 import { Sprout, MailCheck } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { signup } from '@/app/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams();
   const [state, action, pending] = useActionState(signup, undefined);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const prefilledName = searchParams?.get('name') ?? '';
+  const prefilledEmail = searchParams?.get('email') ?? '';
 
   function validate(formData: FormData) {
     const name = formData.get('name') as string;
@@ -97,13 +101,13 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" required />
+              <Input id="name" name="name" defaultValue={prefilledName} required />
               {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" required />
+              <Input id="email" name="email" type="email" defaultValue={prefilledEmail} required />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
@@ -141,5 +145,13 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterForm />
+    </Suspense>
   );
 }
