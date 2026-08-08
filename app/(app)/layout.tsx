@@ -31,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     select: { name: true },
   });
 
-  const displayName = profile?.name ?? 'User';
+  const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
   const initials = getInitials(displayName);
 
   return (

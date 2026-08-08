@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-const protectedRoutes = ['/dashboard', '/groups', '/settings'];
+const protectedRoutes = ['/dashboard', '/groups', '/settings', '/expenses'];
 const authRoutes = ['/login', '/register'];
 
 export async function proxy(request: NextRequest) {
@@ -12,6 +12,7 @@ export async function proxy(request: NextRequest) {
   const isProtected = protectedRoutes.some((route) => pathname.startsWith(route));
   const isAuth = authRoutes.some((route) => pathname.startsWith(route));
 
+  const supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -21,7 +22,10 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            supabaseResponse.cookies.set(name, value, options);
+          });
         },
       },
     },
@@ -34,14 +38,20 @@ export async function proxy(request: NextRequest) {
   if (isProtected && !user) {
     const url = new URL('/login', request.url);
     url.searchParams.set('redirect', pathname);
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      supabaseResponse.cookies.set(cookie);
+    }
     return NextResponse.redirect(url);
   }
 
   if (isAuth && user) {
+    for (const cookie of supabaseResponse.cookies.getAll()) {
+      supabaseResponse.cookies.set(cookie);
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  return NextResponse.next();
+  return supabaseResponse;
 }
 
 export const config = {
