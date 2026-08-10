@@ -313,6 +313,9 @@ export function AddExpenseForm({
   const canICoveredIt = participants.length === 2 && payerId === currentUserId;
   const canOtherCoveredIt = participants.length === 2 && payerId !== currentUserId;
 
+  const previewTone =
+    balancePreview === null ? null : payerId === currentUserId ? 'accent' : 'destructive';
+
   return (
     <div className="flex flex-1 justify-center p-6">
       <Card className="w-full max-w-md self-start">
@@ -553,7 +556,13 @@ export function AddExpenseForm({
                 ))}
               </div>
               {balancePreview && (
-                <p className="rounded-lg bg-primary/10 px-3 py-2 text-sm font-medium text-foreground ring-1 ring-primary/20">
+                <p
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 ${
+                    previewTone === 'accent'
+                      ? 'bg-accent/10 text-accent ring-accent/20'
+                      : 'bg-destructive/10 text-destructive ring-destructive/20'
+                  }`}
+                >
                   {balancePreview}
                 </p>
               )}

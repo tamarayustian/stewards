@@ -1,9 +1,10 @@
-import { Pencil, Plus, ReceiptText, Users, Wallet } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Pencil, Plus, ReceiptText, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { DeleteExpenseButton } from '@/components/delete-expense-button';
+import { PaidChip, SettleExpenseButton } from '@/components/settle-expense-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +16,7 @@ import { createServerClientReadOnly } from '@/lib/supabase';
 function timeAgo(date: Date) {
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -65,8 +67,8 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
           <CardContent className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-              <Wallet className="size-5 text-primary" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
+              <ArrowUpFromLine className="size-5 text-destructive" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">You owe</p>
@@ -78,12 +80,12 @@ export default async function DashboardPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-              <Wallet className="size-5 text-primary" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-accent/10">
+              <ArrowDownToLine className="size-5 text-accent" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">You are owed</p>
-              <p className="text-lg font-semibold text-primary">
+              <p className="text-lg font-semibold text-accent">
                 {formatMoney(balances.youAreOwed)}
               </p>
             </div>
@@ -109,9 +111,14 @@ export default async function DashboardPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {item.note ?? item.context}
-                    {!item.isPayer && item.hasSettled && item.unsettled && (
-                      <span className="ml-2 rounded-full bg-muted px-1.5 py-0.5 text-[0.65rem] text-muted-foreground">
-                        you owe
+                    {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
+                      <span className="ml-2 inline-flex">
+                        <SettleExpenseButton expenseId={item.id} />
+                      </span>
+                    )}
+                    {!item.isPayer && !item.unsettled && item.hasSettled && (
+                      <span className="ml-2 inline-flex">
+                        <PaidChip />
                       </span>
                     )}
                   </p>
@@ -124,7 +131,9 @@ export default async function DashboardPage() {
                   <p className="text-sm font-semibold">{formatMoney(item.amount)}</p>
                   {item.isPayer && (
                     <p className="text-[0.65rem] text-muted-foreground">
-                      {item.participantCount} split
+                      {item.participantCount === 1
+                        ? '1 split'
+                        : `split ${item.participantCount} ways`}
                     </p>
                   )}
                 </div>

@@ -54,6 +54,7 @@ export type ActivityItem = {
   isPayer: boolean;
   unsettled: boolean;
   hasSettled: boolean;
+  myShare: Prisma.Decimal;
   participantCount: number;
 };
 
@@ -72,7 +73,7 @@ export async function getActivity(userId: string, take = 20): Promise<ActivityIt
       group: { select: { name: true } },
       splits: {
         where: { userId },
-        select: { settledAt: true },
+        select: { settledAt: true, amount: true },
       },
       _count: { select: { splits: true } },
     },
@@ -94,6 +95,7 @@ export async function getActivity(userId: string, take = 20): Promise<ActivityIt
       isPayer: e.paidById === userId,
       unsettled,
       hasSettled: mySplit !== undefined,
+      myShare: mySplit?.amount ?? new Prisma.Decimal(0),
       participantCount: e._count.splits,
     };
   });

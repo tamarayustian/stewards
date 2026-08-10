@@ -187,6 +187,43 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
   }
 }
 
+// Marks the current user's share of an expense as repaid.
+// Only the borrower (non-payer with an unsettled, non-zero split) can settle their own debt.
+export async function settleExpense(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const expenseId = formData.get('expenseId') as string;
+
+  const expense = await db.expense.findFirst({
+    where: {
+      id: expenseId,
+      deletedAt: null,
+      paidById: { not: user.id },
+      splits: { some: { userId: user.id, settledAt: null, amount: { gt: 0 } } },
+      OR: [{ groupId: null }, { group: { deletedAt: null } }],
+    },
+    select: { groupId: true },
+  });
+
+  if (!expense) {
+    return { error: 'Nothing to settle on this expense.' };
+  }
+
+  await db.expenseSplit.update({
+    where: { expenseId_userId: { expenseId, userId: user.id } },
+    data: { settledAt: new Date() },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath('/groups');
+  if (expense.groupId) {
+    revalidatePath(`/groups/${expense.groupId}`);
+  }
+}
+
 export async function editExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
