@@ -128,14 +128,16 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold">{formatMoney(item.amount)}</p>
-                  {item.isPayer && (
-                    <p className="text-[0.65rem] text-muted-foreground">
-                      {item.participantCount === 1
+                  <p className="text-sm font-semibold">
+                    {formatMoney(item.isPayer ? item.amount : item.myShare)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.isPayer
+                      ? item.participantCount === 1
                         ? '1 split'
-                        : `split ${item.participantCount} ways`}
-                    </p>
-                  )}
+                        : `split ${item.participantCount} ways`
+                      : `share of ${formatMoney(item.amount)}`}
+                  </p>
                 </div>
                 <Button
                   nativeButton={false}
