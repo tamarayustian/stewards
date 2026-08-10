@@ -30,7 +30,7 @@ export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
 
 export function PaidChip() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[0.7rem] text-muted-foreground">
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
       <CheckCheck className="size-3" />
       paid
     </span>
