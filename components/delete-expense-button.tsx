@@ -1,29 +1,57 @@
 'use client';
 
+import { useState } from 'react';
 import { useActionState } from 'react';
 import { Trash2 } from 'lucide-react';
 
 import { deleteExpense } from '@/app/(app)/actions';
+import {
+  AlertDialogRoot,
+  AlertDialogPopup,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 
 export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
   const [state, action, pending] = useActionState(deleteExpense, undefined);
+  const [open, setOpen] = useState(false);
 
   return (
-    <form action={action} className="flex items-center gap-2">
-      <input type="hidden" name="expenseId" value={expenseId} />
-      <Button
-        type="submit"
-        variant="outline"
-        size="icon"
-        className="size-7"
-        disabled={pending}
-        title="Delete expense"
-        aria-label="Delete expense"
-      >
-        <Trash2 className="size-3.5 text-destructive" />
-      </Button>
+    <div className="flex items-center gap-2">
+      <AlertDialogRoot open={open} onOpenChange={setOpen}>
+        <AlertDialogTrigger
+          render={
+            <Button
+              variant="outline"
+              size="icon"
+              className="size-7"
+              title="Delete expense"
+              aria-label="Delete expense"
+            >
+              <Trash2 className="size-3.5 text-destructive" />
+            </Button>
+          }
+        />
+        <AlertDialogPopup>
+          <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
+          <p className="text-sm text-muted-foreground">
+            This permanently removes the expense and its splits. It can&apos;t be undone.
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <form action={action}>
+              <input type="hidden" name="expenseId" value={expenseId} />
+              <Button type="submit" variant="destructive" size="sm" disabled={pending}>
+                {pending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </form>
+          </div>
+        </AlertDialogPopup>
+      </AlertDialogRoot>
       {state?.error && <span className="text-xs text-destructive">{state.error}</span>}
-    </form>
+    </div>
   );
 }
