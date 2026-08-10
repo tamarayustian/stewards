@@ -38,7 +38,7 @@ tsc --noEmit          # Type check (no script for this)
 - `components/app-shell.tsx` — desktop sidebar (logout + avatar) and mobile header (logout icon) + bottom tab bar.
 - `components/add-expense-form.tsx` — direct picker includes an inline "Add a friend by name" control; `components/invite-friend.tsx` copies a sign-up invite link (prefills `/register?name=&email=`). Balance preview under splits is sage 'X will owe you/Others will owe you' when you paid, destructive 'You will owe X' otherwise.
 - `components/delete-expense-button.tsx`, `components/settle-expense-button.tsx` (Mark paid chip + static PaidChip), `components/delete-group-button.tsx` — all use the hand-written `components/ui/alert-dialog.tsx` (base-ui `AlertDialog` named import, controlled `open`; success closes via revalidation, NOT useEffect — lint forbids setState-in-effect).
-- `lib/expenses.ts` `getActivity` returns `myShare` (user's split Decimal) so the dashboard can show Mark paid only for unsettled non-zero shares.
+- `lib/expenses.ts` `getActivity` returns `myShare` (user's split Decimal) so the dashboard can show Mark paid only for unsettled non-zero shares and headline that share as the amount on borrower rows (with a `share of <total>` caption).
 
 ## Database
 
