@@ -29,15 +29,16 @@ tsc --noEmit          # Type check (no script for this)
 - `app/(public)/` — shared layout (header + footer) for landing/login/register pages. `/register` reads `?name=&email=` query params to prefill the form (wrapped in `Suspense` for `useSearchParams`).
 - `app/auth/actions.ts` — colocated server actions for signup/login/signout.
 - `app/auth/callback/route.ts` — handles email confirmation code exchange.
-- `app/(app)/actions.ts` — server actions: `createExpense` (direct + group; form picks **who paid** and a per-person amount for each participant; sums must equal the total), `editExpense` (edit amount / who paid / note / per-person splits; participant set is **locked** to the expense's original splits — TODO: allow add/drop), `addFriend` (creates a name/email contact and returns it to the client), `deleteGroup`, `deleteExpense` (soft delete via `deletedAt`).
+- `app/(app)/actions.ts` — server actions: `createExpense` (direct + group; form picks **who paid** and a per-person amount for each participant; sums must equal the total), `editExpense` (edit amount / who paid / note / per-person splits; participant set is **locked** to the expense's original splits — TODO: allow add/drop), `addFriend` (creates a name/email contact and returns it to the client), `deleteGroup`, `deleteExpense` (soft delete via `deletedAt`), `settleExpense` (borrower marks their own unsettled non-zero split `settledAt` — 'Mark paid' chip on dashboard rows).
   - Expense split semantics: each participant's `amount` is **what they owe back to the payer** — "payer covered it" = payer `0.00`, borrower = full amount. Dashboard "You owe" is the current user's share on expenses someone else paid.
 - `lib/db.ts` — Prisma singleton with `Pool` + `PrismaPg` adapter, SSL `rejectUnauthorized: false`.
 - `lib/supabase.ts` — browser + server supabase client factories (`createServerClient` has cookie read/write; `createServerClientReadOnly` is for Server Components).
 - `lib/users.ts` — `ensureUserRow` (find-or-create/merge auth user's DB row), `addContact` (add a lightweight friend contact). Friends can be added by name with an optional email.
 - `lib/expenses.ts` — balance/activity/group queries (`getBalances`, `getActivity`, `listGroups`, `listUsersForDirect`).
 - `components/app-shell.tsx` — desktop sidebar (logout + avatar) and mobile header (logout icon) + bottom tab bar.
-- `components/add-expense-form.tsx` — direct picker includes an inline "Add a friend by name" control; `components/invite-friend.tsx` copies a sign-up invite link (prefills `/register?name=&email=`).
-- `components/delete-group-button.tsx`, `components/ui/*` — shadcn v4 base-nova components.
+- `components/add-expense-form.tsx` — direct picker includes an inline "Add a friend by name" control; `components/invite-friend.tsx` copies a sign-up invite link (prefills `/register?name=&email=`). Balance preview under splits is sage 'X will owe you/Others will owe you' when you paid, destructive 'You will owe X' otherwise.
+- `components/delete-expense-button.tsx`, `components/settle-expense-button.tsx` (Mark paid chip + static PaidChip), `components/delete-group-button.tsx` — all use the hand-written `components/ui/alert-dialog.tsx` (base-ui `AlertDialog` named import, controlled `open`; success closes via revalidation, NOT useEffect — lint forbids setState-in-effect).
+- `lib/expenses.ts` `getActivity` returns `myShare` (user's split Decimal) so the dashboard can show Mark paid only for unsettled non-zero shares.
 
 ## Database
 
