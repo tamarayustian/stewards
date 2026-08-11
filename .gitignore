@@ -48,3 +48,5 @@ next-env.d.ts
 .cursor/
 .impeccable/
 .agents/
+.superpowers/
+docs/
