@@ -39,7 +39,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   }
 
   if (data.user?.identities?.length === 0) {
-    return { error: 'An account with this email already exists.' };
+    return { error: 'An account with this email already exists.', exists: true };
   }
 
   if (data.user && data.session) {

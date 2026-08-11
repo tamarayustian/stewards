@@ -5,6 +5,7 @@ import { Sprout, MailCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { signup } from '@/app/auth/actions';
+import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -113,20 +114,33 @@ function RegisterForm() {
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" name="password" type="password" required minLength={6} />
+              <PasswordInput id="password" name="password" required minLength={6} />
               <p className="text-xs text-muted-foreground">At least 6 characters</p>
               {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm password</Label>
-              <Input id="confirmPassword" name="confirmPassword" type="password" required />
+              <PasswordInput id="confirmPassword" name="confirmPassword" required minLength={6} />
               {errors.confirmPassword && (
                 <p className="text-xs text-destructive">{errors.confirmPassword}</p>
               )}
             </div>
 
-            {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
+            {state?.error &&
+              (state?.exists ? (
+                <p className="text-sm text-destructive">
+                  An account with this email already exists.{' '}
+                  <Link
+                    href="/login"
+                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              ) : (
+                <p className="text-sm text-destructive">{state.error}</p>
+              ))}
 
             <Button type="submit" disabled={pending} className="w-full">
               {pending ? 'Creating account...' : 'Create account'}
