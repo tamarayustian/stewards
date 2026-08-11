@@ -45,17 +45,19 @@ export default async function DashboardPage({
   const filter: ActivityFilter =
     filterParam === 'owe' || filterParam === 'owed' || filterParam === 'paid' ? filterParam : 'all';
 
-  const [profile, balances, activity] = await Promise.all([
+  const [profile, balances, allActivity, filteredActivity] = await Promise.all([
     db.user.findUnique({
       where: { id: user.id },
       select: { name: true, email: true },
     }),
     getBalances(user.id),
-    getActivity(user.id, filter),
+    getActivity(user.id),
+    filter === 'all' ? null : getActivity(user.id, filter),
   ]);
+  const activity = filteredActivity ?? allActivity;
 
   const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
-  const hasActivity = activity.length > 0;
+  const hasActivity = allActivity.length > 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -125,85 +127,87 @@ export default async function DashboardPage({
                 </Link>
               ))}
             </div>
-            <div className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
-              {activity.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                  <div
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                      item.isPayer ? 'bg-primary/10' : 'bg-accent/10'
-                    }`}
-                  >
-                    <ReceiptText
-                      className={`size-4 ${item.isPayer ? 'text-primary' : 'text-accent'}`}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <p className="min-w-0 truncate text-sm font-medium">
-                        {item.note ?? item.context}
-                      </p>
-                      {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
-                        <span className="shrink-0">
-                          <SettleExpenseButton expenseId={item.id} />
-                        </span>
-                      )}
-                      {!item.isPayer && !item.unsettled && item.hasSettled && (
-                        <span className="shrink-0">
-                          <MarkUnpaidButton expenseId={item.id} />
-                        </span>
-                      )}
+            {activity.length > 0 ? (
+              <div className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
+                {activity.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                    <div
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                        item.isPayer ? 'bg-primary/10' : 'bg-accent/10'
+                      }`}
+                    >
+                      <ReceiptText
+                        className={`size-4 ${item.isPayer ? 'text-primary' : 'text-accent'}`}
+                      />
                     </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
-                      {timeAgo(item.createdAt)}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="min-w-0 truncate text-sm font-medium">
+                          {item.note ?? item.context}
+                        </p>
+                        {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
+                          <span className="shrink-0">
+                            <SettleExpenseButton expenseId={item.id} />
+                          </span>
+                        )}
+                        {!item.isPayer && !item.unsettled && item.hasSettled && (
+                          <span className="shrink-0">
+                            <MarkUnpaidButton expenseId={item.id} />
+                          </span>
+                        )}
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
+                        {timeAgo(item.createdAt)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold">
+                        {formatMoney(item.isPayer ? item.amount : item.myShare)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.isPayer
+                          ? item.participantCount === 1
+                            ? '1 split'
+                            : `split ${item.participantCount} ways`
+                          : `share of ${formatMoney(item.amount)}`}
+                      </p>
+                    </div>
+                    <Button
+                      nativeButton={false}
+                      render={<Link href={`/expenses/${item.id}/edit`} />}
+                      variant="outline"
+                      size="icon"
+                      className="size-7"
+                      title="Edit expense"
+                      aria-label="Edit expense"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <DeleteExpenseButton expenseId={item.id} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Card className="mt-3">
+                <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+                    <Users className="size-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Nothing here</p>
+                    <p className="text-sm text-muted-foreground">
+                      {filter === 'owe'
+                        ? "You don't owe anything right now."
+                        : filter === 'owed'
+                          ? 'No one owes you right now.'
+                          : 'No settled expenses yet.'}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">
-                      {formatMoney(item.isPayer ? item.amount : item.myShare)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.isPayer
-                        ? item.participantCount === 1
-                          ? '1 split'
-                          : `split ${item.participantCount} ways`
-                        : `share of ${formatMoney(item.amount)}`}
-                    </p>
-                  </div>
-                  <Button
-                    nativeButton={false}
-                    render={<Link href={`/expenses/${item.id}/edit`} />}
-                    variant="outline"
-                    size="icon"
-                    className="size-7"
-                    title="Edit expense"
-                    aria-label="Edit expense"
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <DeleteExpenseButton expenseId={item.id} />
-                </div>
-              ))}
-            </div>
+                </CardContent>
+              </Card>
+            )}
           </>
-        ) : filter !== 'all' ? (
-          <Card className="mt-3">
-            <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <Users className="size-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium">Nothing here</p>
-                <p className="text-sm text-muted-foreground">
-                  {filter === 'owe'
-                    ? "You don't owe anything right now."
-                    : filter === 'owed'
-                      ? 'No one owes you right now.'
-                      : 'No settled expenses yet.'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         ) : (
           <Card className="mt-3">
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
