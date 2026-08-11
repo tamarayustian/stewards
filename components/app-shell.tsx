@@ -64,7 +64,13 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
             </Avatar>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{userName}</span>
             <form action={signout}>
-              <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="relative after:absolute after:-inset-1.5 after:content-['']"
+                aria-label="Sign out"
+              >
                 <LogOut className="size-4" />
               </Button>
             </form>
@@ -84,7 +90,13 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
           </div>
           <div className="flex items-center gap-1">
             <form action={signout}>
-              <Button type="submit" variant="ghost" size="icon" aria-label="Sign out">
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="relative after:absolute after:-inset-1.5 after:content-['']"
+                aria-label="Sign out"
+              >
                 <LogOut className="size-4" />
               </Button>
             </form>

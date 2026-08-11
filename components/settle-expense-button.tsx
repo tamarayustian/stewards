@@ -16,7 +16,7 @@ export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
         type="submit"
         variant="ghost"
         size="sm"
-        className="h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"
+        className="relative h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20 after:absolute after:-inset-2.5 after:content-['']"
         disabled={pending}
         title="Mark this share as paid"
       >

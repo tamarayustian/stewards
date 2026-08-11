@@ -33,6 +33,7 @@ export function DeleteGroupButton({
             <Button
               variant="destructive"
               size="sm"
+              className="relative after:absolute after:-inset-2 after:content-['']"
               disabled={disabled || pending}
               aria-disabled={disabled}
               title={disabled ? blockedReason : undefined}

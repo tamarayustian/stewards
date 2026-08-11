@@ -178,7 +178,7 @@ export default async function DashboardPage({
                       render={<Link href={`/expenses/${item.id}/edit`} />}
                       variant="outline"
                       size="icon"
-                      className="size-7"
+                      className="relative size-7 after:absolute after:-inset-2 after:content-['']"
                       title="Edit expense"
                       aria-label="Edit expense"
                     >
