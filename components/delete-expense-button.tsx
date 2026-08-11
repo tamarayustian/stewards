@@ -36,7 +36,7 @@ export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
         <AlertDialogPopup>
           <AlertDialogTitle>Delete this expense?</AlertDialogTitle>
           <p className="text-sm text-muted-foreground">
-            This permanently removes the expense and its splits. It can&apos;t be undone.
+            The expense and its splits will be hidden from you and everyone else.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
@@ -51,7 +51,11 @@ export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
           </div>
         </AlertDialogPopup>
       </AlertDialogRoot>
-      {state?.error && <span className="text-xs text-destructive">{state.error}</span>}
+      {state?.error && (
+        <span role="alert" className="text-xs text-destructive">
+          {state.error}
+        </span>
+      )}
     </div>
   );
 }

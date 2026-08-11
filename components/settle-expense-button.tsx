@@ -23,7 +23,11 @@ export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
         <Check className="size-3" />
         {pending ? 'Marking…' : 'Mark paid'}
       </Button>
-      {state?.error && <span className="text-xs text-destructive">{state.error}</span>}
+      {state?.error && (
+        <span role="alert" className="text-xs text-destructive">
+          {state.error}
+        </span>
+      )}
     </form>
   );
 }

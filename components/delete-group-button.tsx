@@ -46,7 +46,7 @@ export function DeleteGroupButton({
         <AlertDialogPopup>
           <AlertDialogTitle>Delete this group?</AlertDialogTitle>
           <p className="text-sm text-muted-foreground">
-            This permanently removes the group and its expenses. It can&apos;t be undone.
+            The group and its expenses will be hidden from everyone.
           </p>
           <div className="mt-5 flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
@@ -66,7 +66,11 @@ export function DeleteGroupButton({
           {blockedReason}
         </span>
       ) : null}
-      {state?.error && !disabled && <span className="text-xs text-destructive">{state.error}</span>}
+      {state?.error && !disabled && (
+        <span role="alert" className="text-xs text-destructive">
+          {state.error}
+        </span>
+      )}
     </div>
   );
 }
