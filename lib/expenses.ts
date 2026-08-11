@@ -58,16 +58,43 @@ export type ActivityItem = {
   participantCount: number;
 };
 
+export type ActivityFilter = 'all' | 'owe' | 'owed' | 'paid';
+
 // Recent expenses where the user paid or was split — group and direct combined.
-export async function getActivity(userId: string, take = 20): Promise<ActivityItem[]> {
+export async function getActivity(
+  userId: string,
+  filter: ActivityFilter = 'all',
+  take = 20,
+): Promise<ActivityItem[]> {
+  const baseAnd = [
+    { OR: [{ groupId: null }, { group: { deletedAt: null } }] },
+    { OR: [{ paidById: userId }, { splits: { some: { userId } } }] },
+  ];
+  let filterClause: Prisma.ExpenseWhereInput | null = null;
+  switch (filter) {
+    case 'owe':
+      filterClause = {
+        paidById: { not: userId },
+        splits: { some: { userId, settledAt: null, amount: { gt: 0 } } },
+      };
+      break;
+    case 'owed':
+      filterClause = {
+        paidById: userId,
+        splits: { some: { settledAt: null, amount: { gt: 0 }, userId: { not: userId } } },
+      };
+      break;
+    case 'paid':
+      filterClause = {
+        OR: [
+          { paidById: { not: userId }, splits: { some: { userId, settledAt: { not: null } } } },
+          { paidById: userId, splits: { none: { settledAt: null, amount: { gt: 0 } } } },
+        ],
+      };
+      break;
+  }
   const expenses = await db.expense.findMany({
-    where: {
-      deletedAt: null,
-      AND: [
-        { OR: [{ groupId: null }, { group: { deletedAt: null } }] },
-        { OR: [{ paidById: userId }, { splits: { some: { userId } } }] },
-      ],
-    },
+    where: { deletedAt: null, AND: filterClause ? [...baseAnd, filterClause] : baseAnd },
     include: {
       paidBy: { select: { name: true } },
       group: { select: { name: true } },
