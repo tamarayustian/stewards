@@ -26,33 +26,33 @@ colors:
 typography:
   body:
     fontFamily: "'Plus Jakarta Sans', sans-serif"
-    fontSize: "14px"
+    fontSize: '14px'
     fontWeight: 400
     lineHeight: 1.5
   display:
     fontFamily: "'Plus Jakarta Sans', sans-serif"
-    fontSize: "clamp(2.25rem, 7vw, 3.5rem)"
+    fontSize: 'clamp(2.25rem, 7vw, 3.5rem)'
     fontWeight: 700
     lineHeight: 1.1
-    letterSpacing: "-0.03em"
+    letterSpacing: '-0.03em'
   headline:
     fontFamily: "'Plus Jakarta Sans', sans-serif"
-    fontSize: "1.25rem"
+    fontSize: '1.25rem'
     fontWeight: 600
     lineHeight: 1.3
   title:
     fontFamily: "'Plus Jakarta Sans', sans-serif"
-    fontSize: "1rem"
+    fontSize: '1rem'
     fontWeight: 600
     lineHeight: 1.4
   label:
     fontFamily: "'Plus Jakarta Sans', sans-serif"
-    fontSize: "0.875rem"
+    fontSize: '0.875rem'
     fontWeight: 500
     lineHeight: 1
   mono:
     fontFamily: "'Geist Mono', monospace"
-    fontSize: "0.875rem"
+    fontSize: '0.875rem'
 rounded:
   sm: 0.375rem
   md: 0.5rem
@@ -75,33 +75,33 @@ components:
     backgroundColor: oklch(0.56 0.12 35 / 0.8)
   button-outline:
     backgroundColor: transparent
-    textColor: "{colors.foreground}"
+    textColor: '{colors.foreground}'
     rounded: 0.625rem
-    borderColor: "{colors.border}"
+    borderColor: '{colors.border}'
     padding: 8px 16px
     height: 32px
   button-outline-hover:
-    backgroundColor: "{colors.warm-beige}"
+    backgroundColor: '{colors.warm-beige}'
   button-ghost:
     rounded: 0.625rem
     padding: 8px 16px
     height: 32px
   button-ghost-hover:
-    backgroundColor: "{colors.warm-beige}"
+    backgroundColor: '{colors.warm-beige}'
   button-destructive:
     backgroundColor: oklch(0.577 0.18 27 / 0.1)
     textColor: oklch(0.577 0.18 27)
     rounded: 0.625rem
   input:
     backgroundColor: transparent
-    textColor: "{colors.foreground}"
-    borderColor: "{colors.input}"
+    textColor: '{colors.foreground}'
+    borderColor: '{colors.input}'
     rounded: 0.625rem
     height: 32px
     padding: 4px 10px
   card:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.card-foreground}"
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.card-foreground}'
     rounded: 0.875rem
     padding: 16px
 ---
@@ -117,6 +117,7 @@ Stewards' visual system is gathered around a warm wooden table — communal, gro
 The aesthetic is warm-flat: no shadows, no glassmorphism, no gradient text. Depth is conveyed through tonal layering of warm earth surfaces. Typography is friendly and approachable (Plus Jakarta Sans everywhere), with generous spacing that gives the interface room to breathe. Motion, when added, should feel like a considered response — never decorative or bouncy.
 
 **Key Characteristics:**
+
 - Warm, flat, tonal — depth through surface color, not shadows
 - Clay and herb palette (terracotta primary, sage accent, warm neutrals)
 - Single sans-serif family for harmony; weight and size carry hierarchy
@@ -128,13 +129,16 @@ The aesthetic is warm-flat: no shadows, no glassmorphism, no gradient text. Dept
 A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutrals are tinted warm (chroma ~0.008 toward 85°) rather than pure gray, giving the entire interface a gentle ambient warmth.
 
 ### Primary
+
 - **Fired Clay** (`oklch(0.56 0.12 35)`): The primary interactive color — buttons, links, active states, the brand's most visible voice. Darkened from `0.62` to meet WCAG AA on warm paper; white text on it reads 4.70:1. On dark backgrounds shifts to `oklch(0.72 0.1 35)` for readability.
 - **Fired Clay Glow** (`oklch(0.56 0.12 35 / 0.8)`): Hover state for primary buttons.
 
 ### Accent
+
 - **Sage Leaf** (`oklch(0.52 0.08 140)`): Secondary accent for positive signals (settled balances, success messages, "you're owed" amounts). On dark backgrounds shifts to `oklch(0.65 0.08 140)`.
 
 ### Neutral
+
 - **Warm Paper** (`oklch(0.995 0.004 85)`): Surface background for cards and raised containers. Nearly white with a whisper of warmth.
 - **Ambient** (`oklch(0.983 0.008 85)`): Page background. Barely-there warmth, never cream.
 - **Warm Beige** (`oklch(0.95 0.01 85)`): Muted surfaces, hover states, secondary backgrounds.
@@ -143,9 +147,11 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 - **Muted Ink** (`oklch(0.5 0.015 50)`): Secondary text, placeholders, muted labels.
 
 ### Feedback
+
 - **Warm Red** (`oklch(0.577 0.18 27)`): Destructive actions, error states, "you owe" amounts.
 
 ### Named Rules
+
 **The One Hue Rule.** All neutrals are tinted toward the same warm hue (85°). No cool grays anywhere in the system. A gray element is an error.
 
 **The Rarity Rule.** The fired clay primary accent should occupy ≤15% of any given screen. Its restraint is what gives it impact. Overuse makes the interface feel hot and aggressive.
@@ -158,6 +164,7 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 **Character:** Plus Jakarta Sans is a warm humanist sans-serif — rounded without being soft, friendly without being casual. It carries the brand's warmth at every weight. The single-family approach means hierarchy is carried entirely through size, weight, and spacing, not font switches.
 
 ### Hierarchy
+
 - **Display** (700, `clamp(2.25rem, 7vw, 3.5rem)`, 1.1, `-0.03em`): Hero headlines only. `text-wrap: balance`. Cap at 6rem max.
 - **Headline** (600, `1.25rem`, 1.3): Section headings.
 - **Title** (600, `1rem`, 1.4): Card titles, small section headers.
@@ -170,6 +177,7 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 **Flat by default.** Stewards uses no shadows. Depth is conveyed entirely through tonal layering: a darker surface sits behind, a lighter surface sits in front. The card variant uses a subtle `ring-1 ring-foreground/10` for edge definition instead of a drop shadow.
 
 The system never uses:
+
 - Box shadows of any kind
 - Backdrop blur or glass effects
 - Gradient overlays for depth
@@ -211,6 +219,7 @@ A single horizontal/vertical stroke in `warm-sand` (`--border`). No frills, no o
 ## 6. Do's and Don'ts
 
 ### Do:
+
 - **Do** use the warm earth palette exclusively — no cool grays, no pure white (`#fff`), no pure black (`#000`).
 - **Do** keep primary (fired clay) usage under 15% of any screen to preserve its impact.
 - **Do** use tonal layering for depth instead of shadows.
@@ -220,6 +229,7 @@ A single horizontal/vertical stroke in `warm-sand` (`--border`). No frills, no o
 - **Do** keep card usage purposeful — not as a default layout container for every section.
 
 ### Don't:
+
 - **Don't** use shadows, box-shadows, backdrop-filter, or glass effects.
 - **Don't** use gradient text, gradient backgrounds, or gradient overlays.
 - **Don't** use side-stripe borders (border-left > 1px as a colored accent on cards or list items).
