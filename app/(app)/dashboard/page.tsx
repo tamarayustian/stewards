@@ -130,11 +130,12 @@ export default async function DashboardPage({
                 <Link
                   key={f.key}
                   href={f.key === 'all' ? '/dashboard' : `/dashboard?filter=${f.key}`}
-                  className={`rounded-md px-3 py-1 text-xs font-medium ${
+                  className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-2 after:content-[''] ${
                     filter === f.key
                       ? 'bg-card text-foreground ring-1 ring-foreground/10'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
+                  aria-current={filter === f.key ? 'page' : undefined}
                 >
                   {f.label}
                 </Link>
