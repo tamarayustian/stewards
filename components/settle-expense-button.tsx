@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
 
-import { settleExpense } from '@/app/(app)/actions';
+import { settleExpense, unsettleExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 
 export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
@@ -28,11 +28,27 @@ export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
   );
 }
 
-export function PaidChip() {
+export function MarkUnpaidButton({ expenseId }: { expenseId: string }) {
+  const [state, action, pending] = useActionState(unsettleExpense, undefined);
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-      <CheckCheck className="size-3" />
-      paid
-    </span>
+    <form action={action} className="flex shrink-0 items-center gap-2">
+      <input type="hidden" name="expenseId" value={expenseId} />
+      <Button
+        type="submit"
+        variant="ghost"
+        size="sm"
+        className="relative h-6 rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground after:absolute after:-inset-2.5 after:content-['']"
+        disabled={pending}
+        title="Mark this share as unpaid"
+      >
+        <CheckCheck className="size-3" />
+        {pending ? 'Marking…' : 'paid'}
+      </Button>
+      {state?.error && (
+        <span role="alert" className="text-xs text-destructive">
+          {state.error}
+        </span>
+      )}
+    </form>
   );
 }

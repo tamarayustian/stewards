@@ -224,6 +224,37 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   }
 }
 
+// Reverts a mistaken 'Mark paid': clears settledAt on the current user's split.
+export async function unsettleExpense(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+  const expenseId = formData.get('expenseId') as string;
+  const expense = await db.expense.findFirst({
+    where: {
+      id: expenseId,
+      deletedAt: null,
+      paidById: { not: user.id },
+      splits: { some: { userId: user.id, settledAt: { not: null }, amount: { gt: 0 } } },
+      OR: [{ groupId: null }, { group: { deletedAt: null } }],
+    },
+    select: { groupId: true },
+  });
+  if (!expense) {
+    return { error: 'Nothing to un-settle on this expense.' };
+  }
+  await db.expenseSplit.update({
+    where: { expenseId_userId: { expenseId, userId: user.id } },
+    data: { settledAt: null },
+  });
+  revalidatePath('/dashboard');
+  revalidatePath('/groups');
+  if (expense.groupId) {
+    revalidatePath(`/groups/${expense.groupId}`);
+  }
+}
+
 export async function editExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { DeleteExpenseButton } from '@/components/delete-expense-button';
-import { PaidChip, SettleExpenseButton } from '@/components/settle-expense-button';
+import { MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -109,19 +109,21 @@ export default async function DashboardPage() {
                   />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {item.note ?? item.context}
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="min-w-0 truncate text-sm font-medium">
+                      {item.note ?? item.context}
+                    </p>
                     {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
-                      <span className="ml-2 inline-flex">
+                      <span className="shrink-0">
                         <SettleExpenseButton expenseId={item.id} />
                       </span>
                     )}
                     {!item.isPayer && !item.unsettled && item.hasSettled && (
-                      <span className="ml-2 inline-flex">
-                        <PaidChip />
+                      <span className="shrink-0">
+                        <MarkUnpaidButton expenseId={item.id} />
                       </span>
                     )}
-                  </p>
+                  </div>
                   <p className="truncate text-xs text-muted-foreground">
                     {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
                     {timeAgo(item.createdAt)}
