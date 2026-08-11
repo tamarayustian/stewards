@@ -18,7 +18,9 @@ export default function PublicLayout({
           <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
             Sign in
           </Button>
-          <Button nativeButton={false} render={<Link href="/register" />}>Get started</Button>
+          <Button nativeButton={false} render={<Link href="/register" />}>
+            Get started
+          </Button>
         </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>
