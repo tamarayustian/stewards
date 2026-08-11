@@ -103,6 +103,7 @@ export function AddExpenseForm({
   const [friendEmail, setFriendEmail] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
   const [totalAmount, setTotalAmount] = useState(initialExpense?.amount ?? '');
   const [amounts, setAmounts] = useState<Record<string, string>>(initialExpense?.splits ?? {});
   const [note, setNote] = useState(initialExpense?.note ?? '');
@@ -267,6 +268,7 @@ export function AddExpenseForm({
         setFriendName('');
         setFriendEmail('');
         setAddError(null);
+        setShowAddFriend(false);
       } else if (result?.error) {
         setAddError(result.error);
       }
@@ -289,6 +291,45 @@ export function AddExpenseForm({
   function preventSubmit(event: React.KeyboardEvent) {
     if (event.key === 'Enter') event.preventDefault();
   }
+
+  const addFriendPanel = (
+    <div className="space-y-2 rounded-lg bg-muted/40 p-3 ring-1 ring-border">
+      <p className="flex items-center gap-1.5 text-xs font-medium">
+        <UserPlus className="size-3.5" />
+        Add a friend by name
+      </p>
+      <Input
+        value={friendName}
+        onChange={(e) => setFriendName(e.target.value)}
+        onKeyDown={preventSubmit}
+        placeholder="Friend's name"
+        aria-label="Friend's name"
+      />
+      <Input
+        value={friendEmail}
+        onChange={(e) => setFriendEmail(e.target.value)}
+        type="email"
+        onKeyDown={preventSubmit}
+        placeholder="Email (optional — for invite link)"
+        aria-label="Friend's email"
+      />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleAddFriend}
+          disabled={addPending || friendName.trim().length === 0}
+        >
+          {addPending ? 'Adding...' : 'Add friend'}
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={copyInviteLink}>
+          <Link2 className="size-3.5" />
+          {inviteCopied ? 'Invite link copied' : 'Copy invite link'}
+        </Button>
+      </div>
+      {addError && <p className="text-sm text-destructive">{addError}</p>}
+    </div>
+  );
 
   const splitSumCents = participants.reduce((sum, p) => sum + totalCents(amounts[p.id] ?? ''), 0);
   const totalCentsValue = totalCents(totalAmount);
@@ -397,77 +438,59 @@ export function AddExpenseForm({
                 </p>
 
                 {friends.length > 0 ? (
-                  <div className="max-h-48 space-y-1 overflow-y-auto">
-                    {friends.map((u) => {
-                      const checked = selectedUsers.includes(u.id);
-                      return (
-                        <label
-                          key={u.id}
-                          className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ring-1 transition-colors ${
-                            checked
-                              ? 'bg-primary/10 text-foreground ring-primary/30'
-                              : 'text-muted-foreground ring-border hover:bg-muted'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            name="participantId"
-                            value={u.id}
-                            checked={checked}
-                            onChange={() => toggleUser(u.id)}
-                            className="size-4 accent-primary"
-                          />
-                          {u.name}
-                        </label>
-                      );
-                    })}
-                  </div>
+                  <>
+                    <div className="max-h-48 space-y-1 overflow-y-auto">
+                      {friends.map((u) => {
+                        const checked = selectedUsers.includes(u.id);
+                        return (
+                          <label
+                            key={u.id}
+                            className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ring-1 transition-colors ${
+                              checked
+                                ? 'bg-primary/10 text-foreground ring-primary/30'
+                                : 'text-muted-foreground ring-border hover:bg-muted'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              name="participantId"
+                              value={u.id}
+                              checked={checked}
+                              onChange={() => toggleUser(u.id)}
+                              className="size-4 accent-primary"
+                            />
+                            {u.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {showAddFriend ? (
+                      addFriendPanel
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAddFriend(true)}
+                        className="text-primary"
+                      >
+                        <UserPlus className="size-3.5" />
+                        Add a friend by name
+                      </Button>
+                    )}
+                  </>
                 ) : (
-                  <div className="rounded-lg border border-dashed px-3 py-5 text-center text-sm">
-                    <p className="font-medium">No friends yet</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Add someone by name to split with them directly.
+                  <div className="space-y-3 rounded-lg border border-dashed px-4 py-5 text-center">
+                    <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted">
+                      <Users className="size-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium">No friends yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Add a friend by name to split this expense, or switch to a group above.
                     </p>
+                    {addFriendPanel}
                   </div>
                 )}
-
-                {/* Add a friend by name */}
-                <div className="space-y-2 rounded-lg bg-muted/40 p-3 ring-1 ring-border">
-                  <p className="flex items-center gap-1.5 text-xs font-medium">
-                    <UserPlus className="size-3.5" />
-                    Add a friend by name
-                  </p>
-                  <Input
-                    value={friendName}
-                    onChange={(e) => setFriendName(e.target.value)}
-                    onKeyDown={preventSubmit}
-                    placeholder="Friend's name"
-                    aria-label="Friend's name"
-                  />
-                  <Input
-                    value={friendEmail}
-                    onChange={(e) => setFriendEmail(e.target.value)}
-                    type="email"
-                    onKeyDown={preventSubmit}
-                    placeholder="Email (optional — for invite link)"
-                    aria-label="Friend's email"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleAddFriend}
-                      disabled={addPending || friendName.trim().length === 0}
-                    >
-                      {addPending ? 'Adding...' : 'Add friend'}
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={copyInviteLink}>
-                      <Link2 className="size-3.5" />
-                      {inviteCopied ? 'Invite link copied' : 'Copy invite link'}
-                    </Button>
-                  </div>
-                  {addError && <p className="text-sm text-destructive">{addError}</p>}
-                </div>
               </div>
             )}
 
