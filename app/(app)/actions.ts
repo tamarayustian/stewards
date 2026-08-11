@@ -255,6 +255,32 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
   }
 }
 
+// Marks every one of the current user's unsettled debts as repaid in one go.
+export async function settleAll() {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  await db.expenseSplit.updateMany({
+    where: {
+      userId: user.id,
+      settledAt: null,
+      amount: { gt: 0 },
+      expense: {
+        deletedAt: null,
+        paidById: { not: user.id },
+        OR: [{ groupId: null }, { group: { deletedAt: null } }],
+      },
+    },
+    data: { settledAt: new Date() },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath('/groups');
+  revalidatePath('/expenses');
+}
+
 export async function editExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {

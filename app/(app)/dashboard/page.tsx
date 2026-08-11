@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { ActivityFeed } from '@/components/activity-feed';
+import { SettleUpCard } from '@/components/settle-up-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -94,6 +95,13 @@ export default async function DashboardPage({
         “You owe” is your share of expenses others paid; “You are owed” is others’ shares of
         expenses you paid.
       </p>
+
+      {balances.youOwe.gt(0) && balances.unsettledCount > 0 && (
+        <SettleUpCard
+          youOwe={formatMoney(balances.youOwe)}
+          unsettledCount={balances.unsettledCount}
+        />
+      )}
 
       <div>
         <div className="flex items-center justify-between">

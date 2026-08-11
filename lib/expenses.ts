@@ -4,23 +4,26 @@ import { Prisma } from '@/lib/generated/prisma/client';
 export type BalanceSummary = {
   youOwe: Prisma.Decimal;
   youAreOwed: Prisma.Decimal;
+  unsettledCount: number;
 };
 
 // Aggregate unsettled splits across both group and direct expenses.
 // youOwe  = my share on expenses other people paid (I repay the payer).
 // youAreOwed = other people's shares on expenses I paid (they repay me).
 export async function getBalances(userId: string): Promise<BalanceSummary> {
-  const [oweAgg, owedAgg] = await Promise.all([
+  const oweWhere = {
+    userId,
+    settledAt: null,
+    expense: {
+      deletedAt: null,
+      paidById: { not: userId },
+      OR: [{ groupId: null }, { group: { deletedAt: null } }],
+    },
+  } satisfies Prisma.ExpenseSplitWhereInput;
+
+  const [oweAgg, owedAgg, unsettledCount] = await Promise.all([
     db.expenseSplit.aggregate({
-      where: {
-        userId,
-        settledAt: null,
-        expense: {
-          deletedAt: null,
-          paidById: { not: userId },
-          OR: [{ groupId: null }, { group: { deletedAt: null } }],
-        },
-      },
+      where: oweWhere,
       _sum: { amount: true },
     }),
     db.expenseSplit.aggregate({
@@ -35,11 +38,13 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
       },
       _sum: { amount: true },
     }),
+    db.expenseSplit.count({ where: { ...oweWhere, amount: { gt: 0 } } }),
   ]);
 
   return {
     youOwe: oweAgg._sum.amount ?? new Prisma.Decimal(0),
     youAreOwed: owedAgg._sum.amount ?? new Prisma.Decimal(0),
+    unsettledCount,
   };
 }
 
