@@ -1,4 +1,12 @@
-import { ArrowDownToLine, ArrowUpFromLine, Pencil, Plus, ReceiptText, Users } from 'lucide-react';
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Pencil,
+  Plus,
+  ReceiptText,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -103,6 +111,11 @@ export default async function DashboardPage({
         </Card>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        “You owe” is your share of expenses others paid; “You are owed” is others’ shares of
+        expenses you paid.
+      </p>
+
       <div>
         <h2 className="text-base font-semibold">Recent activity</h2>
         {hasActivity ? (
@@ -133,11 +146,13 @@ export default async function DashboardPage({
                   <div key={item.id} className="flex items-center gap-3 px-4 py-3">
                     <div
                       className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                        item.isPayer ? 'bg-primary/10' : 'bg-accent/10'
+                        item.isPayer ? 'bg-primary/10' : 'bg-muted'
                       }`}
                     >
                       <ReceiptText
-                        className={`size-4 ${item.isPayer ? 'text-primary' : 'text-accent'}`}
+                        className={`size-4 ${
+                          item.isPayer ? 'text-primary' : 'text-muted-foreground'
+                        }`}
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -167,9 +182,7 @@ export default async function DashboardPage({
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {item.isPayer
-                          ? item.participantCount === 1
-                            ? '1 split'
-                            : `split ${item.participantCount} ways`
+                          ? `split ${item.participantCount} ${item.participantCount === 1 ? 'way' : 'ways'}`
                           : `share of ${formatMoney(item.amount)}`}
                       </p>
                     </div>
@@ -220,10 +233,16 @@ export default async function DashboardPage({
                   Split your first cost with a group or directly with friends.
                 </p>
               </div>
-              <Button nativeButton={false} render={<Link href="/expenses/new" />}>
-                <Plus className="size-4" />
-                Add an expense
-              </Button>
+              <div className="flex flex-col items-center gap-2 sm:flex-row">
+                <Button nativeButton={false} render={<Link href="/expenses/new" />}>
+                  <Plus className="size-4" />
+                  Add an expense
+                </Button>
+                <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
+                  <UserPlus className="size-4" />
+                  Invite friends
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
