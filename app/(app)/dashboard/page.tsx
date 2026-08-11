@@ -96,7 +96,18 @@ export default async function DashboardPage({
       </p>
 
       <div>
-        <h2 className="text-base font-semibold">Recent activity</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold">Recent activity</h2>
+          <Button
+            nativeButton={false}
+            render={<Link href="/expenses" />}
+            variant="ghost"
+            size="sm"
+            className="text-primary"
+          >
+            View all
+          </Button>
+        </div>
         {hasActivity ? (
           <ActivityFeed items={activity} filter={filter} />
         ) : (

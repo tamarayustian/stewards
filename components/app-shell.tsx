@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, LogOut, Settings, Sprout, Users } from 'lucide-react';
+import { LayoutDashboard, LogOut, ReceiptText, Settings, Sprout, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/expenses', label: 'Activity', icon: ReceiptText },
   { href: '/groups', label: 'Groups', icon: Users },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
