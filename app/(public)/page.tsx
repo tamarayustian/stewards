@@ -1,5 +1,6 @@
-import { Users, Scale, Handshake, ArrowRight } from 'lucide-react';
+import { ArrowRight, Handshake, Scale, Users } from 'lucide-react';
 import Link from 'next/link';
+
 import { Button } from '@/components/ui/button';
 
 export default function Home() {

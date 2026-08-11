@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useActionState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { useActionState, useState } from 'react';
 
 import { deleteExpense } from '@/app/(app)/actions';
 import {
-  AlertDialogRoot,
   AlertDialogPopup,
+  AlertDialogRoot,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';

@@ -1,5 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr';
-import { createServerClient as createSsrServerClient } from '@supabase/ssr';
+import { createBrowserClient, createServerClient as createSsrServerClient } from '@supabase/ssr';
 import type { cookies } from 'next/headers';
 
 // Browser client for use in Client Components (handles cookies via document.cookie)

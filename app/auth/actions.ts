@@ -1,10 +1,10 @@
 'use server';
 
+import { createServerClient } from '@supabase/ssr';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { ensureUserRow } from '@/lib/users';
 
 export async function signup(_prev: unknown, formData: FormData) {

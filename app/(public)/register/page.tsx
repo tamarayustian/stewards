@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense, useState, useActionState, startTransition } from 'react';
-import { Sprout, MailCheck } from 'lucide-react';
+import { MailCheck, Sprout } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { startTransition, Suspense, useActionState, useState } from 'react';
+
 import { signup } from '@/app/auth/actions';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';

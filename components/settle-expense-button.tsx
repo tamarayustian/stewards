@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
+import { useActionState } from 'react';
 
 import { settleExpense, unsettleExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
