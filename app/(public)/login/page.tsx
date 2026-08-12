@@ -2,7 +2,7 @@
 
 import { Sprout } from 'lucide-react';
 import Link from 'next/link';
-import { useActionState, useState } from 'react';
+import { startTransition, useActionState, useState } from 'react';
 
 import { login } from '@/app/auth/actions';
 import { PasswordInput } from '@/components/password-input';
@@ -35,7 +35,7 @@ function LoginPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     if (validate(formData)) {
-      action(formData);
+      startTransition(() => action(formData));
     }
   }
 
