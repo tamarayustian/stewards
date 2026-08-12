@@ -219,6 +219,7 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
 
   revalidatePath('/dashboard');
   revalidatePath('/groups');
+  revalidatePath('/expenses');
   if (expense.groupId) {
     revalidatePath(`/groups/${expense.groupId}`);
   }
@@ -250,6 +251,7 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
   });
   revalidatePath('/dashboard');
   revalidatePath('/groups');
+  revalidatePath('/expenses');
   if (expense.groupId) {
     revalidatePath(`/groups/${expense.groupId}`);
   }

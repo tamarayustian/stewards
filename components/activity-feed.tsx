@@ -42,9 +42,7 @@ export function ActivityFeed({
         {tabs.map((f) => (
           <Link
             key={f.key}
-            href={
-              basePath === '/' ? '/' : `${basePath}${f.key === 'all' ? '' : `?filter=${f.key}`}`
-            }
+            href={`${basePath}${f.key === 'all' ? '' : `?filter=${f.key}`}`}
             className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-2 after:content-[''] ${
               filter === f.key
                 ? 'bg-card text-foreground ring-1 ring-foreground/10'
@@ -124,11 +122,13 @@ export function ActivityFeed({
             <div>
               <p className="font-medium">Nothing here</p>
               <p className="text-sm text-muted-foreground">
-                {filter === 'owe'
-                  ? "You don't owe anything right now."
-                  : filter === 'owed'
-                    ? 'No one owes you right now.'
-                    : 'No settled expenses yet.'}
+                {filter === 'all'
+                  ? 'No expenses yet.'
+                  : filter === 'owe'
+                    ? "You don't owe anything right now."
+                    : filter === 'owed'
+                      ? 'No one owes you right now.'
+                      : 'No settled expenses yet.'}
               </p>
             </div>
           </CardContent>
