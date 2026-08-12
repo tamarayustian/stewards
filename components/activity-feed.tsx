@@ -27,14 +27,24 @@ const tabs: { key: ActivityFilter; label: string }[] = [
   { key: 'paid', label: 'Paid' },
 ];
 
-export function ActivityFeed({ items, filter }: { items: ActivityItem[]; filter: ActivityFilter }) {
+export function ActivityFeed({
+  items,
+  filter,
+  basePath = '/dashboard',
+}: {
+  items: ActivityItem[];
+  filter: ActivityFilter;
+  basePath?: string;
+}) {
   return (
     <>
       <div className="mt-3 flex w-fit gap-1 rounded-lg bg-muted p-1">
         {tabs.map((f) => (
           <Link
             key={f.key}
-            href={f.key === 'all' ? '/dashboard' : `/dashboard?filter=${f.key}`}
+            href={
+              basePath === '/' ? '/' : `${basePath}${f.key === 'all' ? '' : `?filter=${f.key}`}`
+            }
             className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-2 after:content-[''] ${
               filter === f.key
                 ? 'bg-card text-foreground ring-1 ring-foreground/10'

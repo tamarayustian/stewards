@@ -117,7 +117,7 @@ export default async function DashboardPage({
           </Button>
         </div>
         {hasActivity ? (
-          <ActivityFeed items={activity} filter={filter} />
+          <ActivityFeed items={activity} filter={filter} basePath="/dashboard" />
         ) : (
           <Card className="mt-3">
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
