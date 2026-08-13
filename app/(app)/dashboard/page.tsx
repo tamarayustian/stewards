@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpFromLine, Plus, UserPlus, Users } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, Plus, ReceiptText, UserPlus } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -122,7 +122,7 @@ export default async function DashboardPage({
           <Card className="mt-3">
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
               <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <Users className="size-6 text-muted-foreground" />
+                <ReceiptText className="size-6 text-muted-foreground" />
               </div>
               <div>
                 <p className="font-medium">No expenses yet</p>
