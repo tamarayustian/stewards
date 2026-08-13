@@ -18,35 +18,37 @@ colors:
   border: oklch(0.9 0.008 85)
   input: oklch(0.9 0.008 85)
   ring: oklch(0.5 0.12 35)
+  walnut: oklch(0.34 0.025 55)
   dark-background: oklch(0.15 0.012 50)
   dark-foreground: oklch(0.95 0.008 85)
   dark-card: oklch(0.185 0.012 50)
   dark-fired-clay: oklch(0.72 0.1 35)
   dark-warm-beige: oklch(0.25 0.01 50)
+  dark-walnut: oklch(0.72 0.03 55)
 typography:
   body:
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Karla', sans-serif"
     fontSize: '14px'
     fontWeight: 400
     lineHeight: 1.5
   display:
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Fraunces', serif"
     fontSize: 'clamp(2.25rem, 7vw, 3.5rem)'
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: '-0.03em'
   headline:
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Fraunces', serif"
     fontSize: '1.25rem'
     fontWeight: 600
     lineHeight: 1.3
   title:
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Karla', sans-serif"
     fontSize: '1rem'
     fontWeight: 600
     lineHeight: 1.4
   label:
-    fontFamily: "'Plus Jakarta Sans', sans-serif"
+    fontFamily: "'Karla', sans-serif"
     fontSize: '0.875rem'
     fontWeight: 500
     lineHeight: 1
@@ -114,13 +116,13 @@ components:
 
 Stewards' visual system is gathered around a warm wooden table — communal, grounded, generous. The palette draws from fired clay, dried herbs, and well-worn surfaces. The system rejects cold corporate finance aesthetics (no navy-on-gray dashboards, no mint-green data viz) and anything that feels like accounting software. Instead, it feels like sorting out the bill at the end of a good dinner: warm lighting, trusted company, no confusion.
 
-The aesthetic is warm-flat: no shadows, no glassmorphism, no gradient text. Depth is conveyed through tonal layering of warm earth surfaces. Typography is friendly and approachable (Plus Jakarta Sans everywhere), with generous spacing that gives the interface room to breathe. Motion, when added, should feel like a considered response — never decorative or bouncy.
+The aesthetic is warm-flat: no shadows, no glassmorphism, no gradient text. Depth is conveyed through tonal layering of warm earth surfaces. Typography is friendly and approachable (Karla for UI text, Fraunces for display), with generous spacing that gives the interface room to breathe. Motion, when added, should feel like a considered response — never decorative or bouncy.
 
 **Key Characteristics:**
 
 - Warm, flat, tonal — depth through surface color, not shadows
 - Clay and herb palette (terracotta primary, sage accent, warm neutrals)
-- Single sans-serif family for harmony; weight and size carry hierarchy
+- Two-family type system — Karla for UI text, Fraunces for display — weight and size carry hierarchy
 - Generous whitespace — nothing feels cramped or dense
 - Friendly without being childish; trustworthy without being corporate
 
@@ -132,6 +134,7 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 
 - **Fired Clay** (`oklch(0.5 0.12 35)`): The primary interactive color — buttons, links, active states, the brand's most visible voice. Darkened from `0.56` to meet WCAG AA on warm paper; white text on it reads 6.34:1. On dark backgrounds shifts to `oklch(0.72 0.1 35)` for readability.
 - **Fired Clay Glow** (`oklch(0.5 0.12 35 / 0.8)`): Hover state for primary buttons.
+- **Walnut** (`oklch(0.34 0.025 55)`): The brand's deep warm-brown voice — the wordmark, display accents, step numbers. A browner counterpoint to the red-leaning fired clay. On dark backgrounds shifts to `oklch(0.72 0.03 55)`.
 
 ### Accent
 
@@ -158,15 +161,16 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 
 ## 3. Typography
 
-**Display & Body Font:** Plus Jakarta Sans (with system sans-serif fallback)
+**Display Font:** Fraunces (with system serif fallback) — hero headlines, the wordmark, section headings
+**Body & UI Font:** Karla (with system sans-serif fallback)
 **Mono Font:** Geist Mono (code, amounts, email addresses)
 
-**Character:** Plus Jakarta Sans is a warm humanist sans-serif — rounded without being soft, friendly without being casual. It carries the brand's warmth at every weight. The single-family approach means hierarchy is carried entirely through size, weight, and spacing, not font switches.
+**Character:** Karla is a warm humanist sans-serif — rounded without being soft, friendly without being casual. It carries the brand's warmth across all UI text. Fraunces is an expressive old-style serif with a soft, idiosyncratic character — a trace of handwriting that makes headlines feel crafted rather than templated. Hierarchy is carried through size, weight, and spacing, with Fraunces reserved for display moments so the switch reads as deliberate emphasis, not font roulette.
 
 ### Hierarchy
 
-- **Display** (700, `clamp(2.25rem, 7vw, 3.5rem)`, 1.1, `-0.03em`): Hero headlines only. `text-wrap: balance`. Cap at 6rem max.
-- **Headline** (600, `1.25rem`, 1.3): Section headings.
+- **Display** (700, `clamp(2.25rem, 7vw, 3.5rem)`, 1.1, `-0.03em`): Hero headlines only, in Fraunces. `text-wrap: balance`. Cap at 6rem max.
+- **Headline** (600, `1.25rem`, 1.3): Section headings, in Fraunces.
 - **Title** (600, `1rem`, 1.4): Card titles, small section headers.
 - **Body** (400, `0.875rem`, 1.5): Paragraphs, descriptions, most UI text. Max line length 70ch.
 - **Label** (500, `0.875rem`, 1): Form labels, small metadata. All sentence case.
@@ -223,7 +227,7 @@ A single horizontal/vertical stroke in `warm-sand` (`--border`). No frills, no o
 - **Do** use the warm earth palette exclusively — no cool grays, no pure white (`#fff`), no pure black (`#000`).
 - **Do** keep primary (fired clay) usage under 15% of any screen to preserve its impact.
 - **Do** use tonal layering for depth instead of shadows.
-- **Do** use Plus Jakarta Sans for all UI text — no swapping to another face for variety.
+- **Do** use Karla for all UI text and Fraunces for display — no swapping to another face for variety.
 - **Do** keep body text at `muted-ink` or darker for WCAG AA contrast against the warm off-white background.
 - **Do** use `text-wrap: balance` on headings, `text-wrap: pretty` on body.
 - **Do** keep card usage purposeful — not as a default layout container for every section.
