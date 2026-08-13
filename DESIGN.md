@@ -6,7 +6,7 @@ colors:
   foreground: oklch(0.12 0.015 50)
   card: oklch(0.995 0.004 85)
   card-foreground: oklch(0.12 0.015 50)
-  fired-clay: oklch(0.56 0.12 35)
+  fired-clay: oklch(0.5 0.12 35)
   fired-clay-foreground: oklch(0.985 0 0)
   warm-beige: oklch(0.95 0.01 85)
   warm-beige-foreground: oklch(0.2 0.015 50)
@@ -17,7 +17,7 @@ colors:
   destructive: oklch(0.577 0.18 27)
   border: oklch(0.9 0.008 85)
   input: oklch(0.9 0.008 85)
-  ring: oklch(0.56 0.12 35)
+  ring: oklch(0.5 0.12 35)
   dark-background: oklch(0.15 0.012 50)
   dark-foreground: oklch(0.95 0.008 85)
   dark-card: oklch(0.185 0.012 50)
@@ -66,13 +66,13 @@ spacing:
   xl: 2rem
 components:
   button-default:
-    backgroundColor: oklch(0.56 0.12 35)
+    backgroundColor: oklch(0.5 0.12 35)
     textColor: oklch(0.985 0 0)
     rounded: 0.625rem
     padding: 8px 16px
     height: 32px
   button-default-hover:
-    backgroundColor: oklch(0.56 0.12 35 / 0.8)
+    backgroundColor: oklch(0.5 0.12 35 / 0.8)
   button-outline:
     backgroundColor: transparent
     textColor: '{colors.foreground}'
@@ -130,8 +130,8 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 
 ### Primary
 
-- **Fired Clay** (`oklch(0.56 0.12 35)`): The primary interactive color — buttons, links, active states, the brand's most visible voice. Darkened from `0.62` to meet WCAG AA on warm paper; white text on it reads 4.70:1. On dark backgrounds shifts to `oklch(0.72 0.1 35)` for readability.
-- **Fired Clay Glow** (`oklch(0.56 0.12 35 / 0.8)`): Hover state for primary buttons.
+- **Fired Clay** (`oklch(0.5 0.12 35)`): The primary interactive color — buttons, links, active states, the brand's most visible voice. Darkened from `0.56` to meet WCAG AA on warm paper; white text on it reads 6.34:1. On dark backgrounds shifts to `oklch(0.72 0.1 35)` for readability.
+- **Fired Clay Glow** (`oklch(0.5 0.12 35 / 0.8)`): Hover state for primary buttons.
 
 ### Accent
 
@@ -190,7 +190,7 @@ Hover states on interactive elements use background-color shifts, not lift (tran
 
 Confident, warm, slightly rounded. All buttons share `rounded-lg` (0.625rem) and the same base typography (500 weight, `0.875rem`). Default height is 32px.
 
-- **Primary (Fired Clay):** Background `oklch(0.56 0.12 35)`, white text. Hover shifts to 80% opacity of the same color. Pressed shifts down 1px. Focus-visible uses a ring ring.
+- **Primary (Fired Clay):** Background `oklch(0.5 0.12 35)`, white text. Hover shifts to 80% opacity of the same color. Pressed shifts down 1px. Focus-visible uses a ring ring.
 - **Outline:** Transparent background, `warm-sand` border, body text color. Hover fills with warm beige. Used for secondary actions (Sign in, Cancel).
 - **Ghost:** No border or background at rest. Hover fills with warm beige. Used for minimal actions (icon buttons, less prominent controls).
 - **Destructive:** Transparent background with `warm-red` at 10% opacity, warm red text. Hover doubles the tint.
