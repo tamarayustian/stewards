@@ -43,7 +43,7 @@ typography:
     fontWeight: 600
     lineHeight: 1.3
   title:
-    fontFamily: "'Karla', sans-serif"
+    fontFamily: "'Fraunces', serif"
     fontSize: '1rem'
     fontWeight: 600
     lineHeight: 1.4
@@ -171,7 +171,7 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 
 - **Display** (700, `clamp(2.25rem, 7vw, 3.5rem)`, 1.1, `-0.03em`): Hero headlines only, in Fraunces. `text-wrap: balance`. Cap at 6rem max.
 - **Headline** (600, `1.25rem`, 1.3): Section headings, in Fraunces.
-- **Title** (600, `1rem`, 1.4): Card titles, small section headers.
+- **Title** (600, `1rem`, 1.4): Card titles, small section headers, in Fraunces.
 - **Body** (400, `0.875rem`, 1.5): Paragraphs, descriptions, most UI text. Max line length 70ch.
 - **Label** (500, `0.875rem`, 1): Form labels, small metadata. All sentence case.
 - **Caption** (400, `0.75rem`, 1.4): Auxiliary text, timestamps, helper text.
