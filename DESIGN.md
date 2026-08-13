@@ -244,3 +244,7 @@ A single horizontal/vertical stroke in `warm-sand` (`--border`). No frills, no o
 - **Don't** default to pure white or pure black anywhere — always use the warm-toned tokens.
 - **Don't** let text overflow its container at any breakpoint.
 - **Don't** add animations that don't respect `prefers-reduced-motion`.
+
+## Dark mode (planned)
+
+Dark themes are tokenized and ready (`app/globals.css` `.dark` block — `walnut` shifts to `oklch(0.72 0.03 55)`, `background` to `oklch(0.15 0.012 50)`), and primitives carry `dark:` variants. No toggle ships yet: the `.dark` class is currently never applied. When the toggle lands, use a boot script + client provider persisting to `stewards-theme` (light | dark, default light). See `docs/superpowers/audits/2026-08-13-dark-mode-readiness.md`.
