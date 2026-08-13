@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { startTransition, Suspense, useActionState, useState } from 'react';
 
 import { signup } from '@/app/auth/actions';
+import { validateEmail, validatePassword } from '@/lib/auth-validation';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,13 +31,10 @@ function RegisterForm() {
       newErrors.name = 'Name is required.';
     }
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email address.';
-    }
-
-    if (!password || password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters.';
-    }
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    if (emailError) newErrors.email = emailError;
+    if (passwordError) newErrors.password = passwordError;
 
     if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match.';

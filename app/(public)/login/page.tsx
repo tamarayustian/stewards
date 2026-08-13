@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { startTransition, useActionState, useState } from 'react';
 
 import { login } from '@/app/auth/actions';
+import { validateEmail, validatePassword } from '@/lib/auth-validation';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,12 +22,10 @@ function LoginPage() {
     const next: LoginErrors = {};
     const email = String(formData.get('email') ?? '');
     const password = String(formData.get('password') ?? '');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      next.email = 'Please enter a valid email address.';
-    }
-    if (password.length < 6) {
-      next.password = 'Password must be at least 6 characters.';
-    }
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    if (emailError) next.email = emailError;
+    if (passwordError) next.password = passwordError;
     setErrors(next);
     return Object.keys(next).length === 0;
   }
