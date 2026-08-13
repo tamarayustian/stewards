@@ -96,7 +96,7 @@ export default async function DashboardPage({
         expenses you paid.
       </p>
 
-      {balances.youOwe.gt(0) && balances.unsettledCount > 0 && (
+      {balances.youOwe.gt(0) && (
         <SettleUpCard
           youOwe={formatMoney(balances.youOwe)}
           unsettledCount={balances.unsettledCount}
