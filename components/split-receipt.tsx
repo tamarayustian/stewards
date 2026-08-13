@@ -9,7 +9,7 @@ export function SplitReceipt() {
   return (
     <div className="relative mx-auto w-full max-w-sm">
       <div className="absolute -right-2 -top-3 rotate-[-2deg] bg-walnut/10 px-2 py-0.5 font-heading text-xs italic text-walnut">
-        ✓ Cindy settled · HK$292.16
+        ✓ You settled · HK$292.16
       </div>
       <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
         <div className="receipt-tear" aria-hidden="true" />
@@ -39,7 +39,10 @@ export function SplitReceipt() {
           </div>
         ))}
         <div className="receipt-line" aria-hidden="true" />
-        <div className="receipt-row flex items-center justify-between px-5 py-3">
+        <div
+          className="receipt-row flex items-center justify-between px-5 py-3"
+          style={{ animationDelay: '1.3s' }}
+        >
           <p className="text-sm font-medium">You owe</p>
           <p className="font-mono text-sm font-semibold text-destructive">HK$292.16</p>
         </div>

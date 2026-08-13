@@ -10,7 +10,7 @@ export default function Home() {
       <section className="grid grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:py-24">
         <div>
           <p className="text-sm font-medium text-primary">The shared table</p>
-          <h1 className="mt-3 max-w-xl font-heading text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+          <h1 className="mt-3 max-w-xl font-heading text-4xl font-bold tracking-tight text-balance sm:text-5xl">
             Split expenses with friends.
             <span className="text-primary"> No spreadsheets needed.</span>
           </h1>
