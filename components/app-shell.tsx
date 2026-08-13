@@ -36,7 +36,7 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
             <Sprout className="size-4 text-primary" />
           </div>
-          <span className="text-sm font-semibold">Stewards</span>
+          <span className="font-heading text-base font-semibold text-walnut">Stewards</span>
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
@@ -87,7 +87,7 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
             <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10">
               <Sprout className="size-3.5 text-primary" />
             </div>
-            <span className="text-sm font-semibold">Stewards</span>
+            <span className="font-heading text-base font-semibold text-walnut">Stewards</span>
           </div>
           <div className="flex items-center gap-1">
             <form action={signout}>
