@@ -43,7 +43,7 @@ function LoginPage() {
     <div className="flex flex-1 items-center justify-center px-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+          <div className="mb-2 flex size-10 items-center justify-center rounded-xl bg-primary/10">
             <Sprout className="size-5 text-primary" />
           </div>
           <CardTitle>Sign in</CardTitle>
@@ -51,12 +51,12 @@ function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" required autoComplete="email" />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <PasswordInput
                 id="password"
