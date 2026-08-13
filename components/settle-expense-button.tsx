@@ -46,7 +46,7 @@ export function MarkUnpaidButton({ expenseId }: { expenseId: string }) {
         title="Mark this share as unpaid"
       >
         <CheckCheck className="size-3" />
-        {pending ? 'Marking…' : 'paid'}
+        {pending ? 'Marking…' : 'Paid'}
       </Button>
       {state?.error && (
         <span role="alert" className="text-xs text-destructive">
