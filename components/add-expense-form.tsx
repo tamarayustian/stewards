@@ -483,9 +483,9 @@ export function AddExpenseForm({
                     <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted">
                       <Users className="size-5 text-muted-foreground" />
                     </div>
-                    <p className="text-sm font-medium">No friends yet</p>
+                    <p className="text-sm font-medium">No one to split with yet</p>
                     <p className="text-sm text-muted-foreground">
-                      Add a friend by name to split this expense, or switch to a group above.
+                      Add people on the People page, or add a friend by name below.
                     </p>
                     {addFriendPanel}
                   </div>
