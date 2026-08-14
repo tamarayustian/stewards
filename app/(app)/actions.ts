@@ -116,7 +116,24 @@ export async function addFriend(formData: FormData) {
   const email = (formData.get('email') as string) || null;
 
   const result = await addContact({ ownerId: user.id, name, email });
+  revalidatePath('/people');
   return result;
+}
+
+export async function removeContact(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const contactId = formData.get('contactId') as string;
+
+  await db.contact.deleteMany({
+    where: { ownerId: user.id, contactId },
+  });
+
+  revalidatePath('/people');
+  return {};
 }
 
 export async function deleteGroup(_prev: unknown, formData: FormData) {
