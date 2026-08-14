@@ -42,6 +42,14 @@ export async function ensureUserRow(user: AuthUser) {
           where: { userId: contact.id },
           data: { userId: id },
         });
+        await tx.contact.updateMany({
+          where: { ownerId: contact.id },
+          data: { ownerId: id },
+        });
+        await tx.contact.updateMany({
+          where: { contactId: contact.id },
+          data: { contactId: id },
+        });
         await tx.user.delete({ where: { id: contact.id } });
         await tx.user.create({
           data: { id, email, name },
@@ -64,7 +72,7 @@ export async function ensureUserRow(user: AuthUser) {
 
 // Create a lightweight contact (name, optional email) for splitting directly
 // with someone who doesn't have an account yet. Dedupes against existing users.
-export async function addContact(input: { name: string; email?: string | null }) {
+export async function addContact(input: { ownerId: string; name: string; email?: string | null }) {
   const name = input.name.trim();
   const email = input.email?.trim() || null;
 
@@ -75,7 +83,22 @@ export async function addContact(input: { name: string; email?: string | null })
   if (email) {
     const existing = await db.user.findUnique({ where: { email } });
     if (existing) {
-      return { contact: { id: existing.id, name: existing.name } };
+      if (existing.id === input.ownerId) {
+        return { error: "That's your own email." };
+      }
+      await db.contact.upsert({
+        where: { ownerId_contactId: { ownerId: input.ownerId, contactId: existing.id } },
+        create: { ownerId: input.ownerId, contactId: existing.id },
+        update: {},
+      });
+      return {
+        contact: {
+          id: existing.id,
+          name: existing.name,
+          email: existing.email,
+          isRegistered: existing.email !== null,
+        },
+      };
     }
   }
 
@@ -83,8 +106,9 @@ export async function addContact(input: { name: string; email?: string | null })
     data: { name, email },
     select: { id: true, name: true },
   });
+  await db.contact.create({ data: { ownerId: input.ownerId, contactId: contact.id } });
 
-  return { contact };
+  return { contact: { id: contact.id, name: contact.name, email: null, isRegistered: false } };
 }
 
 export type AddContactResult = Awaited<ReturnType<typeof addContact>>;

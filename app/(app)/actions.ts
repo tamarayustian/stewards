@@ -115,7 +115,7 @@ export async function addFriend(formData: FormData) {
   const name = (formData.get('name') as string) ?? '';
   const email = (formData.get('email') as string) || null;
 
-  const result = await addContact({ name, email });
+  const result = await addContact({ ownerId: user.id, name, email });
   return result;
 }
 
