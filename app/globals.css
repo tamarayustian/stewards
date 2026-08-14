@@ -157,32 +157,4 @@
     text-transform: uppercase;
     color: var(--walnut);
   }
-  @media (max-width: 640px) {
-    .ledger-row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      grid-template-areas:
-        'name amount'
-        'detail detail';
-      row-gap: 0.125rem;
-    }
-    .ledger-row > [data-col='name'] {
-      grid-area: name;
-    }
-    .ledger-row > [data-col='detail'] {
-      grid-area: detail;
-      color: var(--muted-foreground);
-      font-size: 0.8125rem;
-    }
-    .ledger-row > [data-col='amount'] {
-      grid-area: amount;
-      text-align: right;
-    }
-    .ledger-row > [data-col='status'] {
-      grid-column: 1 / -1;
-      padding-top: 0;
-      padding-bottom: 0.5rem;
-      font-size: 0.8125rem;
-    }
-  }
 }

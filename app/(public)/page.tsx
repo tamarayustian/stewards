@@ -80,14 +80,13 @@ export default function Home() {
             </p>
           </div>
           <table className="ledger w-full border-collapse">
+            <caption className="sr-only">the table — sundays</caption>
             <thead>
               <tr className="border-b border-rule text-left">
                 <th className="ledger-eyebrow w-1/3 pb-2 text-left font-normal">person</th>
                 <th className="ledger-eyebrow pb-2 text-left font-normal">what</th>
                 <th className="ledger-eyebrow pb-2 text-right font-normal">amount</th>
-                <th className="ledger-eyebrow hidden pb-2 text-right font-normal sm:table-cell">
-                  status
-                </th>
+                <th className="ledger-eyebrow pb-2 text-right font-normal">status</th>
               </tr>
             </thead>
             <tbody>
@@ -120,7 +119,7 @@ export default function Home() {
                   >
                     {fmt(row.amount)}
                   </td>
-                  <td data-col="status" className="hidden text-right sm:table-cell">
+                  <td data-col="status" className="text-right">
                     <StatusMark status={row.status} />
                   </td>
                 </tr>
