@@ -38,6 +38,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --font-sans: var(--font-karla);
+  --font-mono: var(--font-ibm-plex-mono);
+  --font-heading: var(--font-fraunces);
   --text-display: 5rem;
   --font-display: var(--font-heading);
   --radius-sm: calc(var(--radius) * 0.6);
