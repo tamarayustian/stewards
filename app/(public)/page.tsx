@@ -66,8 +66,8 @@ export default function Home() {
           <span className="italic text-walnut">Keep the table.</span>
         </h1>
         <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          A small ledger for the people you share meals with. Log what was paid, set each
-          share, mark it settled when the money moves. Kept by hands, not apps.
+          A small ledger for the people you share meals with. Log what was paid, set each share,
+          mark it settled when the money moves. Kept by hands, not apps.
         </p>
       </section>
 
@@ -92,10 +92,7 @@ export default function Home() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.who} className="ledger-row">
-                  <td
-                    data-col="name"
-                    className="font-heading text-xl font-normal text-foreground"
-                  >
+                  <td data-col="name" className="font-heading text-xl font-normal text-foreground">
                     {row.who}
                   </td>
                   <td data-col="detail" className="text-sm text-muted-foreground">
@@ -130,11 +127,7 @@ export default function Home() {
                     <p className="font-heading text-base italic text-walnut">
                       Alex owes you {fmt(alexOwes)}.
                     </p>
-                    <Button
-                      size="sm"
-                      nativeButton={false}
-                      render={<Link href="/register" />}
-                    >
+                    <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
                       <span className="font-mono">+</span>&nbsp;Open the ledger
                     </Button>
                   </div>
@@ -197,7 +190,9 @@ function StatusMark({ status }: { status: Row['status'] }) {
     return <span className="ledger-mark">✓ settled</span>;
   }
   if (status === 'owe') {
-    return <span className="font-mono text-xs uppercase tracking-widest text-destructive">owes</span>;
+    return (
+      <span className="font-mono text-xs uppercase tracking-widest text-destructive">owes</span>
+    );
   }
   return <span className="font-mono text-xs uppercase tracking-widest text-walnut">paid</span>;
 }
