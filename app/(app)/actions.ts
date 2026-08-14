@@ -128,12 +128,15 @@ export async function removeContact(_prev: unknown, formData: FormData) {
 
   const contactId = formData.get('contactId') as string;
 
-  await db.contact.deleteMany({
+  const result = await db.contact.deleteMany({
     where: { ownerId: user.id, contactId },
   });
 
+  if (result.count === 0) {
+    return { error: 'Contact not found.' };
+  }
+
   revalidatePath('/people');
-  return {};
 }
 
 export async function deleteGroup(_prev: unknown, formData: FormData) {
