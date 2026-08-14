@@ -135,93 +135,6 @@
 }
 
 @layer components {
-  .receipt-tear {
-    height: 10px;
-    background: var(--background);
-    clip-path: polygon(
-      0 0,
-      5% 100%,
-      10% 0,
-      15% 100%,
-      20% 0,
-      25% 100%,
-      30% 0,
-      35% 100%,
-      40% 0,
-      45% 100%,
-      50% 0,
-      55% 100%,
-      60% 0,
-      65% 100%,
-      70% 0,
-      75% 100%,
-      80% 0,
-      85% 100%,
-      90% 0,
-      95% 100%,
-      100% 0,
-      100% 0,
-      0 0
-    );
-  }
-  .receipt-row {
-    animation: receipt-rise 0.5s ease-out forwards;
-    opacity: 0;
-  }
-  .receipt-line {
-    height: 1px;
-    background: var(--border);
-    margin: 0 1.25rem;
-    transform: scaleX(0);
-    transform-origin: left;
-    animation: receipt-line 0.8s ease-out 1.1s forwards;
-  }
-  @keyframes receipt-rise {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes receipt-line {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .receipt-row,
-    .receipt-line {
-      animation: none;
-      opacity: 1;
-      transform: none;
-    }
-  }
-}
-
-/* Cascade fix: shadcn's CSS imports set --font-sans on :root, which shadows
-   our @theme inline mappings. These plain CSS variable assignments run last
-   and win. They depend on --font-* variables emitted by next/font/google. */
-:root {
-  --font-sans: var(--font-karla);
-  --font-heading: var(--font-fraunces);
-  --font-mono: var(--font-ibm-plex-mono);
-  --font-display: var(--font-fraunces);
-}
-
-/* Plain-CSS override of the .font-heading utility (which Tailwind's theme
-   aliases to var(--font-sans)). Defined outside @layer so it sits at the top
-   of the cascade and wins against utility-class output. */
-.font-heading {
-  font-family: var(--font-heading);
-}
-
-@layer components {
   .ledger {
     font-variant-numeric: tabular-nums;
   }
@@ -236,12 +149,6 @@
     font-style: italic;
     color: var(--accent);
     font-feature-settings: 'ss01' on;
-  }
-  .ledger-ink {
-    background-image: linear-gradient(var(--rule), var(--rule));
-    background-position: 0 100%;
-    background-repeat: no-repeat;
-    background-size: 100% 1px;
   }
   .ledger-eyebrow {
     font-family: var(--font-mono);
