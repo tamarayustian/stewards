@@ -175,9 +175,31 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
 }
 
 export async function listUsersForDirect(userId: string) {
-  return db.user.findMany({
-    where: { id: { not: userId }, deletedAt: null },
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' },
+  const rows = await db.contact.findMany({
+    where: { ownerId: userId, contact: { deletedAt: null } },
+    include: { contact: { select: { id: true, name: true } } },
+    orderBy: { contact: { name: 'asc' } },
   });
+  return rows.map((r) => ({ id: r.contact.id, name: r.contact.name }));
+}
+
+export type ContactSummary = {
+  id: string;
+  name: string;
+  email: string | null;
+  isRegistered: boolean;
+};
+
+export async function listContacts(userId: string): Promise<ContactSummary[]> {
+  const rows = await db.contact.findMany({
+    where: { ownerId: userId, contact: { deletedAt: null } },
+    include: { contact: { select: { id: true, name: true, email: true } } },
+    orderBy: { contact: { name: 'asc' } },
+  });
+  return rows.map((r) => ({
+    id: r.contact.id,
+    name: r.contact.name,
+    email: r.contact.email,
+    isRegistered: r.contact.email !== null,
+  }));
 }
