@@ -19,6 +19,8 @@ model User {
   groups        GroupMember[]
   paidExpenses  Expense[]     @relation("PaidExpenses")
   splits        ExpenseSplit[]
+  contactsAdded Contact[]     @relation("ContactOwner")
+  addedBy       Contact[]     @relation("ContactContact")
 }
 
 model Group {
@@ -44,6 +46,19 @@ model GroupMember {
   user    User   @relation(fields: [userId], references: [id])
 
   @@unique([groupId, userId])
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  ownerId   String
+  owner     User     @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  contactId String
+  contact   User     @relation("ContactContact", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
+  @@index([contactId])
 }
 
 model Expense {
