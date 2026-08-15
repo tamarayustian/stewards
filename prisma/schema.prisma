@@ -22,6 +22,7 @@ model User {
   splits        ExpenseSplit[]
   contactsAdded Contact[]      @relation("ContactOwner")
   addedBy       Contact[]      @relation("ContactContact")
+  groupInvites  GroupInvite[]  @relation("GroupInviteInviter")
 }
 
 model Group {
@@ -34,6 +35,7 @@ model Group {
 
   members  GroupMember[]
   expenses Expense[]
+  invites  GroupInvite[]
 }
 
 model GroupMember {
@@ -92,4 +94,20 @@ model ExpenseSplit {
 
   @@unique([expenseId, userId])
   @@index([userId])
+}
+
+model GroupInvite {
+  id           String    @id @default(uuid())
+  email        String
+  status       String    @default("pending")
+  resolvedAt   DateTime?
+  noticeSeenAt DateTime?
+  createdAt    DateTime  @default(now())
+  groupId      String
+  group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviterId    String
+  inviter      User      @relation("GroupInviteInviter", fields: [inviterId], references: [id])
+
+  @@unique([groupId, email])
+  @@index([email])
 }
