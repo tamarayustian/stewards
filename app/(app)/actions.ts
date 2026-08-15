@@ -427,6 +427,8 @@ export async function inviteToGroup(_prev: unknown, formData: FormData) {
   const groupId = formData.get('groupId') as string;
   const email = ((formData.get('email') as string) ?? '').trim().toLowerCase();
 
+  if (!groupId) return { error: 'Group not found.' };
+
   const group = await db.group.findFirst({
     where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },
     select: { id: true },
@@ -465,6 +467,7 @@ export async function inviteToGroup(_prev: unknown, formData: FormData) {
 
   await resolveInvitesForEmail(email);
 
+  revalidatePath('/groups');
   revalidatePath(`/groups/${groupId}`);
 }
 
@@ -474,6 +477,8 @@ export async function cancelInvite(_prev: unknown, formData: FormData) {
 
   const groupId = formData.get('groupId') as string;
   const inviteId = formData.get('inviteId') as string;
+
+  if (!groupId || !inviteId) return { error: 'Invite not found.' };
 
   const group = await db.group.findFirst({
     where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },

@@ -10,7 +10,7 @@ export async function resolveInvitesForEmail(email: string | null | undefined): 
   if (!user) return;
 
   const invites = await db.groupInvite.findMany({
-    where: { email, status: 'pending' },
+    where: { email, status: 'pending', group: { deletedAt: null } },
     select: { id: true, groupId: true },
   });
   if (invites.length === 0) return;
