@@ -83,7 +83,7 @@ export async function addContact(input: { ownerId: string; name: string; email?:
   }
 
   if (email) {
-    const existing = await db.user.findUnique({ where: { email } });
+    const existing = await db.user.findFirst({ where: { email, deletedAt: null } });
     if (existing) {
       if (existing.id === input.ownerId) {
         return { error: "That's your own email." };
