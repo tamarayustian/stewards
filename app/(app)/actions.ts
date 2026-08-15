@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { resolveInvitesForEmail } from '@/lib/invites';
 import { createServerClient } from '@/lib/supabase';
 import { addContact } from '@/lib/users';
 
@@ -394,4 +395,114 @@ export async function editExpense(_prev: unknown, formData: FormData) {
   }
 
   redirect('/dashboard');
+}
+
+export async function createGroup(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const name = (formData.get('name') as string)?.trim() ?? '';
+  const description = (formData.get('description') as string)?.trim() || null;
+
+  if (!name) {
+    return { error: 'Enter a group name.' };
+  }
+
+  const group = await db.group.create({
+    data: {
+      name,
+      description,
+      members: { create: { userId: user.id } },
+    },
+  });
+
+  revalidatePath('/groups');
+  redirect(`/groups/${group.id}`);
+}
+
+export async function inviteToGroup(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const groupId = formData.get('groupId') as string;
+  const email = ((formData.get('email') as string) ?? '').trim().toLowerCase();
+
+  const group = await db.group.findFirst({
+    where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },
+    select: { id: true },
+  });
+  if (!group) {
+    return { error: 'Group not found.' };
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: 'Enter a valid email.' };
+  }
+
+  if (email === user.email) {
+    return { error: "You can't invite yourself." };
+  }
+
+  const existingMember = await db.groupMember.findFirst({
+    where: { groupId, user: { email, deletedAt: null } },
+    select: { id: true },
+  });
+  if (existingMember) {
+    return { error: 'Already a member of this group.' };
+  }
+
+  const existingInvite = await db.groupInvite.findFirst({
+    where: { groupId, email },
+    select: { id: true },
+  });
+  if (existingInvite) {
+    return { error: 'Already invited.' };
+  }
+
+  await db.groupInvite.create({
+    data: { groupId, email, inviterId: user.id },
+  });
+
+  await resolveInvitesForEmail(email);
+
+  revalidatePath(`/groups/${groupId}`);
+}
+
+export async function cancelInvite(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const groupId = formData.get('groupId') as string;
+  const inviteId = formData.get('inviteId') as string;
+
+  const group = await db.group.findFirst({
+    where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },
+    select: { id: true },
+  });
+  if (!group) {
+    return { error: 'Group not found.' };
+  }
+
+  const result = await db.groupInvite.deleteMany({
+    where: { id: inviteId, groupId, status: 'pending' },
+  });
+  if (result.count === 0) {
+    return { error: 'Invite not found.' };
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+}
+
+export async function dismissGroupNotices(_prev: unknown, _formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  if (!user.email) return {};
+
+  await db.groupInvite.updateMany({
+    where: { email: user.email, status: 'joined', noticeSeenAt: null },
+    data: { noticeSeenAt: new Date() },
+  });
+
+  revalidatePath('/dashboard');
+  return {};
 }
