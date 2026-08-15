@@ -70,11 +70,15 @@ export async function getActivity(
   userId: string,
   filter: ActivityFilter = 'all',
   take = 20,
+  groupId?: string,
 ): Promise<ActivityItem[]> {
-  const baseAnd = [
+  const baseAnd: Prisma.ExpenseWhereInput[] = [
     { OR: [{ groupId: null }, { group: { deletedAt: null } }] },
     { OR: [{ paidById: userId }, { splits: { some: { userId } } }] },
   ];
+  if (groupId) {
+    baseAnd.push({ groupId });
+  }
   let filterClause: Prisma.ExpenseWhereInput | null = null;
   switch (filter) {
     case 'owe':
@@ -172,6 +176,53 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
       name: member.user.name,
     })),
   }));
+}
+
+export type GroupInviteSummary = {
+  id: string;
+  email: string;
+  status: string;
+  inviterName: string;
+  createdAt: Date;
+};
+
+export type GroupDetail = {
+  id: string;
+  name: string;
+  description: string | null;
+  members: { id: string; name: string }[];
+  invites: GroupInviteSummary[];
+  unsettledCount: number;
+};
+
+export async function getGroup(groupId: string, userId: string): Promise<GroupDetail | null> {
+  const group = await db.group.findFirst({
+    where: { id: groupId, deletedAt: null, members: { some: { userId } } },
+    include: {
+      members: { include: { user: { select: { id: true, name: true } } } },
+      invites: { include: { inviter: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
+      expenses: {
+        where: { deletedAt: null, splits: { some: { settledAt: null } } },
+        select: { id: true },
+      },
+    },
+  });
+  if (!group) return null;
+
+  return {
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    members: group.members.map((m) => ({ id: m.user.id, name: m.user.name })),
+    invites: group.invites.map((i) => ({
+      id: i.id,
+      email: i.email,
+      status: i.status,
+      inviterName: i.inviter.name,
+      createdAt: i.createdAt,
+    })),
+    unsettledCount: group.expenses.length,
+  };
 }
 
 export async function listUsersForDirect(userId: string) {
