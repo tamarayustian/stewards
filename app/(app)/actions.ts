@@ -49,7 +49,12 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     finalParticipantIds = group.members.map((m) => m.userId);
   } else {
     const participantIds = (formData.getAll('participantId') as string[]).filter(Boolean);
-    const unique = [...new Set([user.id, ...participantIds])];
+    const contactLinks = await db.contact.findMany({
+      where: { ownerId: user.id, contactId: { in: participantIds } },
+      select: { contactId: true },
+    });
+    const contactIds = new Set(contactLinks.map((c) => c.contactId));
+    const unique = [user.id, ...participantIds.filter((id) => contactIds.has(id))];
     if (unique.length < 2) {
       return { error: 'Choose at least one person to split with.' };
     }
