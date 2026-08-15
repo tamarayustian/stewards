@@ -24,7 +24,9 @@ export async function resolveInvitesForEmail(email: string | null | undefined): 
   await db.$transaction(
     invites
       .filter((invite) => !memberGroupIds.has(invite.groupId))
-      .map((invite) => db.groupMember.create({ data: { groupId: invite.groupId, userId: user.id } })),
+      .map((invite) =>
+        db.groupMember.create({ data: { groupId: invite.groupId, userId: user.id } }),
+      ),
   );
 
   await db.groupInvite.updateMany({
@@ -40,7 +42,9 @@ export type GroupJoinedNoticeItem = {
   resolvedAt: Date;
 };
 
-export async function listPendingNotices(email: string | null | undefined): Promise<GroupJoinedNoticeItem[]> {
+export async function listPendingNotices(
+  email: string | null | undefined,
+): Promise<GroupJoinedNoticeItem[]> {
   if (!email) return [];
 
   const invites = await db.groupInvite.findMany({
