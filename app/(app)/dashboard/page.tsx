@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { GroupJoinedNotice } from '@/components/group-joined-notice';
 import { ActivityFeed } from '@/components/activity-feed';
 import { SettleUpCard } from '@/components/settle-up-card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import db from '@/lib/db';
 import { getActivity, getBalances, type ActivityFilter } from '@/lib/expenses';
+import { listPendingNotices } from '@/lib/invites';
 import { formatMoney } from '@/lib/money';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -33,7 +35,7 @@ export default async function DashboardPage({
   const filter: ActivityFilter =
     filterParam === 'owe' || filterParam === 'owed' || filterParam === 'paid' ? filterParam : 'all';
 
-  const [profile, balances, allActivity, filteredActivity] = await Promise.all([
+  const [profile, balances, allActivity, filteredActivity, notices] = await Promise.all([
     db.user.findUnique({
       where: { id: user.id },
       select: { name: true, email: true },
@@ -41,6 +43,7 @@ export default async function DashboardPage({
     getBalances(user.id),
     getActivity(user.id),
     filter === 'all' ? null : getActivity(user.id, filter),
+    listPendingNotices(user.email),
   ]);
   const activity = filteredActivity ?? allActivity;
 
@@ -61,6 +64,14 @@ export default async function DashboardPage({
       </div>
 
       <Separator />
+
+      {notices.map((notice) => (
+        <GroupJoinedNotice
+          key={notice.inviteId}
+          groupName={notice.groupName}
+          inviterName={notice.inviterName}
+        />
+      ))}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card>
