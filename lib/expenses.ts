@@ -193,13 +193,13 @@ export type ContactSummary = {
 export async function listContacts(userId: string): Promise<ContactSummary[]> {
   const rows = await db.contact.findMany({
     where: { ownerId: userId, contact: { deletedAt: null } },
-    include: { contact: { select: { id: true, name: true, email: true } } },
+    include: { contact: { select: { id: true, name: true, email: true, isRegistered: true } } },
     orderBy: { contact: { name: 'asc' } },
   });
   return rows.map((r) => ({
     id: r.contact.id,
     name: r.contact.name,
     email: r.contact.email,
-    isRegistered: r.contact.email !== null,
+    isRegistered: r.contact.isRegistered,
   }));
 }

@@ -8,31 +8,32 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String?  @unique
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(uuid())
+  name         String
+  email        String?   @unique
+  isRegistered Boolean   @default(false)
+  avatarUrl    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   groups        GroupMember[]
-  paidExpenses  Expense[]     @relation("PaidExpenses")
+  paidExpenses  Expense[]      @relation("PaidExpenses")
   splits        ExpenseSplit[]
-  contactsAdded Contact[]     @relation("ContactOwner")
-  addedBy       Contact[]     @relation("ContactContact")
+  contactsAdded Contact[]      @relation("ContactOwner")
+  addedBy       Contact[]      @relation("ContactContact")
 }
 
 model Group {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  members   GroupMember[]
-  expenses  Expense[]
+  members  GroupMember[]
+  expenses Expense[]
 }
 
 model GroupMember {
@@ -53,25 +54,25 @@ model Contact {
   createdAt DateTime @default(now())
 
   ownerId   String
-  owner     User     @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner     User   @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   contactId String
-  contact   User     @relation("ContactContact", fields: [contactId], references: [id], onDelete: Cascade)
+  contact   User   @relation("ContactContact", fields: [contactId], references: [id], onDelete: Cascade)
 
   @@unique([ownerId, contactId])
   @@index([contactId])
 }
 
 model Expense {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   groupId   String?
-  group     Group?   @relation(fields: [groupId], references: [id])
+  group     Group?    @relation(fields: [groupId], references: [id])
   paidById  String
-  paidBy    User     @relation("PaidExpenses", fields: [paidById], references: [id])
-  amount    Decimal  @db.Decimal(12, 2)
-  currency  String   @default("HKD")
+  paidBy    User      @relation("PaidExpenses", fields: [paidById], references: [id])
+  amount    Decimal   @db.Decimal(12, 2)
+  currency  String    @default("HKD")
   note      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   splits ExpenseSplit[]
@@ -81,12 +82,12 @@ model Expense {
 }
 
 model ExpenseSplit {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   expenseId String
-  expense   Expense  @relation(fields: [expenseId], references: [id])
+  expense   Expense   @relation(fields: [expenseId], references: [id])
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  amount    Decimal  @db.Decimal(12, 2)
+  user      User      @relation(fields: [userId], references: [id])
+  amount    Decimal   @db.Decimal(12, 2)
   settledAt DateTime?
 
   @@unique([expenseId, userId])

@@ -52,7 +52,7 @@ export async function ensureUserRow(user: AuthUser) {
         });
         await tx.user.delete({ where: { id: contact.id } });
         await tx.user.create({
-          data: { id, email, name },
+          data: { id, email, name, isRegistered: true },
         });
       });
       return { merged: true as const, email };
@@ -63,8 +63,10 @@ export async function ensureUserRow(user: AuthUser) {
 
   if (!existing) {
     await db.user.create({
-      data: { id, email: email ?? null, name },
+      data: { id, email: email ?? null, name, isRegistered: true },
     });
+  } else {
+    await db.user.update({ where: { id }, data: { isRegistered: true } });
   }
 
   return { merged: false as const, email: email ?? null };
@@ -96,7 +98,7 @@ export async function addContact(input: { ownerId: string; name: string; email?:
           id: existing.id,
           name: existing.name,
           email: existing.email,
-          isRegistered: existing.email !== null,
+          isRegistered: existing.isRegistered,
         },
       };
     }
