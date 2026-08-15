@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+import { resolveInvitesForEmail } from '@/lib/invites';
 import { ensureUserRow } from '@/lib/users';
 
 export async function GET(request: Request) {
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
 
     if (!error && data.user) {
       await ensureUserRow(data.user);
+      await resolveInvitesForEmail(data.user.email ?? '');
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

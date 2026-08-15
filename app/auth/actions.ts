@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { resolveInvitesForEmail } from '@/lib/invites';
 import { ensureUserRow } from '@/lib/users';
 
 export async function signup(_prev: unknown, formData: FormData) {
@@ -44,6 +45,7 @@ export async function signup(_prev: unknown, formData: FormData) {
 
   if (data.user && data.session) {
     await ensureUserRow(data.user);
+    await resolveInvitesForEmail(data.user.email ?? '');
     revalidatePath('/', 'layout');
     redirect('/dashboard');
   }
@@ -83,6 +85,7 @@ export async function login(_prev: unknown, formData: FormData) {
 
   if (data.user) {
     await ensureUserRow(data.user);
+    await resolveInvitesForEmail(data.user.email ?? '');
   }
 
   revalidatePath('/', 'layout');
