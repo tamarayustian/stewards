@@ -1,8 +1,10 @@
 import { Users } from 'lucide-react';
 import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { DeleteGroupButton } from '@/components/delete-group-button';
+import { GroupForm } from '@/components/group-form';
 import { Card, CardContent } from '@/components/ui/card';
 import { listGroups } from '@/lib/expenses';
 import { createServerClientReadOnly } from '@/lib/supabase';
@@ -23,11 +25,14 @@ export default async function GroupsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold">Groups</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          The people and places you split with regularly.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Groups</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            The people and places you split with regularly.
+          </p>
+        </div>
+        <GroupForm />
       </div>
 
       {groups.length > 0 ? (
@@ -35,7 +40,10 @@ export default async function GroupsPage() {
           {groups.map((group) => (
             <Card key={group.id}>
               <CardContent className="flex items-center justify-between gap-4 pt-6">
-                <div className="flex min-w-0 items-center gap-3">
+                <Link
+                  href={`/groups/${group.id}`}
+                  className="flex min-w-0 items-center gap-3 hover:opacity-70"
+                >
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                     <Users className="size-5 text-primary" />
                   </div>
@@ -47,7 +55,7 @@ export default async function GroupsPage() {
                         ` · ${group.unsettledCount} unsettled expense${group.unsettledCount === 1 ? '' : 's'}`}
                     </p>
                   </div>
-                </div>
+                </Link>
                 <DeleteGroupButton
                   groupId={group.id}
                   disabled={group.unsettledCount > 0}
@@ -70,7 +78,7 @@ export default async function GroupsPage() {
             <div>
               <p className="font-medium">No groups yet</p>
               <p className="text-sm text-muted-foreground">
-                Create or join a group to start splitting expenses.
+                Create a group to start splitting expenses.
               </p>
             </div>
           </CardContent>
