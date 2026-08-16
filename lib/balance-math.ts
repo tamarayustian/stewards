@@ -34,10 +34,10 @@ export interface PairItem {
   id: string;
   date: Date;
   note: string | null;
-  amount: Prisma.Decimal;
+  amount: number;
   currency: string;
-  myShare: Prisma.Decimal;
-  theirShare: Prisma.Decimal;
+  myShare: number;
+  theirShare: number;
   direction: Direction;
 }
 
@@ -96,20 +96,20 @@ export function buildPairDetail(
       id: row.splitId,
       date: row.date,
       note: row.note,
-      amount: row.amount,
+      amount: Number(row.amount),
       currency: row.currency,
-      myShare: new PrismaValue.Decimal(0),
-      theirShare: row.splitAmount,
+      myShare: 0,
+      theirShare: Number(row.splitAmount),
       direction: 'theyOweMe' as const,
     })),
     ...iOwe.map((row) => ({
       id: row.splitId,
       date: row.date,
       note: row.note,
-      amount: row.amount,
+      amount: Number(row.amount),
       currency: row.currency,
-      myShare: row.splitAmount,
-      theirShare: new PrismaValue.Decimal(0),
+      myShare: Number(row.splitAmount),
+      theirShare: 0,
       direction: 'iOweThem' as const,
     })),
   ].sort((a, b) => a.date.getTime() - b.date.getTime());

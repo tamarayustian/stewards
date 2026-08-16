@@ -1,6 +1,6 @@
 import type { Prisma } from '@/lib/generated/prisma/client';
 
-export function formatMoney(amount: Prisma.Decimal, currency = 'HKD') {
+export function formatMoney(amount: Prisma.Decimal | number, currency = 'HKD') {
   return new Intl.NumberFormat('en-HK', {
     style: 'currency',
     currency,
