@@ -162,7 +162,12 @@ export interface ReminderRow {
 }
 
 export async function countUnreadReminders(userId: string): Promise<number> {
-  return db.reminder.count({ where: { toId: userId, readAt: null } });
+  const [unread, pairs] = await Promise.all([
+    db.reminder.findMany({ where: { toId: userId, readAt: null }, select: { fromId: true } }),
+    getPairBalances(userId),
+  ]);
+  const liveFromIds = new Set(pairs.map((p) => p.counterparty.id));
+  return unread.filter((r) => liveFromIds.has(r.fromId)).length;
 }
 
 export async function listReminders(userId: string): Promise<ReminderRow[]> {
