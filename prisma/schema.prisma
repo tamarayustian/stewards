@@ -11,6 +11,7 @@ model User {
   id           String    @id @default(uuid())
   name         String
   email        String?   @unique
+  phone        String?
   isRegistered Boolean   @default(false)
   avatarUrl    String?
   createdAt    DateTime  @default(now())
@@ -23,6 +24,8 @@ model User {
   contactsAdded Contact[]      @relation("ContactOwner")
   addedBy       Contact[]      @relation("ContactContact")
   groupInvites  GroupInvite[]  @relation("GroupInviteInviter")
+  sentReminders     Reminder[] @relation("ReminderSender")
+  receivedReminders Reminder[] @relation("ReminderRecipient")
 }
 
 model Group {
@@ -110,4 +113,18 @@ model GroupInvite {
 
   @@unique([groupId, email])
   @@index([email])
+}
+
+model Reminder {
+  id        String    @id @default(uuid())
+  fromId    String
+  toId      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  from User @relation("ReminderSender", fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReminderRecipient", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@index([toId, readAt])
+  @@index([fromId, toId])
 }
