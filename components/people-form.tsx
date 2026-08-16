@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 export function PeopleForm() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -19,12 +20,14 @@ export function PeopleForm() {
     const fd = new FormData();
     fd.set('name', name);
     if (email.trim()) fd.set('email', email.trim());
+    if (phone.trim()) fd.set('phone', phone.trim());
 
     startTransition(async () => {
       const result = await addFriend(fd);
       if (result?.contact) {
         setName('');
         setEmail('');
+        setPhone('');
         setError(null);
       } else if (result?.error) {
         setError(result.error);
@@ -49,6 +52,14 @@ export function PeopleForm() {
           type="email"
           placeholder="Email (optional — finds their account)"
           aria-label="Email"
+          className="sm:flex-1"
+        />
+        <Input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          type="tel"
+          placeholder="Phone (optional)"
+          aria-label="Phone"
           className="sm:flex-1"
         />
         <Button type="submit" disabled={pending || name.trim().length === 0}>

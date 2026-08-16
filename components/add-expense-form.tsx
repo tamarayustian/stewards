@@ -100,6 +100,7 @@ export function AddExpenseForm({
   const [friends, setFriends] = useState<UserOption[]>(users);
   const [friendName, setFriendName] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
+  const [friendPhone, setFriendPhone] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
@@ -257,6 +258,7 @@ export function AddExpenseForm({
     const fd = new FormData();
     fd.set('name', friendName);
     if (friendEmail.trim()) fd.set('email', friendEmail.trim());
+    if (friendPhone.trim()) fd.set('phone', friendPhone.trim());
 
     startAddTransition(async () => {
       const result = await addFriend(fd);
@@ -266,6 +268,7 @@ export function AddExpenseForm({
         setSelectedUsers((prev) => (prev.includes(added.id) ? prev : [...prev, added.id]));
         setFriendName('');
         setFriendEmail('');
+        setFriendPhone('');
         setAddError(null);
         setShowAddFriend(false);
       } else if (result?.error) {
@@ -311,6 +314,14 @@ export function AddExpenseForm({
         onKeyDown={preventSubmit}
         placeholder="Email (optional — for invite link)"
         aria-label="Friend's email"
+      />
+      <Input
+        value={friendPhone}
+        onChange={(e) => setFriendPhone(e.target.value)}
+        type="tel"
+        onKeyDown={preventSubmit}
+        placeholder="Phone (optional — for WhatsApp)"
+        aria-label="Friend's phone"
       />
       <div className="flex flex-wrap gap-2">
         <Button
