@@ -74,12 +74,22 @@ export async function ensureUserRow(user: AuthUser) {
 
 // Create a lightweight contact (name, optional email) for splitting directly
 // with someone who doesn't have an account yet. Dedupes against existing users.
-export async function addContact(input: { ownerId: string; name: string; email?: string | null }) {
+export async function addContact(input: {
+  ownerId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+}) {
   const name = input.name.trim();
   const email = input.email?.trim() || null;
+  const phone = input.phone?.trim() || null;
 
   if (!name) {
     return { error: 'Enter a name.' };
+  }
+
+  if (phone && !phone.startsWith('+')) {
+    return { error: 'Enter a valid phone number.' };
   }
 
   if (email) {
@@ -93,6 +103,9 @@ export async function addContact(input: { ownerId: string; name: string; email?:
         create: { ownerId: input.ownerId, contactId: existing.id },
         update: {},
       });
+      if (phone) {
+        await db.user.updateMany({ where: { id: existing.id, phone: null }, data: { phone } });
+      }
       return {
         contact: {
           id: existing.id,
@@ -105,7 +118,7 @@ export async function addContact(input: { ownerId: string; name: string; email?:
   }
 
   const contact = await db.user.create({
-    data: { name, email },
+    data: { name, email, phone },
     select: { id: true, name: true },
   });
   await db.contact.create({ data: { ownerId: input.ownerId, contactId: contact.id } });

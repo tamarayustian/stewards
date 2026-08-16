@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { getPairBalances } from '@/lib/balances';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { resolveInvitesForEmail } from '@/lib/invites';
@@ -120,8 +121,9 @@ export async function addFriend(formData: FormData) {
 
   const name = (formData.get('name') as string) ?? '';
   const email = (formData.get('email') as string) || null;
+  const phone = (formData.get('phone') as string) || null;
 
-  const result = await addContact({ ownerId: user.id, name, email });
+  const result = await addContact({ ownerId: user.id, name, email, phone });
   revalidatePath('/people');
   return result;
 }
@@ -509,5 +511,94 @@ export async function dismissGroupNotices(_prev: unknown, _formData: FormData) {
   });
 
   revalidatePath('/dashboard');
+  return {};
+}
+
+export async function sendReminder(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const toId = (formData.get('toId') as string) || '';
+  if (!toId) {
+    return { error: 'Missing recipient.' };
+  }
+  if (toId === user.id) {
+    return { error: "You can't remind yourself." };
+  }
+
+  const recipient = await db.user.findFirst({
+    where: { id: toId, deletedAt: null, isRegistered: true },
+    select: { id: true },
+  });
+  if (!recipient) {
+    return { error: 'User not found.' };
+  }
+
+  const pair = (await getPairBalances(user.id)).find((p) => p.counterparty.id === toId);
+  if (!pair || pair.amountOwedToMe.isZero()) {
+    return { error: "There's nothing to settle with this person." };
+  }
+
+  await db.reminder.create({ data: { fromId: user.id, toId } });
+  revalidatePath('/balances');
+  return {};
+}
+
+// Revalidates both the list page and the dynamic pair pages (pattern match revalidates all).
+async function revalidateBalances() {
+  revalidatePath('/balances');
+  revalidatePath('/balances/[userId]');
+}
+
+export async function markRemindersRead(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const fromId = (formData.get('fromId') as string) || null;
+
+  await db.reminder.updateMany({
+    where: {
+      toId: user.id,
+      readAt: null,
+      ...(fromId ? { fromId } : {}),
+    },
+    data: { readAt: new Date() },
+  });
+
+  await revalidateBalances();
+  return {};
+}
+
+export async function updateContactPhone(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const userId = (formData.get('userId') as string) || '';
+  const phone = ((formData.get('phone') as string) || '').trim();
+  if (!userId) {
+    return { error: 'Missing user.' };
+  }
+  if (!phone.startsWith('+')) {
+    return { error: 'Enter a valid phone number.' };
+  }
+
+  const contact = await db.user.findFirst({ where: { id: userId, deletedAt: null } });
+  if (!contact) {
+    return { error: 'User not found.' };
+  }
+
+  const hasPair = (await getPairBalances(user.id)).some((p) => p.counterparty.id === userId);
+  if (!hasPair) {
+    return { error: "You don't have any balances with this person." };
+  }
+
+  await db.user.update({ where: { id: userId }, data: { phone } });
+  await revalidateBalances();
   return {};
 }
