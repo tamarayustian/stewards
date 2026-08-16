@@ -11,6 +11,7 @@
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
     "lint": "eslint",
+    "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
@@ -44,6 +45,7 @@
     "eslint-config-next": "16.2.9",
     "prettier": "^3.8.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
