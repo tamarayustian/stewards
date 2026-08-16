@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell';
+import { countUnreadReminders } from '@/lib/balances';
 import db from '@/lib/db';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -26,16 +27,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect('/login');
   }
 
-  const profile = await db.user.findUnique({
-    where: { id: user.id },
-    select: { name: true },
-  });
+  const [profile, unreadReminders] = await Promise.all([
+    db.user.findUnique({
+      where: { id: user.id },
+      select: { name: true },
+    }),
+    countUnreadReminders(user.id),
+  ]);
 
   const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
   const initials = getInitials(displayName);
 
   return (
-    <AppShell userName={displayName} userInitials={initials}>
+    <AppShell userName={displayName} userInitials={initials} unreadReminders={unreadReminders}>
       {children}
     </AppShell>
   );

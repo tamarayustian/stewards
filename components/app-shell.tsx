@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LogOut,
   ReceiptText,
+  Scale,
   Settings,
   Sprout,
   Users,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/expenses', label: 'Activity', icon: ReceiptText },
+  { href: '/balances', label: 'Balances', icon: Scale },
   { href: '/groups', label: 'Groups', icon: Users },
   { href: '/people', label: 'People', icon: BookUser },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -28,9 +30,10 @@ interface AppShellProps {
   children: React.ReactNode;
   userName: string;
   userInitials: string;
+  unreadReminders: number;
 }
 
-export function AppShell({ children, userName, userInitials }: AppShellProps) {
+export function AppShell({ children, userName, userInitials, unreadReminders }: AppShellProps) {
   const pathname = usePathname();
 
   function isActive(href: string) {
@@ -57,11 +60,16 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
                 key={item.href}
                 variant="ghost"
                 nativeButton={false}
-                className={`w-full justify-start gap-3 ${active ? 'bg-primary/10 text-primary hover:bg-primary/15' : ''}`}
+                className={`relative w-full justify-start gap-3 ${active ? 'bg-primary/10 text-primary hover:bg-primary/15' : ''}`}
                 render={<Link href={item.href} />}
               >
                 <Icon className={`size-4 ${active ? 'text-primary' : ''}`} />
                 {item.label}
+                {item.href === '/balances' && unreadReminders > 0 && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">
+                    {unreadReminders}
+                  </span>
+                )}
               </Button>
             );
           })}
@@ -127,12 +135,17 @@ export function AppShell({ children, userName, userInitials }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs ${
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs ${
                   active ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >
                 <Icon className={`size-5 ${active ? 'text-primary' : ''}`} />
                 {item.label}
+                {item.href === '/balances' && unreadReminders > 0 && (
+                  <span className="absolute right-1 top-0 size-4 rounded-full bg-destructive text-center text-[9px] font-semibold leading-4 text-white">
+                    {unreadReminders > 9 ? '9+' : unreadReminders}
+                  </span>
+                )}
               </Link>
             );
           })}
