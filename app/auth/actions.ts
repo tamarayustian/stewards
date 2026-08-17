@@ -7,11 +7,20 @@ import { redirect } from 'next/navigation';
 
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { ensureUserRow } from '@/lib/users';
+import { validatePhone } from '@/lib/auth-validation';
 
 export async function signup(_prev: unknown, formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
+  const countryCode = formData.get('countryCode') as string;
+  const phoneRaw = formData.get('phone') as string;
+
+  const phoneResult = validatePhone(countryCode, phoneRaw);
+  if ('error' in phoneResult) {
+    return { error: phoneResult.error };
+  }
+  const phone = phoneResult.fullPhone;
 
   const cookieStore = await cookies();
   const supabase = createServerClient(
@@ -32,7 +41,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: { data: { name, phone } },
   });
 
   if (error) {
