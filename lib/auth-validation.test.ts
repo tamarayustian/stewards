@@ -33,12 +33,14 @@ describe('validatePhone', () => {
   });
 
   it('handles null phone gracefully', () => {
-    const result = validatePhone('+852', null as any);
+    // @ts-expect-error testing null guard
+    const result = validatePhone('+852', null);
     expect(result).toEqual({ error: 'Phone number is required.' });
   });
 
   it('handles undefined phone gracefully', () => {
-    const result = validatePhone('+852', undefined as any);
+    // @ts-expect-error testing null guard
+    const result = validatePhone('+852', undefined);
     expect(result).toEqual({ error: 'Phone number is required.' });
   });
 
