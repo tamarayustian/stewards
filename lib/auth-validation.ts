@@ -18,7 +18,7 @@ export function validatePhone(
   countryCode: string,
   phone: string,
 ): { fullPhone: string } | { error: string } {
-  if (!phone.trim()) {
+  if (!phone?.trim()) {
     return { error: 'Phone number is required.' };
   }
 
@@ -32,5 +32,5 @@ export function validatePhone(
     return { error: 'Phone number must be 7-15 digits.' };
   }
 
-  return { fullPhone: countryCode + digits };
+  return { fullPhone: (countryCode ?? '') + digits };
 }
