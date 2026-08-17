@@ -13,3 +13,24 @@ export function validatePassword(password: string): string | undefined {
   }
   return undefined;
 }
+
+export function validatePhone(
+  countryCode: string,
+  phone: string,
+): { fullPhone: string } | { error: string } {
+  if (!phone.trim()) {
+    return { error: 'Phone number is required.' };
+  }
+
+  if (/[^\d\s]/.test(phone)) {
+    return { error: 'Phone number must contain only digits.' };
+  }
+
+  const digits = phone.replace(/\D/g, '');
+
+  if (digits.length < 7 || digits.length > 15) {
+    return { error: 'Phone number must be 7-15 digits.' };
+  }
+
+  return { fullPhone: countryCode + digits };
+}
