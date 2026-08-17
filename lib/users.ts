@@ -3,7 +3,7 @@ import db from '@/lib/db';
 type AuthUser = {
   id: string;
   email?: string | null;
-  user_metadata?: { name?: unknown };
+  user_metadata?: { name?: unknown; phone?: unknown };
 };
 
 // TODO(pre-launch): identity for "friend" contacts is not foolproof.
@@ -24,6 +24,10 @@ export async function ensureUserRow(user: AuthUser) {
   const { id, email } = user;
   const name =
     (user.user_metadata?.name as string | undefined)?.trim() || email?.split('@')[0] || 'User';
+  const phone =
+    typeof user.user_metadata?.phone === 'string' && user.user_metadata.phone.startsWith('+')
+      ? user.user_metadata.phone.trim()
+      : null;
 
   if (email) {
     const contact = await db.user.findUnique({ where: { email } });
@@ -52,7 +56,7 @@ export async function ensureUserRow(user: AuthUser) {
         });
         await tx.user.delete({ where: { id: contact.id } });
         await tx.user.create({
-          data: { id, email, name, isRegistered: true },
+          data: { id, email, name, phone, isRegistered: true },
         });
       });
       return { merged: true as const, email };
@@ -63,10 +67,13 @@ export async function ensureUserRow(user: AuthUser) {
 
   if (!existing) {
     await db.user.create({
-      data: { id, email: email ?? null, name, isRegistered: true },
+      data: { id, email: email ?? null, name, phone, isRegistered: true },
     });
   } else {
-    await db.user.update({ where: { id }, data: { isRegistered: true } });
+    await db.user.update({
+      where: { id },
+      data: phone ? { isRegistered: true, phone } : { isRegistered: true },
+    });
   }
 
   return { merged: false as const, email: email ?? null };
