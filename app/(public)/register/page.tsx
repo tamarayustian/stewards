@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { startTransition, Suspense, useActionState, useState } from 'react';
 
 import { signup } from '@/app/auth/actions';
-import { validateEmail, validatePassword } from '@/lib/auth-validation';
+import { validateEmail, validatePassword, validatePhone } from '@/lib/auth-validation';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,8 @@ function RegisterForm() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
+    const countryCode = formData.get('countryCode') as string;
+    const phone = formData.get('phone') as string;
     const newErrors: Record<string, string> = {};
 
     if (!name || name.trim().length === 0) {
@@ -35,6 +37,11 @@ function RegisterForm() {
     const passwordError = validatePassword(password);
     if (emailError) newErrors.email = emailError;
     if (passwordError) newErrors.password = passwordError;
+
+    const phoneResult = validatePhone(countryCode, phone);
+    if ('error' in phoneResult) {
+      newErrors.phone = phoneResult.error;
+    }
 
     if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match.';
@@ -109,6 +116,41 @@ function RegisterForm() {
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" defaultValue={prefilledEmail} required />
               {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone number</Label>
+              <div className="flex gap-2">
+                <select
+                  id="countryCode"
+                  name="countryCode"
+                  defaultValue="+852"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="+852">HK +852</option>
+                  <option value="+1">US +1</option>
+                  <option value="+86">CN +86</option>
+                  <option value="+886">TW +886</option>
+                  <option value="+44">UK +44</option>
+                  <option value="+81">JP +81</option>
+                  <option value="+82">KR +82</option>
+                  <option value="+65">SG +65</option>
+                  <option value="+61">AU +61</option>
+                  <option value="+1">CA +1</option>
+                  <option value="+49">DE +49</option>
+                  <option value="+33">FR +33</option>
+                </select>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="9123 4567"
+                  required
+                  className="flex-1"
+                />
+              </div>
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
             </div>
 
             <div className="space-y-2">
