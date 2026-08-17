@@ -1,7 +1,17 @@
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const VALID_COUNTRY_CODES = new Set([
-  '+852', '+1', '+86', '+886', '+44', '+81', '+82', '+65', '+61', '+49', '+33',
+  '+852',
+  '+1',
+  '+86',
+  '+886',
+  '+44',
+  '+81',
+  '+82',
+  '+65',
+  '+61',
+  '+49',
+  '+33',
 ]);
 
 export function validateEmail(email: string): string | undefined {
