@@ -9,6 +9,7 @@ import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { createServerClient } from '@/lib/supabase';
+import { validateCurrency } from '@/lib/currencies';
 import { addContact } from '@/lib/users';
 
 async function getCurrentUser() {
@@ -608,12 +609,7 @@ export async function updateCurrency(_prev: unknown, formData: FormData) {
   if (!user) redirect('/login');
 
   const currency = formData.get('currency') as string;
-  if (
-    !currency ||
-    !['HKD', 'USD', 'CNY', 'JPY', 'TWD', 'GBP', 'EUR', 'SGD', 'AUD', 'KRW', 'IDR', 'PHP'].includes(
-      currency,
-    )
-  ) {
+  if (!currency || !validateCurrency(currency)) {
     return { error: 'Invalid currency.' };
   }
 
