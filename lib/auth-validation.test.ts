@@ -31,4 +31,19 @@ describe('validatePhone', () => {
     const result = validatePhone('+852', 'abc12345');
     expect(result).toEqual({ error: 'Phone number must contain only digits.' });
   });
+
+  it('handles null phone gracefully', () => {
+    const result = validatePhone('+852', null as any);
+    expect(result).toEqual({ error: 'Phone number is required.' });
+  });
+
+  it('handles undefined phone gracefully', () => {
+    const result = validatePhone('+852', undefined as any);
+    expect(result).toEqual({ error: 'Phone number is required.' });
+  });
+
+  it('rejects invalid country code', () => {
+    const result = validatePhone('+000', '91234567');
+    expect(result).toEqual({ error: 'Invalid country code.' });
+  });
 });
