@@ -12,6 +12,8 @@ const VALID_COUNTRY_CODES = new Set([
   '+61',
   '+49',
   '+33',
+  '+62',
+  '+63',
 ]);
 
 export function validateEmail(email: string): string | undefined {

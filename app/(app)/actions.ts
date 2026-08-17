@@ -602,3 +602,24 @@ export async function updateContactPhone(_prev: unknown, formData: FormData) {
   await revalidateBalances();
   return {};
 }
+
+export async function updateCurrency(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const currency = formData.get('currency') as string;
+  if (
+    !currency ||
+    !['HKD', 'USD', 'CNY', 'JPY', 'TWD', 'GBP', 'EUR', 'SGD', 'AUD', 'KRW', 'IDR', 'PHP'].includes(
+      currency,
+    )
+  ) {
+    return { error: 'Invalid currency.' };
+  }
+
+  await db.user.update({ where: { id: user.id }, data: { currency } });
+  revalidatePath('/settings');
+  revalidatePath('/dashboard');
+  revalidatePath('/balances');
+  return { success: true };
+}

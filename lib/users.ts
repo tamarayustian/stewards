@@ -1,9 +1,10 @@
 import db from '@/lib/db';
+import { CURRENCIES } from '@/lib/currencies';
 
 type AuthUser = {
   id: string;
   email?: string | null;
-  user_metadata?: { name?: unknown; phone?: unknown };
+  user_metadata?: { name?: unknown; phone?: unknown; currency?: unknown };
 };
 
 // TODO(pre-launch): identity for "friend" contacts is not foolproof.
@@ -27,6 +28,13 @@ export async function ensureUserRow(user: AuthUser) {
   const phone =
     typeof user.user_metadata?.phone === 'string' && user.user_metadata.phone.startsWith('+')
       ? user.user_metadata.phone.trim()
+      : null;
+
+  const metadataCurrency =
+    typeof user.user_metadata?.currency === 'string' ? user.user_metadata.currency : null;
+  const currency =
+    metadataCurrency && metadataCurrency in CURRENCIES
+      ? (metadataCurrency as keyof typeof CURRENCIES)
       : null;
 
   if (email) {
@@ -56,7 +64,7 @@ export async function ensureUserRow(user: AuthUser) {
         });
         await tx.user.delete({ where: { id: contact.id } });
         await tx.user.create({
-          data: { id, email, name, phone, isRegistered: true },
+          data: { id, email, name, phone, currency: currency ?? 'HKD', isRegistered: true },
         });
       });
       return { merged: true as const, email };
@@ -67,13 +75,22 @@ export async function ensureUserRow(user: AuthUser) {
 
   if (!existing) {
     await db.user.create({
-      data: { id, email: email ?? null, name, phone, isRegistered: true },
+      data: {
+        id,
+        email: email ?? null,
+        name,
+        phone,
+        currency: currency ?? 'HKD',
+        isRegistered: true,
+      },
     });
   } else {
-    await db.user.update({
-      where: { id },
-      data: phone ? { isRegistered: true, phone } : { isRegistered: true },
-    });
+    const updateData: { isRegistered: true; phone?: string; currency?: string } = {
+      isRegistered: true,
+    };
+    if (phone) updateData.phone = phone;
+    if (currency) updateData.currency = currency;
+    await db.user.update({ where: { id }, data: updateData });
   }
 
   return { merged: false as const, email: email ?? null };

@@ -15,6 +15,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   const name = formData.get('name') as string;
   const countryCode = formData.get('countryCode') as string;
   const phoneRaw = formData.get('phone') as string;
+  const currency = (formData.get('currency') as string) || 'HKD';
 
   const phoneResult = validatePhone(countryCode, phoneRaw);
   if ('error' in phoneResult) {
@@ -41,7 +42,7 @@ export async function signup(_prev: unknown, formData: FormData) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { name, phone } },
+    options: { data: { name, phone, currency } },
   });
 
   if (error) {

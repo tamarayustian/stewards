@@ -7,6 +7,7 @@ import { startTransition, Suspense, useActionState, useState } from 'react';
 
 import { signup } from '@/app/auth/actions';
 import { validateEmail, validatePassword, validatePhone } from '@/lib/auth-validation';
+import { CURRENCIES } from '@/lib/currencies';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,11 @@ function RegisterForm() {
     const phoneResult = validatePhone(countryCode, phone);
     if ('error' in phoneResult) {
       newErrors.phone = phoneResult.error;
+    }
+
+    const currency = formData.get('currency') as string;
+    if (!currency || !(currency in CURRENCIES)) {
+      newErrors.currency = 'Please select a currency.';
     }
 
     if (password !== confirmPassword) {
@@ -139,6 +145,8 @@ function RegisterForm() {
                   <option value="+1">CA +1</option>
                   <option value="+49">DE +49</option>
                   <option value="+33">FR +33</option>
+                  <option value="+62">ID +62</option>
+                  <option value="+63">PH +63</option>
                 </select>
                 <Input
                   id="phone"
@@ -151,6 +159,23 @@ function RegisterForm() {
                 />
               </div>
               {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <select
+                id="currency"
+                name="currency"
+                defaultValue="HKD"
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {Object.entries(CURRENCIES).map(([code, info]) => (
+                  <option key={code} value={code}>
+                    {info.symbol} — {info.name}
+                  </option>
+                ))}
+              </select>
+              {errors.currency && <p className="text-xs text-destructive">{errors.currency}</p>}
             </div>
 
             <div className="space-y-2">

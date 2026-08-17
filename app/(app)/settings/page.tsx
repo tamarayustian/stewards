@@ -2,10 +2,26 @@ import { LogOut, Settings, UserPlus } from 'lucide-react';
 
 import { signout } from '@/app/auth/actions';
 import { InviteFriend } from '@/components/invite-friend';
+import { CurrencyCard } from '@/components/currency-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { Currency } from '@/lib/currencies';
+import db from '@/lib/db';
+import { createServerClientReadOnly } from '@/lib/supabase';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const cookieStore = await cookies();
+  const supabase = createServerClientReadOnly(cookieStore);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
+  const currentCurrency = (profile?.currency ?? 'HKD') as Currency;
+
   return (
     <div className="mx-auto w-full max-w-lg flex-1 space-y-6 p-6">
       <div className="flex items-center gap-4">
@@ -17,6 +33,8 @@ export default function SettingsPage() {
           <p className="text-sm text-muted-foreground">Manage your account.</p>
         </div>
       </div>
+
+      <CurrencyCard currentCurrency={currentCurrency} />
 
       <Card>
         <CardHeader>
