@@ -23,10 +23,7 @@ describe('fetchExchangeRate', () => {
     });
     const result = await fetchExchangeRate('JPY', 'HKD');
     expect(result).toEqual({ rate: 0.055 });
-    expect(mockFetch).toHaveBeenCalledWith(
-      '/api/rates?from=JPY&to=HKD',
-      expect.anything(),
-    );
+    expect(mockFetch).toHaveBeenCalledWith('/api/rates?from=JPY&to=HKD', expect.anything());
   });
 
   it('returns error on HTTP failure', async () => {

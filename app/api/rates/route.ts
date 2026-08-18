@@ -15,14 +15,20 @@ export async function GET(request: Request) {
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: `Exchange rate API returned ${res.status}.` }, { status: 502 });
+      return NextResponse.json(
+        { error: `Exchange rate API returned ${res.status}.` },
+        { status: 502 },
+      );
     }
 
     const data = await res.json();
     const rate = data.rates?.[to.toUpperCase()];
 
     if (rate === undefined || rate === null) {
-      return NextResponse.json({ error: `Rate not available for ${from} → ${to}.` }, { status: 404 });
+      return NextResponse.json(
+        { error: `Rate not available for ${from} → ${to}.` },
+        { status: 404 },
+      );
     }
 
     if (typeof rate !== 'number' || rate <= 0) {
