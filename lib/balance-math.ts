@@ -1,5 +1,6 @@
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { Prisma as PrismaValue } from '@/lib/generated/prisma/browser';
+import { CURRENCIES, type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 
 export type Direction = 'theyOweMe' | 'iOweThem';
@@ -18,6 +19,7 @@ export interface ShareRow {
   amount: Prisma.Decimal;
   currency: string;
   splitAmount: Prisma.Decimal;
+  convertedAmount: Prisma.Decimal;
   party: Counterparty;
 }
 
@@ -38,6 +40,7 @@ export interface PairItem {
   currency: string;
   myShare: number;
   theirShare: number;
+  convertedAmount: number;
   direction: Direction;
 }
 
@@ -70,12 +73,12 @@ export function computePairSummaries(owedToMe: ShareRow[], iOwe: ShareRow[]): Pa
 
   for (const row of owedToMe) {
     const entry = upsert(row.party);
-    entry.amountOwedToMe = entry.amountOwedToMe.plus(row.splitAmount);
+    entry.amountOwedToMe = entry.amountOwedToMe.plus(row.convertedAmount);
     entry.unsettledCount += 1;
   }
   for (const row of iOwe) {
     const entry = upsert(row.party);
-    entry.amountIOwe = entry.amountIOwe.plus(row.splitAmount);
+    entry.amountIOwe = entry.amountIOwe.plus(row.convertedAmount);
     entry.iOweCount += 1;
   }
 
@@ -100,6 +103,7 @@ export function buildPairDetail(
       currency: row.currency,
       myShare: 0,
       theirShare: Number(row.splitAmount),
+      convertedAmount: Number(row.convertedAmount),
       direction: 'theyOweMe' as const,
     })),
     ...iOwe.map((row) => ({
@@ -110,16 +114,17 @@ export function buildPairDetail(
       currency: row.currency,
       myShare: Number(row.splitAmount),
       theirShare: 0,
+      convertedAmount: Number(row.convertedAmount),
       direction: 'iOweThem' as const,
     })),
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const amountOwedToMe = owedToMe.reduce(
-    (sum, row) => sum.plus(row.splitAmount),
+    (sum, row) => sum.plus(row.convertedAmount),
     new PrismaValue.Decimal(0),
   );
   const amountIOwe = iOwe.reduce(
-    (sum, row) => sum.plus(row.splitAmount),
+    (sum, row) => sum.plus(row.convertedAmount),
     new PrismaValue.Decimal(0),
   );
 
@@ -141,8 +146,8 @@ export function formatDay(date: Date) {
 export function buildWhatsAppDraft(name: string, items: PairItem[], origin: string) {
   const owedToMe = items.filter((item) => item.direction === 'theyOweMe');
   const total = owedToMe.reduce(
-    (sum, item) => sum.plus(item.theirShare),
-    new PrismaValue.Decimal(0),
+    (sum, item) => sum + item.convertedAmount,
+    0,
   );
   const count = owedToMe.length;
   const lines = owedToMe.map(

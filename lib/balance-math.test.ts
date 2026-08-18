@@ -9,6 +9,7 @@ import {
   type PairItem,
   type ShareRow,
 } from '@/lib/balance-math';
+import { CURRENCIES, type Currency } from '@/lib/currencies';
 import { Prisma } from '@/lib/generated/prisma/client';
 
 const dec = (value: string) => new Prisma.Decimal(value);
@@ -28,6 +29,7 @@ function share(partial: Partial<ShareRow> & Pick<ShareRow, 'splitAmount'>): Shar
     note: 'Dinner',
     amount: dec('100.00'),
     currency: 'HKD',
+    convertedAmount: partial.convertedAmount ?? partial.splitAmount,
     party: tamara,
     ...partial,
   };
@@ -116,6 +118,7 @@ describe('buildWhatsAppDraft', () => {
       currency: 'HKD',
       myShare: 0,
       theirShare: 100,
+      convertedAmount: 100,
       direction: 'theyOweMe',
     },
     {
@@ -126,6 +129,7 @@ describe('buildWhatsAppDraft', () => {
       currency: 'HKD',
       myShare: 60,
       theirShare: 0,
+      convertedAmount: 60,
       direction: 'iOweThem',
     },
   ];
@@ -150,6 +154,7 @@ describe('buildWhatsAppDraft', () => {
         currency: 'HKD',
         myShare: 0,
         theirShare: 50,
+        convertedAmount: 50,
         direction: 'theyOweMe',
       },
     ];
@@ -157,6 +162,18 @@ describe('buildWhatsAppDraft', () => {
     const lines = draft.split('\n');
     expect(lines[0]).toBe('Tamara — you owe me HK$150.00 across 2 expenses');
     expect(lines).toHaveLength(4);
+  });
+});
+
+describe('computePairSummaries with convertedAmount', () => {
+  it('sums convertedAmount instead of splitAmount', () => {
+    const [pair] = computePairSummaries(
+      [share({ splitId: 's1', splitAmount: dec('100.00'), convertedAmount: dec('55.00') })],
+      [share({ splitId: 's2', splitAmount: dec('100.00'), convertedAmount: dec('55.00') })],
+    );
+    expect(pair.amountOwedToMe.toFixed(2)).toBe('55.00');
+    expect(pair.amountIOwe.toFixed(2)).toBe('55.00');
+    expect(pair.net.toFixed(2)).toBe('0.00');
   });
 });
 

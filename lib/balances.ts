@@ -60,6 +60,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
     amount: split.expense.amount,
     currency: split.expense.currency,
     splitAmount: split.amount,
+    convertedAmount: split.amount,
     party: {
       id: split.userId,
       name: split.user.name,
@@ -75,6 +76,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
     amount: split.expense.amount,
     currency: split.expense.currency,
     splitAmount: split.amount,
+    convertedAmount: split.amount,
     party: {
       id: split.expense.paidById,
       name: split.expense.paidBy.name,
@@ -135,6 +137,7 @@ export async function getPairDetail(
     amount: split.expense.amount,
     currency: split.expense.currency,
     splitAmount: split.amount,
+    convertedAmount: split.amount,
     party: counterparty,
   }));
 
@@ -145,6 +148,7 @@ export async function getPairDetail(
     amount: split.expense.amount,
     currency: split.expense.currency,
     splitAmount: split.amount,
+    convertedAmount: split.amount,
     party: counterparty,
   }));
 
