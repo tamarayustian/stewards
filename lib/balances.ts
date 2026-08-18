@@ -8,6 +8,7 @@ import {
 } from '@/lib/balance-math';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { type Currency } from '@/lib/currencies';
 
 const activeExpenseWhere = {
   deletedAt: null,
@@ -15,6 +16,9 @@ const activeExpenseWhere = {
 } satisfies Prisma.ExpenseWhereInput;
 
 export async function getPairBalances(userId: string): Promise<PairSummary[]> {
+  const viewer = await db.user.findUnique({ where: { id: userId }, select: { currency: true } });
+  const viewerCurrency = (viewer?.currency ?? 'HKD') as Currency;
+
   const [owedToMe, iOwe] = await Promise.all([
     db.expenseSplit.findMany({
       where: {
@@ -26,7 +30,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
         id: true,
         amount: true,
         userId: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true } },
+        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
         user: { select: { name: true, phone: true, isRegistered: true } },
       },
     }),
@@ -45,6 +49,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
             note: true,
             amount: true,
             currency: true,
+            rate: true,
             paidById: true,
             paidBy: { select: { name: true, phone: true, isRegistered: true } },
           },
@@ -53,37 +58,45 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
     }),
   ]);
 
-  const owedToMeRows: ShareRow[] = owedToMe.map((split) => ({
-    splitId: split.id,
-    date: split.expense.createdAt,
-    note: split.expense.note,
-    amount: split.expense.amount,
-    currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount,
-    party: {
-      id: split.userId,
-      name: split.user.name,
-      phone: split.user.phone,
-      isRegistered: split.user.isRegistered,
-    },
-  }));
+  const owedToMeRows: ShareRow[] = owedToMe.map((split) => {
+    const sameCurrency = split.expense.currency === viewerCurrency;
+    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+    return {
+      splitId: split.id,
+      date: split.expense.createdAt,
+      note: split.expense.note,
+      amount: split.expense.amount,
+      currency: split.expense.currency,
+      splitAmount: split.amount,
+      convertedAmount: split.amount.mul(rate),
+      party: {
+        id: split.userId,
+        name: split.user.name,
+        phone: split.user.phone,
+        isRegistered: split.user.isRegistered,
+      },
+    };
+  });
 
-  const iOweRows: ShareRow[] = iOwe.map((split) => ({
-    splitId: split.id,
-    date: split.expense.createdAt,
-    note: split.expense.note,
-    amount: split.expense.amount,
-    currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount,
-    party: {
-      id: split.expense.paidById,
-      name: split.expense.paidBy.name,
-      phone: split.expense.paidBy.phone,
-      isRegistered: split.expense.paidBy.isRegistered,
-    },
-  }));
+  const iOweRows: ShareRow[] = iOwe.map((split) => {
+    const sameCurrency = split.expense.currency === viewerCurrency;
+    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+    return {
+      splitId: split.id,
+      date: split.expense.createdAt,
+      note: split.expense.note,
+      amount: split.expense.amount,
+      currency: split.expense.currency,
+      splitAmount: split.amount,
+      convertedAmount: split.amount.mul(rate),
+      party: {
+        id: split.expense.paidById,
+        name: split.expense.paidBy.name,
+        phone: split.expense.paidBy.phone,
+        isRegistered: split.expense.paidBy.isRegistered,
+      },
+    };
+  });
 
   return computePairSummaries(owedToMeRows, iOweRows)
     .filter((pair) => !pair.net.isZero())
@@ -94,6 +107,9 @@ export async function getPairDetail(
   userId: string,
   otherUserId: string,
 ): Promise<PairDetail | null> {
+  const viewer = await db.user.findUnique({ where: { id: userId }, select: { currency: true } });
+  const viewerCurrency = (viewer?.currency ?? 'HKD') as Currency;
+
   const [owedToMe, iOwe, counterpartyRow] = await Promise.all([
     db.expenseSplit.findMany({
       where: {
@@ -104,7 +120,7 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true } },
+        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
       },
     }),
     db.expenseSplit.findMany({
@@ -116,7 +132,7 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true } },
+        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
       },
     }),
     db.user.findFirst({
@@ -130,27 +146,35 @@ export async function getPairDetail(
 
   const counterparty: Counterparty = { id: otherUserId, ...counterpartyRow };
 
-  const owedToMeRows: ShareRow[] = owedToMe.map((split) => ({
-    splitId: split.id,
-    date: split.expense.createdAt,
-    note: split.expense.note,
-    amount: split.expense.amount,
-    currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount,
-    party: counterparty,
-  }));
+  const owedToMeRows: ShareRow[] = owedToMe.map((split) => {
+    const sameCurrency = split.expense.currency === viewerCurrency;
+    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+    return {
+      splitId: split.id,
+      date: split.expense.createdAt,
+      note: split.expense.note,
+      amount: split.expense.amount,
+      currency: split.expense.currency,
+      splitAmount: split.amount,
+      convertedAmount: split.amount.mul(rate),
+      party: counterparty,
+    };
+  });
 
-  const iOweRows: ShareRow[] = iOwe.map((split) => ({
-    splitId: split.id,
-    date: split.expense.createdAt,
-    note: split.expense.note,
-    amount: split.expense.amount,
-    currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount,
-    party: counterparty,
-  }));
+  const iOweRows: ShareRow[] = iOwe.map((split) => {
+    const sameCurrency = split.expense.currency === viewerCurrency;
+    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+    return {
+      splitId: split.id,
+      date: split.expense.createdAt,
+      note: split.expense.note,
+      amount: split.expense.amount,
+      currency: split.expense.currency,
+      splitAmount: split.amount,
+      convertedAmount: split.amount.mul(rate),
+      party: counterparty,
+    };
+  });
 
   return buildPairDetail(counterparty, owedToMeRows, iOweRows);
 }

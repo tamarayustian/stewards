@@ -7,45 +7,63 @@ export type BalanceSummary = {
   unsettledCount: number;
 };
 
-// Aggregate unsettled splits across both group and direct expenses.
-// youOwe  = my share on expenses other people paid (I repay the payer).
-// youAreOwed = other people's shares on expenses I paid (they repay me).
 export async function getBalances(userId: string): Promise<BalanceSummary> {
-  const oweWhere = {
-    userId,
-    settledAt: null,
-    expense: {
-      deletedAt: null,
-      paidById: { not: userId },
-      OR: [{ groupId: null }, { group: { deletedAt: null } }],
-    },
-  } satisfies Prisma.ExpenseSplitWhereInput;
+  const viewer = await db.user.findUnique({ where: { id: userId }, select: { currency: true } });
+  const viewerCurrency = (viewer?.currency ?? 'HKD') as string;
 
-  const [oweAgg, owedAgg, unsettledCount] = await Promise.all([
-    db.expenseSplit.aggregate({
-      where: oweWhere,
-      _sum: { amount: true },
+  const activeExpenseWhere = {
+    deletedAt: null,
+    OR: [{ groupId: null }, { group: { deletedAt: null } }],
+  };
+
+  const [oweSplits, owedSplits, unsettledCount] = await Promise.all([
+    db.expenseSplit.findMany({
+      where: {
+        userId,
+        settledAt: null,
+        expense: { ...activeExpenseWhere, paidById: { not: userId } },
+      },
+      select: {
+        amount: true,
+        expense: { select: { currency: true, rate: true } },
+      },
     }),
-    db.expenseSplit.aggregate({
+    db.expenseSplit.findMany({
       where: {
         settledAt: null,
         userId: { not: userId },
-        expense: {
-          deletedAt: null,
-          paidById: userId,
-          OR: [{ groupId: null }, { group: { deletedAt: null } }],
-        },
+        expense: { ...activeExpenseWhere, paidById: userId },
       },
-      _sum: { amount: true },
+      select: {
+        amount: true,
+        expense: { select: { currency: true, rate: true } },
+      },
     }),
-    db.expenseSplit.count({ where: { ...oweWhere, amount: { gt: 0 } } }),
+    db.expenseSplit.count({
+      where: {
+        userId,
+        settledAt: null,
+        amount: { gt: 0 },
+        expense: { ...activeExpenseWhere, paidById: { not: userId } },
+      },
+    }),
   ]);
 
-  return {
-    youOwe: oweAgg._sum.amount ?? new Prisma.Decimal(0),
-    youAreOwed: owedAgg._sum.amount ?? new Prisma.Decimal(0),
-    unsettledCount,
-  };
+  function toHome(splitAmount: Prisma.Decimal, expenseCurrency: string, rate: string | null): Prisma.Decimal {
+    if (expenseCurrency === viewerCurrency) return splitAmount;
+    return splitAmount.mul(Number(rate ?? '1'));
+  }
+
+  const youOwe = oweSplits.reduce(
+    (sum, s) => sum.plus(toHome(s.amount, s.expense.currency, s.expense.rate)),
+    new Prisma.Decimal(0),
+  );
+  const youAreOwed = owedSplits.reduce(
+    (sum, s) => sum.plus(toHome(s.amount, s.expense.currency, s.expense.rate)),
+    new Prisma.Decimal(0),
+  );
+
+  return { youOwe, youAreOwed, unsettledCount };
 }
 
 export type ActivityItem = {
