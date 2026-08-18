@@ -161,11 +161,11 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               <Link
                 key={item.href}
                 href={item.href}
-                className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs ${
-                  active ? 'text-foreground' : 'text-muted-foreground'
+                className={`relative flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-xs ${
+                  active ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className={`size-5 ${active ? 'text-primary' : ''}`} />
+                <Icon className="size-5" />
                 {item.label}
                 {item.href === '/expenses' && unreadReminders > 0 && (
                   <span className="absolute right-1 top-0 size-4 rounded-full bg-destructive text-center text-[9px] font-semibold leading-4 text-white">

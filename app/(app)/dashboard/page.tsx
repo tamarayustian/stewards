@@ -75,39 +75,52 @@ export default async function DashboardPage({
         />
       ))}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {balances.youOwe.gt(0) || balances.youAreOwed.gt(0) ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {balances.youOwe.gt(0) && (
+            <Card>
+              <CardContent className="flex items-center gap-4">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
+                  <ArrowUpFromLine className="size-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">To pay</p>
+                  <p className="text-lg font-semibold text-destructive">
+                    {formatMoney(balances.youOwe, userCurrency)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {balances.youAreOwed.gt(0) && (
+            <Card>
+              <CardContent className="flex items-center gap-4">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-accent/10">
+                  <ArrowDownToLine className="size-5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">To collect</p>
+                  <p className="text-lg font-semibold text-accent">
+                    {formatMoney(balances.youAreOwed, userCurrency)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ) : (
         <Card>
           <CardContent className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
-              <ArrowUpFromLine className="size-5 text-destructive" />
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
+              <ArrowDownToLine className="size-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">You owe</p>
-              <p className="text-lg font-semibold text-destructive">
-                {formatMoney(balances.youOwe, userCurrency)}
-              </p>
+              <p className="text-sm font-medium">All settled</p>
+              <p className="text-xs text-muted-foreground">No outstanding balances</p>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-accent/10">
-              <ArrowDownToLine className="size-5 text-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">You are owed</p>
-              <p className="text-lg font-semibold text-accent">
-                {formatMoney(balances.youAreOwed, userCurrency)}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        “You owe” is your share of expenses others paid; “You are owed” is others’ shares of
-        expenses you paid.
-      </p>
+      )}
 
       {balances.youOwe.gt(0) && (
         <SettleUpCard
