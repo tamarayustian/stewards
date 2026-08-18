@@ -6,9 +6,9 @@ import {
   type PairSummary,
   type ShareRow,
 } from '@/lib/balance-math';
+import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import { type Currency } from '@/lib/currencies';
 
 const activeExpenseWhere = {
   deletedAt: null,
@@ -30,7 +30,9 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
         id: true,
         amount: true,
         userId: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
+        expense: {
+          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+        },
         user: { select: { name: true, phone: true, isRegistered: true } },
       },
     }),
@@ -120,7 +122,9 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
+        expense: {
+          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+        },
       },
     }),
     db.expenseSplit.findMany({
@@ -132,7 +136,9 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
-        expense: { select: { createdAt: true, note: true, amount: true, currency: true, rate: true } },
+        expense: {
+          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+        },
       },
     }),
     db.user.findFirst({

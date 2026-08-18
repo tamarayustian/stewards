@@ -49,7 +49,11 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
     }),
   ]);
 
-  function toHome(splitAmount: Prisma.Decimal, expenseCurrency: string, rate: string | null): Prisma.Decimal {
+  function toHome(
+    splitAmount: Prisma.Decimal,
+    expenseCurrency: string,
+    rate: string | null,
+  ): Prisma.Decimal {
     if (expenseCurrency === viewerCurrency) return splitAmount;
     return splitAmount.mul(Number(rate ?? '1'));
   }
