@@ -25,8 +25,8 @@ export default function PublicLayout({
         </div>
       </header>
       <main className="flex flex-1 flex-col">{children}</main>
-      <footer className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        Stewards — split expenses, faithfully.
+      <footer className="border-t border-border px-6 py-6 text-center text-xs text-muted-foreground">
+        <span className="font-heading text-walnut">Stewards</span> — split expenses, faithfully.
       </footer>
     </div>
   );

@@ -98,7 +98,7 @@ export default function Home() {
                   <td data-col="detail" className="text-sm text-muted-foreground">
                     {row.detail}
                     {row.paid !== undefined && (
-                      <span className="ml-2 font-mono text-xs text-walnut">
+                      <span className="ml-2 block font-mono text-xs text-walnut sm:inline">
                         paid {fmt(row.paid)}
                       </span>
                     )}
@@ -175,7 +175,7 @@ export default function Home() {
           </Link>
           <Link
             href="/login"
-            className="font-mono text-xs uppercase tracking-widest text-walnut hover:text-foreground"
+            className="font-mono text-sm uppercase tracking-widest text-walnut hover:text-foreground"
           >
             sign in
           </Link>
