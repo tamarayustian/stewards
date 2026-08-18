@@ -117,6 +117,7 @@ export default async function BalancesPage() {
                         name={counterparty.name}
                         phone={counterparty.phone}
                         items={detail.items}
+                        viewerCurrency={userCurrency}
                       />
                     )}
                     {pair.amountOwedToMe.gt(0) && !counterparty.phone && (

@@ -143,19 +143,21 @@ export function formatDay(date: Date) {
   return dayFormatter.format(date);
 }
 
-export function buildWhatsAppDraft(name: string, items: PairItem[], origin: string) {
+export function buildWhatsAppDraft(
+  name: string,
+  items: PairItem[],
+  origin: string,
+  viewerCurrency: Currency = 'HKD',
+) {
   const owedToMe = items.filter((item) => item.direction === 'theyOweMe');
-  const total = owedToMe.reduce(
-    (sum, item) => sum + item.convertedAmount,
-    0,
-  );
+  const total = owedToMe.reduce((sum, item) => sum + item.convertedAmount, 0);
   const count = owedToMe.length;
   const lines = owedToMe.map(
     (item) =>
       `${formatDay(item.date)} · ${item.note ?? 'Expense'} · ${formatMoney(item.theirShare, item.currency)}`,
   );
   return [
-    `${name} — you owe me ${formatMoney(total)} across ${count} ${count === 1 ? 'expense' : 'expenses'}`,
+    `${name} — you owe me ${formatMoney(total, viewerCurrency)} across ${count} ${count === 1 ? 'expense' : 'expenses'}`,
     ...lines,
     `Settle up in Stewards: ${origin}/balances`,
   ].join('\n');

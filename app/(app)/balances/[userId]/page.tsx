@@ -87,6 +87,7 @@ export default async function BalanceDetailPage({
               name={counterparty.name}
               phone={counterparty.phone}
               items={detail.items}
+              viewerCurrency={userCurrency}
             />
           )}
           {detail.amountOwedToMe.gt(0) && !counterparty.phone && (

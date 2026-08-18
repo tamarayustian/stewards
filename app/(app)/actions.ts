@@ -98,27 +98,26 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     };
   }
 
+  const viewer = await db.user.findUnique({
+    where: { id: user.id },
+    select: { currency: true },
+  });
+  const homeCurrency = (viewer?.currency ?? 'HKD') as string;
+
   let rate: string | null = null;
   let rateCurrency: string | null = null;
 
-  if (currencyCode !== 'HKD') {
+  if (currencyCode !== homeCurrency) {
     if (rawRate) {
       rate = rawRate;
       rateCurrency = rawRateCurrency;
     } else {
-      const viewer = await db.user.findUnique({
-        where: { id: user.id },
-        select: { currency: true },
-      });
-      const homeCurrency = (viewer?.currency ?? 'HKD') as string;
-      if (currencyCode !== homeCurrency) {
-        const rateResult = await fetchExchangeRate(currencyCode, homeCurrency as Currency);
-        if ('error' in rateResult) {
-          return { error: rateResult.error };
-        }
-        rate = String(rateResult.rate);
-        rateCurrency = currencyCode;
+      const rateResult = await fetchExchangeRate(currencyCode, homeCurrency as Currency);
+      if ('error' in rateResult) {
+        return { error: rateResult.error };
       }
+      rate = String(rateResult.rate);
+      rateCurrency = currencyCode;
     }
   }
 
