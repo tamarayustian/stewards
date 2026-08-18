@@ -1,28 +1,25 @@
 'use client';
 
-import {
-  BookUser,
-  LayoutDashboard,
-  LogOut,
-  ReceiptText,
-  Scale,
-  Settings,
-  Sprout,
-  Users,
-} from 'lucide-react';
+import { LayoutDashboard, LogOut, ReceiptText, Settings, Sprout, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { signout } from '@/app/auth/actions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/expenses', label: 'Activity', icon: ReceiptText },
-  { href: '/balances', label: 'Balances', icon: Scale },
   { href: '/groups', label: 'Groups', icon: Users },
-  { href: '/people', label: 'People', icon: BookUser },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -65,7 +62,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               >
                 <Icon className={`size-4 ${active ? 'text-primary' : ''}`} />
                 {item.label}
-                {item.href === '/balances' && unreadReminders > 0 && (
+                {item.href === '/expenses' && unreadReminders > 0 && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">
                     {unreadReminders}
                   </span>
@@ -76,23 +73,36 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
         </nav>
 
         <div className="border-t border-border px-3 py-4">
-          <div className="flex items-center gap-3">
-            <Avatar size="sm">
-              <AvatarFallback>{userInitials}</AvatarFallback>
-            </Avatar>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{userName}</span>
-            <form action={signout}>
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                className="relative after:absolute after:-inset-1.5 after:content-['']"
-                aria-label="Sign out"
-              >
-                <LogOut className="size-4" />
-              </Button>
-            </form>
-          </div>
+          <Popover>
+            <PopoverTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-3 rounded-lg px-1 py-1 text-left transition-colors hover:bg-muted"
+                />
+              }
+            >
+              <Avatar size="sm">
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{userName}</span>
+            </PopoverTrigger>
+            <PopoverContent align="start" sideOffset={8}>
+              <div className="flex flex-col gap-1">
+                <p className="truncate px-2 py-1 text-sm font-medium">{userName}</p>
+                <form action={signout}>
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                  >
+                    <LogOut className="size-4" />
+                    Sign out
+                  </Button>
+                </form>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </aside>
 
@@ -106,22 +116,38 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
             </div>
             <span className="font-heading text-base font-semibold text-walnut">Stewards</span>
           </div>
-          <div className="flex items-center gap-1">
-            <form action={signout}>
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                className="relative after:absolute after:-inset-1.5 after:content-['']"
-                aria-label="Sign out"
-              >
-                <LogOut className="size-4" />
-              </Button>
-            </form>
-            <Avatar size="sm">
-              <AvatarFallback>{userInitials}</AvatarFallback>
-            </Avatar>
-          </div>
+          <Drawer>
+            <DrawerTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex items-center rounded-full transition-opacity active:opacity-80"
+                  aria-label="Account menu"
+                />
+              }
+            >
+              <Avatar size="sm">
+                <AvatarFallback>{userInitials}</AvatarFallback>
+              </Avatar>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>{userName}</DrawerTitle>
+              </DrawerHeader>
+              <div className="p-4 pt-2">
+                <form action={signout}>
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                  >
+                    <LogOut className="size-4" />
+                    Sign out
+                  </Button>
+                </form>
+              </div>
+            </DrawerContent>
+          </Drawer>
         </header>
 
         <main className="flex flex-1 flex-col overflow-y-auto">{children}</main>
@@ -141,7 +167,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               >
                 <Icon className={`size-5 ${active ? 'text-primary' : ''}`} />
                 {item.label}
-                {item.href === '/balances' && unreadReminders > 0 && (
+                {item.href === '/expenses' && unreadReminders > 0 && (
                   <span className="absolute right-1 top-0 size-4 rounded-full bg-destructive text-center text-[9px] font-semibold leading-4 text-white">
                     {unreadReminders > 9 ? '9+' : unreadReminders}
                   </span>
