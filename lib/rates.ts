@@ -9,17 +9,16 @@ export async function fetchExchangeRate(
   }
 
   try {
-    const res = await fetch(
-      `https://api.frankfurter.app/latest?from=${from}&to=${to}`,
-      { signal: AbortSignal.timeout(5000) },
-    );
+    const res = await fetch(`/api/rates?from=${from}&to=${to}`, {
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!res.ok) {
       return { error: `Exchange rate API returned ${res.status}.` };
     }
 
     const data = await res.json();
-    const rate = data.rates?.[to];
+    const rate = data.rate;
 
     if (typeof rate !== 'number' || rate <= 0) {
       return { error: `Unexpected rate response for ${to}.` };

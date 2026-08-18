@@ -16,15 +16,15 @@ describe('fetchExchangeRate', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it('parses rate from frankfurter.app response', async () => {
+  it('parses rate from proxy response', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => ({ rates: { HKD: 0.055 } }),
+      json: async () => ({ rate: 0.055 }),
     });
     const result = await fetchExchangeRate('JPY', 'HKD');
     expect(result).toEqual({ rate: 0.055 });
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://api.frankfurter.app/latest?from=JPY&to=HKD',
+      '/api/rates?from=JPY&to=HKD',
       expect.anything(),
     );
   });
