@@ -9,6 +9,8 @@ import { RemindButton } from '@/components/remind-button';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { getPairDetail, listReminders } from '@/lib/balances';
+import { type Currency } from '@/lib/currencies';
+import db from '@/lib/db';
 import { formatMoney } from '@/lib/money';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -37,6 +39,9 @@ export default async function BalanceDetailPage({
   if (!detail) {
     redirect('/balances');
   }
+
+  const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
+  const userCurrency = (profile?.currency ?? 'HKD') as Currency;
 
   const unreadFromThem = reminders.some((r) => r.fromId === userId && !r.readAt);
   const { counterparty } = detail;
@@ -67,10 +72,10 @@ export default async function BalanceDetailPage({
             }`}
           >
             {detail.net.gt(0)
-              ? `${counterparty.name} owes you ${formatMoney(detail.net)}`
+              ? `${counterparty.name} owes you ${formatMoney(detail.net, userCurrency)}`
               : detail.net.isZero()
                 ? 'All settled'
-                : `You owe ${counterparty.name} ${formatMoney(detail.net.abs())}`}
+                : `You owe ${counterparty.name} ${formatMoney(detail.net.abs(), userCurrency)}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

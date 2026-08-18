@@ -8,6 +8,8 @@ import { RemindButton } from '@/components/remind-button';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { getPairBalances, getPairDetail, listReminders } from '@/lib/balances';
+import { type Currency } from '@/lib/currencies';
+import db from '@/lib/db';
 import { formatMoney } from '@/lib/money';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -24,6 +26,9 @@ export default async function BalancesPage() {
   }
 
   const [pairs, reminders] = await Promise.all([getPairBalances(user.id), listReminders(user.id)]);
+
+  const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
+  const userCurrency = (profile?.currency ?? 'HKD') as Currency;
 
   const rows = await Promise.all(
     pairs.map(async (pair) => {
@@ -55,7 +60,7 @@ export default async function BalancesPage() {
                   <p className="text-sm">
                     <span className="font-medium">{reminder.fromName}</span>{' '}
                     <span className="text-muted-foreground">
-                      reminded you about {formatMoney(reminder.amountOwed)} across{' '}
+                      reminded you about {formatMoney(reminder.amountOwed, userCurrency)} across{' '}
                       {reminder.iOweCount} {reminder.iOweCount === 1 ? 'expense' : 'expenses'}.
                     </span>
                   </p>
@@ -99,8 +104,8 @@ export default async function BalancesPage() {
                     <p className="font-medium">{counterparty.name}</p>
                     <p className={`text-sm ${pair.net.gt(0) ? 'text-accent' : 'text-destructive'}`}>
                       {pair.net.gt(0)
-                        ? `${counterparty.name} owes you ${formatMoney(pair.net)}`
-                        : `You owe ${counterparty.name} ${formatMoney(pair.net.abs())}`}
+                        ? `${counterparty.name} owes you ${formatMoney(pair.net, userCurrency)}`
+                        : `You owe ${counterparty.name} ${formatMoney(pair.net.abs(), userCurrency)}`}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">

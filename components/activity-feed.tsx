@@ -6,6 +6,7 @@ import { MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expen
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
+import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 
 function timeAgo(date: Date) {
@@ -90,12 +91,15 @@ export function ActivityFeed({
               </div>
               <div className="text-right">
                 <p className="text-sm font-semibold">
-                  {formatMoney(item.isPayer ? item.amount : item.myShare)}
+                  {formatMoney(
+                    item.isPayer ? item.amount : item.myShare,
+                    item.currency as Currency,
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {item.isPayer
                     ? `split ${item.participantCount} ${item.participantCount === 1 ? 'way' : 'ways'}`
-                    : `share of ${formatMoney(item.amount)}`}
+                    : `share of ${formatMoney(item.amount, item.currency as Currency)}`}
                 </p>
               </div>
               <Button

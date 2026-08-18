@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import db from '@/lib/db';
 import { getActivity, getBalances, type ActivityFilter } from '@/lib/expenses';
 import { listPendingNotices } from '@/lib/invites';
+import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -38,7 +39,7 @@ export default async function DashboardPage({
   const [profile, balances, allActivity, filteredActivity, notices] = await Promise.all([
     db.user.findUnique({
       where: { id: user.id },
-      select: { name: true, email: true },
+      select: { name: true, email: true, currency: true },
     }),
     getBalances(user.id),
     getActivity(user.id),
@@ -47,6 +48,7 @@ export default async function DashboardPage({
   ]);
   const activity = filteredActivity ?? allActivity;
 
+  const userCurrency = (profile?.currency ?? 'HKD') as Currency;
   const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
   const hasActivity = allActivity.length > 0;
 
@@ -82,7 +84,7 @@ export default async function DashboardPage({
             <div>
               <p className="text-xs text-muted-foreground">You owe</p>
               <p className="text-lg font-semibold text-destructive">
-                {formatMoney(balances.youOwe)}
+                {formatMoney(balances.youOwe, userCurrency)}
               </p>
             </div>
           </CardContent>
@@ -95,7 +97,7 @@ export default async function DashboardPage({
             <div>
               <p className="text-xs text-muted-foreground">You are owed</p>
               <p className="text-lg font-semibold text-accent">
-                {formatMoney(balances.youAreOwed)}
+                {formatMoney(balances.youAreOwed, userCurrency)}
               </p>
             </div>
           </CardContent>
@@ -109,7 +111,7 @@ export default async function DashboardPage({
 
       {balances.youOwe.gt(0) && (
         <SettleUpCard
-          youOwe={formatMoney(balances.youOwe)}
+          youOwe={formatMoney(balances.youOwe, userCurrency)}
           unsettledCount={balances.unsettledCount}
         />
       )}
