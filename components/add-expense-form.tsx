@@ -2,13 +2,16 @@
 
 import { Link2, ReceiptText, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useState, useTransition } from 'react';
+import { useActionState, useEffect, useState, useTransition } from 'react';
 
 import { addFriend, createExpense, editExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
+import { formatMoney } from '@/lib/money';
+import { fetchExchangeRate } from '@/lib/rates';
 
 type Mode = 'group' | 'direct';
 
@@ -37,6 +40,7 @@ export type InitialExpense = {
   paidById: string;
   participants: Participant[];
   splits: Record<string, string>;
+  currency?: Currency;
 };
 
 interface Participant {
@@ -74,11 +78,13 @@ export function AddExpenseForm({
   users,
   currentUserId,
   initialExpense,
+  homeCurrency = 'HKD',
 }: {
   groups: GroupOption[];
   users: UserOption[];
   currentUserId: string;
   initialExpense?: InitialExpense;
+  homeCurrency?: Currency;
 }) {
   const [mode, setMode] = useState<Mode>(
     initialExpense
@@ -109,12 +115,39 @@ export function AddExpenseForm({
   const [note, setNote] = useState(initialExpense?.note ?? '');
   const [customized, setCustomized] = useState(Boolean(initialExpense));
   const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
+  const [currency, setCurrency] = useState<Currency>(initialExpense?.currency ?? 'HKD');
+  const [rateInfo, setRateInfo] = useState<{ rate: number; from: Currency; to: Currency } | null>(
+    null,
+  );
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [rateLoading, setRateLoading] = useState(currency !== homeCurrency);
   const [state, action, pending] = useActionState(
     initialExpense ? editExpense : createExpense,
     undefined,
   );
   const [addPending, startAddTransition] = useTransition();
   const router = useRouter();
+
+  useEffect(() => {
+    if (currency === homeCurrency) return;
+
+    let cancelled = false;
+
+    fetchExchangeRate(currency, homeCurrency).then((result) => {
+      if (cancelled) return;
+      setRateLoading(false);
+      if ('error' in result) {
+        setRateError(result.error);
+        setRateInfo(null);
+      } else {
+        setRateInfo({ rate: result.rate, from: currency, to: homeCurrency });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currency, homeCurrency]);
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
@@ -354,11 +387,11 @@ export function AddExpenseForm({
     payerId === currentUserId
       ? othersShareCents > 0
         ? others.length === 1
-          ? `${others[0].name} will owe you ${formatAmount(othersShareCents)}`
-          : `Others will owe you ${formatAmount(othersShareCents)}`
+          ? `${others[0].name} will owe you ${formatMoney(othersShareCents / 100, currency)}`
+          : `Others will owe you ${formatMoney(othersShareCents / 100, currency)}`
         : null
       : myShareCents > 0
-        ? `You will owe ${payerName} ${formatAmount(myShareCents)}`
+        ? `You will owe ${payerName} ${formatMoney(myShareCents / 100, currency)}`
         : null;
 
   const canICoveredIt = participants.length === 2 && payerId === currentUserId;
@@ -527,7 +560,7 @@ export function AddExpenseForm({
               <Label htmlFor="amount">Amount</Label>
               <div className="relative">
                 <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                  $
+                  {CURRENCIES[currency].symbol}
                 </span>
                 <Input
                   id="amount"
@@ -541,6 +574,44 @@ export function AddExpenseForm({
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <select
+                id="currency"
+                name="currency"
+                value={currency}
+                onChange={(e) => {
+                  const next = validateCurrency(e.target.value) ?? 'HKD';
+                  setCurrency(next);
+                  if (next === homeCurrency) {
+                    setRateInfo(null);
+                    setRateError(null);
+                    setRateLoading(false);
+                  } else {
+                    setRateLoading(true);
+                    setRateError(null);
+                  }
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {Object.entries(CURRENCIES).map(([code, info]) => (
+                  <option key={code} value={code}>
+                    {info.symbol} — {info.name}
+                  </option>
+                ))}
+              </select>
+              {rateLoading && (
+                <p className="text-xs text-muted-foreground">Fetching exchange rate…</p>
+              )}
+              {rateError && <p className="text-xs text-destructive">{rateError}</p>}
+              {rateInfo && (
+                <p className="text-xs text-muted-foreground">
+                  Rate: 1 {CURRENCIES[rateInfo.from].name} = {rateInfo.rate}{' '}
+                  {CURRENCIES[rateInfo.to].name}
+                </p>
+              )}
             </div>
 
             {/* Split */}
@@ -573,7 +644,7 @@ export function AddExpenseForm({
                     <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
                     <div className="relative w-28">
                       <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                        $
+                        {CURRENCIES[currency].symbol}
                       </span>
                       <Input
                         name={`amount_${p.id}`}
@@ -626,6 +697,13 @@ export function AddExpenseForm({
             )}
 
             {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
+
+            {rateInfo && (
+              <>
+                <input type="hidden" name="rate" value={String(rateInfo.rate)} />
+                <input type="hidden" name="rateCurrency" value={rateInfo.from} />
+              </>
+            )}
 
             <Button type="submit" disabled={pending} className="w-full">
               {initialExpense

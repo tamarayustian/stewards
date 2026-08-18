@@ -9,7 +9,8 @@ import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { createServerClient } from '@/lib/supabase';
-import { validateCurrency } from '@/lib/currencies';
+import { type Currency, validateCurrency } from '@/lib/currencies';
+import { fetchExchangeRate } from '@/lib/rates';
 import { addContact } from '@/lib/users';
 
 async function getCurrentUser() {
@@ -31,6 +32,9 @@ export async function createExpense(_prev: unknown, formData: FormData) {
   const rawAmount = formData.get('amount') as string;
   const note = (formData.get('note') as string)?.trim() || null;
   const payerId = (formData.get('paidById') as string) || user.id;
+  const currencyCode = validateCurrency(formData.get('currency') as string) ?? 'HKD';
+  const rawRate = formData.get('rate') as string | null;
+  const rawRateCurrency = formData.get('rateCurrency') as string | null;
 
   const amount = new Prisma.Decimal(rawAmount || '0');
   if (amount.lte(0)) {
@@ -94,12 +98,38 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     };
   }
 
+  let rate: string | null = null;
+  let rateCurrency: string | null = null;
+
+  if (currencyCode !== 'HKD') {
+    if (rawRate) {
+      rate = rawRate;
+      rateCurrency = rawRateCurrency;
+    } else {
+      const viewer = await db.user.findUnique({
+        where: { id: user.id },
+        select: { currency: true },
+      });
+      const homeCurrency = (viewer?.currency ?? 'HKD') as string;
+      if (currencyCode !== homeCurrency) {
+        const rateResult = await fetchExchangeRate(currencyCode, homeCurrency as Currency);
+        if ('error' in rateResult) {
+          return { error: rateResult.error };
+        }
+        rate = String(rateResult.rate);
+        rateCurrency = currencyCode;
+      }
+    }
+  }
+
   await db.expense.create({
     data: {
       groupId,
       paidById: payerId,
       amount,
-      currency: 'HKD',
+      currency: currencyCode,
+      rate,
+      rateCurrency,
       note,
       splits: { create: splits },
     },

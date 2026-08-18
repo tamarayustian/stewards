@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { AddExpenseForm } from '@/components/add-expense-form';
 import db from '@/lib/db';
+import { type Currency } from '@/lib/currencies';
 import { listGroups, listUsersForDirect } from '@/lib/expenses';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
@@ -37,6 +38,9 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
 
   const [groups, users] = await Promise.all([listGroups(user.id), listUsersForDirect(user.id)]);
 
+  const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
+  const homeCurrency = (profile?.currency ?? 'HKD') as Currency;
+
   const initialExpense = {
     id: expense.id,
     groupId: expense.groupId,
@@ -56,6 +60,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
       users={users}
       currentUserId={user.id}
       initialExpense={initialExpense}
+      homeCurrency={homeCurrency}
     />
   );
 }
