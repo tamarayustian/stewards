@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { GroupJoinedNotice } from '@/components/group-joined-notice';
 import { ActivityFeed } from '@/components/activity-feed';
 import { SettleUpCard } from '@/components/settle-up-card';
+import { RemindCard } from '@/components/remind-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -126,6 +127,13 @@ export default async function DashboardPage({
         <SettleUpCard
           youOwe={formatMoney(balances.youOwe, userCurrency)}
           unsettledCount={balances.unsettledCount}
+        />
+      )}
+
+      {balances.youAreOwed.gt(0) && (
+        <RemindCard
+          youAreOwed={formatMoney(balances.youAreOwed, userCurrency)}
+          owedCount={balances.owedCount}
         />
       )}
 

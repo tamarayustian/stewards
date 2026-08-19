@@ -5,6 +5,7 @@ export type BalanceSummary = {
   youOwe: Prisma.Decimal;
   youAreOwed: Prisma.Decimal;
   unsettledCount: number;
+  owedCount: number;
 };
 
 export async function getBalances(userId: string): Promise<BalanceSummary> {
@@ -67,7 +68,18 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
     new Prisma.Decimal(0),
   );
 
-  return { youOwe, youAreOwed, unsettledCount };
+  const owedRows = await db.expenseSplit.findMany({
+    where: {
+      settledAt: null,
+      userId: { not: userId },
+      expense: { ...activeExpenseWhere, paidById: userId },
+      amount: { gt: 0 },
+    },
+    select: { userId: true },
+    distinct: ['userId'],
+  });
+
+  return { youOwe, youAreOwed, unsettledCount, owedCount: owedRows.length };
 }
 
 export type ActivityItem = {
