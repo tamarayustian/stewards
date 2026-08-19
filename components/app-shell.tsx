@@ -58,7 +58,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
                 variant="ghost"
                 nativeButton={false}
                 className={`relative w-full justify-start gap-3 ${active ? 'bg-primary/10 text-primary hover:bg-primary/15' : ''}`}
-                render={<Link href={item.href} />}
+                render={<Link href={item.href} aria-current={active ? 'page' : undefined} />}
               >
                 <Icon className={`size-4 ${active ? 'text-primary' : ''}`} />
                 {item.label}
@@ -161,6 +161,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? 'page' : undefined}
                 className={`relative flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-xs ${
                   active ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                 }`}

@@ -53,7 +53,7 @@ typography:
     fontWeight: 500
     lineHeight: 1
   mono:
-    fontFamily: "'Geist Mono', monospace"
+    fontFamily: "'IBM Plex Mono', monospace"
     fontSize: '0.875rem'
 rounded:
   sm: 0.375rem
@@ -163,7 +163,7 @@ A warm earth palette anchored by fired clay, cooled subtly by sage leaf. Neutral
 
 **Display Font:** Fraunces (with system serif fallback) — hero headlines, the wordmark, section headings
 **Body & UI Font:** Karla (with system sans-serif fallback)
-**Mono Font:** Geist Mono (code, amounts, email addresses)
+**Mono Font:** IBM Plex Mono (code, amounts, email addresses)
 
 **Character:** Karla is a warm humanist sans-serif — rounded without being soft, friendly without being casual. It carries the brand's warmth across all UI text. Fraunces is an expressive old-style serif with a soft, idiosyncratic character — a trace of handwriting that makes headlines feel crafted rather than templated. Hierarchy is carried through size, weight, and spacing, with Fraunces reserved for display moments so the switch reads as deliberate emphasis, not font roulette.
 
