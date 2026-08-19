@@ -1,4 +1,4 @@
-import { Pencil, ReceiptText, Users } from 'lucide-react';
+import { MessageCircle, Pencil, ReceiptText, Users } from 'lucide-react';
 import Link from 'next/link';
 
 import { DeleteExpenseButton } from '@/components/delete-expense-button';
@@ -81,6 +81,17 @@ export function ActivityFeed({
                   {!item.isPayer && !item.unsettled && item.hasSettled && (
                     <span className="shrink-0">
                       <MarkUnpaidButton expenseId={item.id} />
+                    </span>
+                  )}
+                  {item.isPayer && item.unsettled && (
+                    <span className="shrink-0">
+                      <Link
+                        href="/activity?view=people"
+                        className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"
+                      >
+                        <MessageCircle className="size-3" />
+                        Remind
+                      </Link>
                     </span>
                   )}
                 </div>
