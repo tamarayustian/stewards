@@ -11,6 +11,7 @@ import { resolveInvitesForEmail } from '@/lib/invites';
 import { createServerClient } from '@/lib/supabase';
 import { type Currency, validateCurrency } from '@/lib/currencies';
 import { fetchExchangeRate } from '@/lib/rates';
+import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 
 async function getCurrentUser() {
@@ -646,5 +647,112 @@ export async function updateCurrency(_prev: unknown, formData: FormData) {
   revalidatePath('/settings');
   revalidatePath('/dashboard');
   revalidatePath('/balances');
+  return { success: true };
+}
+
+export async function updateProfile(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const name = ((formData.get('name') as string) ?? '').trim();
+  const countryCode = formData.get('countryCode') as string;
+  const phoneRaw = formData.get('phone') as string;
+
+  if (!name) {
+    return { error: 'Name is required.' };
+  }
+
+  const phoneResult = validatePhone(countryCode, phoneRaw);
+  if ('error' in phoneResult) {
+    return { error: phoneResult.error };
+  }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { name, phone: phoneResult.fullPhone },
+  });
+
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function updateEmail(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const email = ((formData.get('email') as string) ?? '').trim().toLowerCase();
+  const currentPassword = formData.get('currentPassword') as string;
+
+  if (!email) {
+    return { error: 'Email is required.' };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { error: 'Please enter a valid email address.' };
+  }
+  if (!currentPassword) {
+    return { error: 'Enter your current password to confirm.' };
+  }
+
+  // Verify current password by attempting sign-in
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: currentPassword,
+  });
+  if (signInError) {
+    return { error: 'Incorrect password.' };
+  }
+
+  // Update email in Supabase Auth (sends confirmation link)
+  const { error: updateError } = await supabase.auth.updateUser({ email });
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  // Update email in our DB
+  await db.user.update({
+    where: { id: user.id },
+    data: { email },
+  });
+
+  revalidatePath('/settings');
+  return { success: true };
+}
+
+export async function updatePassword(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const currentPassword = formData.get('currentPassword') as string;
+  const newPassword = formData.get('newPassword') as string;
+
+  if (!currentPassword) {
+    return { error: 'Enter your current password.' };
+  }
+  if (!newPassword || newPassword.length < 6) {
+    return { error: 'New password must be at least 6 characters.' };
+  }
+  if (currentPassword === newPassword) {
+    return { error: 'New password must be different from current password.' };
+  }
+
+  // Verify current password
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: currentPassword,
+  });
+  if (signInError) {
+    return { error: 'Incorrect password.' };
+  }
+
+  // Update password
+  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
   return { success: true };
 }
