@@ -28,7 +28,7 @@ export function SettleUpCard({ youOwe, unsettledCount }: SettleUpCardProps) {
         <form action={settleAll}>
           <Button type="submit" className="w-full sm:w-auto">
             <Check className="size-4" />
-            Mark all paid
+            Mark all as paid
           </Button>
         </form>
       </CardContent>

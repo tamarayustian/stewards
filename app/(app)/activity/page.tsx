@@ -47,7 +47,7 @@ export default async function ActivityPage({
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">Activity</h1>
+            <h1 className="text-lg font-semibold">Expenses</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               Every expense you&apos;re part of, newest first.
             </p>
@@ -55,7 +55,7 @@ export default async function ActivityPage({
           <div className="flex items-center gap-2">
             <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
               <Plus className="size-4" />
-              Add an expense
+              Split an expense
             </Button>
             <ViewToggle current={view} />
           </div>
@@ -85,7 +85,7 @@ export default async function ActivityPage({
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold">Activity</h1>
+            <h1 className="text-lg font-semibold">Expenses</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               What each person owes you and what you owe them.
             </p>
@@ -93,7 +93,7 @@ export default async function ActivityPage({
           <div className="flex items-center gap-2">
             <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
               <Plus className="size-4" />
-              Add an expense
+              Split an expense
             </Button>
             <ViewToggle current={view} />
           </div>

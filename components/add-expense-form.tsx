@@ -408,7 +408,7 @@ export function AddExpenseForm({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ReceiptText className="size-5 text-primary" />
-            {initialExpense ? 'Edit expense' : 'Add an expense'}
+            {initialExpense ? 'Edit expense' : 'Split an expense'}
           </CardTitle>
           <CardDescription>
             {initialExpense
@@ -713,8 +713,8 @@ export function AddExpenseForm({
                   ? 'Saving changes...'
                   : 'Save changes'
                 : pending
-                  ? 'Adding expense...'
-                  : 'Add expense'}
+                  ? 'Splitting...'
+                  : 'Split expense'}
             </Button>
             <Button
               type="button"

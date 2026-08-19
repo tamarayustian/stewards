@@ -56,7 +56,7 @@ export default async function BalanceDetailPage({
         className="gap-1.5"
       >
         <ArrowLeft className="size-4" />
-        Back to balances
+        Back
       </Button>
 
       <div className="flex flex-wrap items-end justify-between gap-4">

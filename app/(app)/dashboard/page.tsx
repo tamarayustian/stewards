@@ -61,7 +61,7 @@ export default async function DashboardPage({
         </div>
         <Button nativeButton={false} render={<Link href="/expenses/new" />}>
           <Plus className="size-4" />
-          Add an expense
+          Split an expense
         </Button>
       </div>
 
@@ -159,7 +159,7 @@ export default async function DashboardPage({
               <div className="flex flex-col items-center gap-2 sm:flex-row">
                 <Button nativeButton={false} render={<Link href="/expenses/new" />}>
                   <Plus className="size-4" />
-                  Add an expense
+                  Split an expense
                 </Button>
                 <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
                   <UserPlus className="size-4" />

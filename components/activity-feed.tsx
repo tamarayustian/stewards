@@ -25,7 +25,7 @@ const tabs: { key: ActivityFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'owe', label: 'You owe' },
   { key: 'owed', label: 'Owed to you' },
-  { key: 'paid', label: 'Paid' },
+  { key: 'paid', label: 'Settled' },
 ];
 
 export function ActivityFeed({
@@ -124,15 +124,15 @@ export function ActivityFeed({
               <Users className="size-6 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium">Nothing here</p>
+              <p className="font-medium">All clear!</p>
               <p className="text-sm text-muted-foreground">
                 {filter === 'all'
-                  ? 'No expenses yet.'
+                  ? 'No expenses yet — split one!'
                   : filter === 'owe'
-                    ? "You don't owe anything right now."
+                    ? "You're all settled up."
                     : filter === 'owed'
-                      ? 'No one owes you right now.'
-                      : 'No settled expenses yet.'}
+                      ? 'No one owes you right now — nice!'
+                      : 'All settled — nothing pending.'}
               </p>
             </div>
           </CardContent>
