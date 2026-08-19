@@ -1,9 +1,11 @@
+import { Plus } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { ActivityFeed } from '@/components/activity-feed';
 import { BalanceList } from '@/components/balance-list';
+import { Button } from '@/components/ui/button';
 import { getPairBalances, getPairDetail, listReminders } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
@@ -50,7 +52,13 @@ export default async function ActivityPage({
               Every expense you&apos;re part of, newest first.
             </p>
           </div>
-          <ViewToggle current={view} />
+          <div className="flex items-center gap-2">
+            <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
+              <Plus className="size-4" />
+              Add an expense
+            </Button>
+            <ViewToggle current={view} />
+          </div>
         </div>
         <ActivityFeed items={activity} filter={filter} basePath="/activity?view=feed" />
       </div>
@@ -76,14 +84,20 @@ export default async function ActivityPage({
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">Activity</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            What each person owes you and what you owe them.
-          </p>
+          <div>
+            <h1 className="text-lg font-semibold">Activity</h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              What each person owes you and what you owe them.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
+              <Plus className="size-4" />
+              Add an expense
+            </Button>
+            <ViewToggle current={view} />
+          </div>
         </div>
-        <ViewToggle current={view} />
-      </div>
       <BalanceList reminders={reminders} rows={rows} userCurrency={userCurrency} />
     </div>
   );

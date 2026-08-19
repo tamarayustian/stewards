@@ -79,12 +79,14 @@ export function AddExpenseForm({
   currentUserId,
   initialExpense,
   homeCurrency = 'HKD',
+  returnTo = '/dashboard',
 }: {
   groups: GroupOption[];
   users: UserOption[];
   currentUserId: string;
   initialExpense?: InitialExpense;
   homeCurrency?: Currency;
+  returnTo?: string;
 }) {
   const [mode, setMode] = useState<Mode>(
     initialExpense
@@ -718,7 +720,7 @@ export function AddExpenseForm({
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push(returnTo)}
             >
               Cancel
             </Button>

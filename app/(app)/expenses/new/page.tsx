@@ -7,7 +7,11 @@ import { createServerClientReadOnly } from '@/lib/supabase';
 import db from '@/lib/db';
 import { type Currency } from '@/lib/currencies';
 
-export default async function AddExpensePage() {
+export default async function AddExpensePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string }>;
+}) {
   const cookieStore = await cookies();
   const supabase = createServerClientReadOnly(cookieStore);
 
@@ -18,6 +22,9 @@ export default async function AddExpensePage() {
   if (!user) {
     redirect('/login');
   }
+
+  const params = await searchParams;
+  const returnTo = params.from || '/dashboard';
 
   const [groups, users] = await Promise.all([listGroups(user.id), listUsersForDirect(user.id)]);
 
@@ -30,6 +37,7 @@ export default async function AddExpensePage() {
       users={users}
       currentUserId={user.id}
       homeCurrency={homeCurrency}
+      returnTo={returnTo}
     />
   );
 }
