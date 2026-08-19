@@ -138,28 +138,6 @@
 }
 
 @layer components {
-  .ledger {
-    font-variant-numeric: tabular-nums;
-  }
-  .ledger-row {
-    border-bottom: 1px solid var(--rule);
-  }
-  .ledger-row > * {
-    padding-block: 0.75rem;
-  }
-  .ledger-mark {
-    font-family: var(--font-heading);
-    font-style: italic;
-    color: var(--accent);
-    font-feature-settings: 'ss01' on;
-  }
-  .ledger-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--walnut);
-  }
 }
 
 @keyframes settle-check {

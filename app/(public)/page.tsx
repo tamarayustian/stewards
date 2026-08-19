@@ -1,178 +1,103 @@
 import Link from 'next/link';
+import { MessageCircle, Bell, Receipt, ArrowRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 
-type Row = {
-  who: string;
-  paid?: number;
-  share?: number;
-  amount: number;
-  detail: string;
-  status: 'settled' | 'owe' | 'owed';
-};
-
-const rows: Row[] = [
-  {
-    who: 'You',
-    paid: 584.32,
-    amount: 584.32,
-    detail: 'paid for sundays',
-    status: 'owed',
-  },
-  {
-    who: 'Alex',
-    share: 194.77,
-    amount: 194.77,
-    detail: 'share of sundays',
-    status: 'owe',
-  },
-  {
-    who: 'Sam',
-    share: 194.77,
-    amount: 194.77,
-    detail: 'share of sundays',
-    status: 'settled',
-  },
-  {
-    who: 'Pip',
-    share: 194.78,
-    amount: 194.78,
-    detail: 'share of sundays',
-    status: 'settled',
-  },
+const balanceRows = [
+  { name: 'Alex', amount: 194.77, status: 'owe' as const },
+  { name: 'Sam', amount: 0, status: 'settled' as const },
+  { name: 'Pip', amount: 0, status: 'settled' as const },
 ];
 
 const fmt = (n: number) =>
   `HK$${n.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function Home() {
-  const totals = rows.reduce(
-    (acc, r) => {
-      acc.paid += r.paid ?? 0;
-      return acc;
-    },
-    { paid: 0 },
-  );
-
-  const alexOwes = rows.find((r) => r.who === 'Alex' && r.status === 'owe')?.amount ?? 0;
-
   return (
     <>
       <section className="mx-auto w-full max-w-5xl px-6 pt-16 pb-10 sm:pt-24 sm:pb-16">
-        <p className="ledger-eyebrow">a household ledger</p>
-        <h1 className="mt-5 font-heading text-[clamp(3rem,9vw,7.5rem)] font-normal leading-[0.95] tracking-[-0.03em] text-balance text-foreground">
-          Split the dinner.
-          <br />
-          <span className="italic text-walnut">Keep the table.</span>
-        </h1>
-        <p className="mt-8 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          A small ledger for the people you share meals with. Log what was paid, set each share,
-          mark it settled when the money moves. Kept by hands, not apps.
-        </p>
-      </section>
-
-      <section className="mx-auto w-full max-w-5xl px-6 pb-20">
-        <div className="border-t border-rule pt-6">
-          <div className="mb-4 flex items-baseline justify-between">
-            <p className="ledger-eyebrow">the table &mdash; sundays</p>
-            <p className="font-mono text-xs text-walnut">
-              {rows.length} people &middot; {fmt(totals.paid)}
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <h1 className="font-heading text-[clamp(2.5rem,6vw,4.5rem)] font-normal leading-[1.05] tracking-[-0.03em] text-balance text-foreground">
+              Split expenses
+              <br />
+              with friends
+              <br />
+              <span className="text-walnut">without the awkward.</span>
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Log what you paid. Send a quick reminder when it&apos;s time to settle up. No
+              spreadsheets, no group-chat guilt trips.
             </p>
+            <div className="mt-8 flex items-center gap-4">
+              <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+                Get started
+                <ArrowRight className="size-4" />
+              </Button>
+              <Button variant="ghost" nativeButton={false} render={<Link href="/login" />}>
+                Sign in
+              </Button>
+            </div>
           </div>
-          <table className="ledger w-full border-collapse">
-            <caption className="sr-only">the table — sundays</caption>
-            <thead>
-              <tr className="border-b border-rule text-left">
-                <th className="ledger-eyebrow w-1/3 pb-2 text-left font-normal">person</th>
-                <th className="ledger-eyebrow pb-2 text-left font-normal">what</th>
-                <th className="ledger-eyebrow pb-2 text-right font-normal">amount</th>
-                <th className="ledger-eyebrow pb-2 text-right font-normal">status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.who} className="ledger-row">
-                  <td data-col="name" className="font-heading text-xl font-normal text-foreground">
-                    {row.who}
-                  </td>
-                  <td data-col="detail" className="text-sm text-muted-foreground">
-                    {row.detail}
-                    {row.paid !== undefined && (
-                      <span className="ml-2 block font-mono text-xs text-walnut sm:inline">
-                        paid {fmt(row.paid)}
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    data-col="amount"
-                    className={
-                      'text-right font-mono text-base ' +
-                      (row.status === 'owe'
-                        ? 'text-destructive'
-                        : row.status === 'owed'
-                          ? 'text-foreground'
-                          : 'text-muted-foreground line-through decoration-1')
-                    }
-                  >
-                    {fmt(row.amount)}
-                  </td>
-                  <td data-col="status" className="text-right">
-                    <StatusMark status={row.status} />
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={4} className="pt-6">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="font-heading text-base italic text-walnut">
-                      Alex owes you {fmt(alexOwes)}.
-                    </p>
-                    <Button size="sm" nativeButton={false} render={<Link href="/register" />}>
-                      <span className="font-mono">+</span>&nbsp;Open the ledger
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+
+          <div className="mx-auto w-full max-w-sm lg:ml-auto">
+            <BalanceCardMockup />
+          </div>
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl border-t border-rule px-6 py-16">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-3 sm:gap-12">
-          <Block
-            n="i."
-            title="Log a row"
-            body="Add the cost, who paid, and the share for each person at the table."
+          <Feature
+            icon={<Receipt className="size-5" />}
+            title="Add what you paid"
+            body="Log a dinner, a trip, a shared taxi. Stewards remembers the details so you don't have to."
           />
-          <Block
-            n="ii."
-            title="Shares set themselves"
-            body="Even or custom — each share lands on the right row, no spreadsheet needed."
+          <Feature
+            icon={<Receipt className="size-5" />}
+            title="Friends see their share"
+            body="Everyone knows what they owe — no 'wait, how much was my part?' texts."
           />
-          <Block
-            n="iii."
-            title="Mark it settled"
-            body="When the money moves, mark it. The ledger stays even and nothing is forgotten."
+          <Feature
+            icon={<Bell className="size-5" />}
+            title="Ping to settle"
+            body="One tap sends a friendly reminder. Via WhatsApp or in-app — whatever's easiest."
+          />
+        </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-5xl border-t border-rule px-6 py-16">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:gap-12">
+          <Differentiator
+            icon={<Bell className="size-5" />}
+            title="Built-in reminders"
+            body="No more 'hey just checking in...' texts. Send a reminder with one tap."
+          />
+          <Differentiator
+            icon={<MessageCircle className="size-5" />}
+            title="WhatsApp ready"
+            body="Send a pre-written reminder straight to WhatsApp. Your friends don't even need the app."
+          />
+          <Differentiator
+            icon={<ArrowRight className="size-5" />}
+            title="No account needed to settle"
+            body="Friends can pay you back without signing up first. Zero friction."
           />
         </div>
       </section>
 
       <section className="mx-auto w-full max-w-5xl border-t border-rule px-6 py-16 text-center">
-        <p className="ledger-eyebrow">the table is set</p>
-        <h2 className="mt-4 font-heading text-3xl font-normal italic text-walnut sm:text-4xl">
-          Invite your people.
+        <h2 className="font-heading text-3xl font-normal italic text-walnut sm:text-4xl">
+          No more chasing payments.
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Free, faithful, and quieter than the group chat.
+          Split expenses. Send reminders. Get paid back.
         </p>
         <div className="mt-8 flex items-center justify-center gap-6">
-          <Link
-            href="/register"
-            className="font-heading text-lg text-primary underline underline-offset-4 hover:text-primary/80"
-          >
-            Open the ledger &rarr;
-          </Link>
+          <Button size="lg" nativeButton={false} render={<Link href="/register" />}>
+            Start splitting
+            <ArrowRight className="size-4" />
+          </Button>
           <Link
             href="/login"
             className="font-mono text-sm uppercase tracking-widest text-walnut hover:text-foreground"
@@ -185,23 +110,83 @@ export default function Home() {
   );
 }
 
-function StatusMark({ status }: { status: Row['status'] }) {
-  if (status === 'settled') {
-    return <span className="ledger-mark">✓ settled</span>;
-  }
-  if (status === 'owe') {
-    return (
-      <span className="font-mono text-xs uppercase tracking-widest text-destructive">owes</span>
-    );
-  }
-  return <span className="font-mono text-xs uppercase tracking-widest text-walnut">paid</span>;
+function BalanceCardMockup() {
+  const alexRow = balanceRows.find((r) => r.name === 'Alex')!;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-baseline justify-between">
+        <p className="font-heading text-base font-normal text-foreground">The table — sundays</p>
+        <p className="font-mono text-xs text-muted-foreground">4 people</p>
+      </div>
+
+      <div className="mt-4 space-y-0">
+        {balanceRows.map((row) => (
+          <div
+            key={row.name}
+            className="flex items-center justify-between border-b border-rule py-3 last:border-b-0"
+          >
+            <span className="font-heading text-base font-normal text-foreground">{row.name}</span>
+            <div className="flex items-center gap-3">
+              {row.status === 'owe' ? (
+                <span className="font-mono text-sm font-medium text-destructive">
+                  owes {fmt(row.amount)}
+                </span>
+              ) : (
+                <span className="font-mono text-sm text-muted-foreground line-through">
+                  settled
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 rounded-lg bg-secondary p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-heading text-sm font-normal text-foreground">
+              Alex owes you {fmt(alexRow.amount)}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Sundays dinner</p>
+          </div>
+          <Button size="sm" className="gap-1.5">
+            <MessageCircle className="size-3.5" />
+            Ping
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function Block({ n, title, body }: { n: string; title: string; body: string }) {
+function Feature({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
     <div>
-      <p className="ledger-mark text-2xl">{n}</p>
-      <h3 className="mt-3 font-heading text-xl font-normal text-foreground">{title}</h3>
+      <div className="flex size-9 items-center justify-center rounded-lg bg-secondary text-walnut">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-heading text-lg font-normal text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+    </div>
+  );
+}
+
+function Differentiator({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex size-9 items-center justify-center rounded-lg bg-secondary text-walnut">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-heading text-base font-normal text-foreground">{title}</h3>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
     </div>
   );
