@@ -3,6 +3,8 @@ import { LogOut, Settings, UserPlus } from 'lucide-react';
 import { signout } from '@/app/auth/actions';
 import { InviteFriend } from '@/components/invite-friend';
 import { CurrencyCard } from '@/components/currency-card';
+import { ProfileCard } from '@/components/profile-card';
+import { AccountCard } from '@/components/account-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Currency } from '@/lib/currencies';
@@ -19,7 +21,10 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
+  const profile = await db.user.findUnique({
+    where: { id: user.id },
+    select: { name: true, email: true, phone: true, currency: true },
+  });
   const currentCurrency = (profile?.currency ?? 'HKD') as Currency;
 
   return (
@@ -32,6 +37,10 @@ export default async function SettingsPage() {
           <h1 className="text-xl font-semibold">Settings</h1>
         </div>
       </div>
+
+      <ProfileCard name={profile?.name ?? ''} phone={profile?.phone ?? null} />
+
+      <AccountCard email={profile?.email ?? null} />
 
       <CurrencyCard currentCurrency={currentCurrency} />
 
