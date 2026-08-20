@@ -13,6 +13,7 @@ import { type Currency, validateCurrency } from '@/lib/currencies';
 import { fetchExchangeRate } from '@/lib/rates';
 import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
+import { EMAIL_RE } from '@/lib/auth-validation';
 
 async function getCurrentUser() {
   const cookieStore = await cookies();
@@ -673,6 +674,7 @@ export async function updateProfile(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath('/settings');
+  revalidatePath('/dashboard');
   return { success: true };
 }
 
@@ -686,7 +688,7 @@ export async function updateEmail(_prev: unknown, formData: FormData) {
   if (!email) {
     return { error: 'Email is required.' };
   }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!EMAIL_RE.test(email)) {
     return { error: 'Please enter a valid email address.' };
   }
   if (!currentPassword) {
@@ -710,6 +712,9 @@ export async function updateEmail(_prev: unknown, formData: FormData) {
     return { error: updateError.message };
   }
 
+  // TODO: DB update races with Supabase confirmation flow — if user never confirms,
+  // Supabase Auth keeps the old email while our DB has the new one. Acceptable for
+  // MVP; revisit with a confirmation callback route before launch.
   // Update email in our DB
   await db.user.update({
     where: { id: user.id },

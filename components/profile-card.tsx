@@ -64,6 +64,7 @@ export function ProfileCard({ name, phone }: { name: string; phone: string | nul
                 id="countryCode"
                 name="countryCode"
                 defaultValue={defaultCountry}
+                aria-label="Country code"
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
               >
                 {COUNTRIES.map((c) => (
