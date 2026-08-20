@@ -65,10 +65,7 @@ export default async function ActivityPage({
     );
   }
 
-  const [pairs, reminders] = await Promise.all([
-    getPairBalances(user.id),
-    listReminders(user.id),
-  ]);
+  const [pairs, reminders] = await Promise.all([getPairBalances(user.id), listReminders(user.id)]);
 
   const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
   const userCurrency = (profile?.currency ?? 'HKD') as Currency;
@@ -84,20 +81,20 @@ export default async function ActivityPage({
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">Expenses</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              What each person owes you and what you owe them.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
-              <Plus className="size-4" />
-              Split an expense
-            </Button>
-            <ViewToggle current={view} />
-          </div>
+        <div>
+          <h1 className="text-lg font-semibold">Expenses</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            What each person owes you and what you owe them.
+          </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button nativeButton={false} render={<Link href="/expenses/new?from=/activity" />}>
+            <Plus className="size-4" />
+            Split an expense
+          </Button>
+          <ViewToggle current={view} />
+        </div>
+      </div>
       <BalanceList reminders={reminders} rows={rows} userCurrency={userCurrency} />
     </div>
   );

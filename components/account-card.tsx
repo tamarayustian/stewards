@@ -37,16 +37,12 @@ export function AccountCard({ email }: { email: string | null }) {
                 required
                 autoComplete="current-password"
               />
-              <p className="text-xs text-muted-foreground">
-                Required to confirm this change.
-              </p>
+              <p className="text-xs text-muted-foreground">Required to confirm this change.</p>
             </div>
 
             {emailState?.error && <p className="text-xs text-destructive">{emailState.error}</p>}
             {emailState?.success && (
-              <p className="text-xs text-accent">
-                Confirmation link sent. Check your inbox.
-              </p>
+              <p className="text-xs text-accent">Confirmation link sent. Check your inbox.</p>
             )}
 
             <Button type="submit" size="sm" disabled={emailPending}>

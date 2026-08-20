@@ -9,13 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export function ProfileCard({
-  name,
-  phone,
-}: {
-  name: string;
-  phone: string | null;
-}) {
+export function ProfileCard({ name, phone }: { name: string; phone: string | null }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
 
   // Parse existing phone into country code + number for display

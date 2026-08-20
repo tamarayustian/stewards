@@ -91,11 +91,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               <div className="flex flex-col gap-1">
                 <p className="truncate px-2 py-1 text-sm font-medium">{userName}</p>
                 <form action={signout}>
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    className="w-full justify-start gap-2"
-                  >
+                  <Button type="submit" variant="ghost" className="w-full justify-start gap-2">
                     <LogOut className="size-4" />
                     Sign out
                   </Button>
@@ -136,11 +132,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               </DrawerHeader>
               <div className="p-4 pt-2">
                 <form action={signout}>
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    className="w-full justify-start gap-2"
-                  >
+                  <Button type="submit" variant="ghost" className="w-full justify-start gap-2">
                     <LogOut className="size-4" />
                     Sign out
                   </Button>
