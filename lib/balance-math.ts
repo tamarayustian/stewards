@@ -143,6 +143,12 @@ export function formatDay(date: Date) {
   return dayFormatter.format(date);
 }
 
+function formatRate(rate: number): string {
+  if (rate < 0.01) return rate.toFixed(4);
+  if (rate < 1) return rate.toFixed(3);
+  return rate.toFixed(2);
+}
+
 export function buildWhatsAppDraft(
   name: string,
   items: PairItem[],
@@ -152,10 +158,15 @@ export function buildWhatsAppDraft(
   const owedToMe = items.filter((item) => item.direction === 'theyOweMe');
   const total = owedToMe.reduce((sum, item) => sum + item.convertedAmount, 0);
   const count = owedToMe.length;
-  const lines = owedToMe.map(
-    (item) =>
-      `${formatDay(item.date)} · ${item.note ?? 'Expense'} · ${formatMoney(item.theirShare, item.currency)}`,
-  );
+  const lines = owedToMe.map((item) => {
+    const original = formatMoney(item.theirShare, item.currency);
+    if (item.currency === viewerCurrency) {
+      return `${formatDay(item.date)} · ${item.note ?? 'Expense'} · ${original}`;
+    }
+    const rate = item.convertedAmount / item.theirShare;
+    const converted = formatMoney(item.convertedAmount, viewerCurrency);
+    return `${formatDay(item.date)} · ${item.note ?? 'Expense'} · ${original} ≈ ${converted} (rate ${formatRate(rate)})`;
+  });
   return [
     `${name} — you owe me ${formatMoney(total, viewerCurrency)} across ${count} ${count === 1 ? 'expense' : 'expenses'}`,
     ...lines,
