@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import { AddPhoneForm } from '@/components/add-phone-form';
+import { CopyMessageButton } from '@/components/copy-message-button';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
 import { RemindButton } from '@/components/remind-button';
 import { WhatsAppButton } from '@/components/whatsapp-button';
@@ -94,8 +95,15 @@ export function BalanceList({
                         viewerCurrency={userCurrency}
                       />
                     )}
-                    {pair.amountOwedToMe.gt(0) && !counterparty.phone && (
-                      <AddPhoneForm userId={counterparty.id} />
+                    {pair.amountOwedToMe.gt(0) && !counterparty.phone && detail && (
+                      <>
+                        <CopyMessageButton
+                          name={counterparty.name}
+                          items={detail.items}
+                          viewerCurrency={userCurrency}
+                        />
+                        <AddPhoneForm userId={counterparty.id} />
+                      </>
                     )}
                     <Button
                       nativeButton={false}

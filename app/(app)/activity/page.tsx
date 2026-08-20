@@ -72,8 +72,8 @@ export default async function ActivityPage({
 
   const rows = await Promise.all(
     pairs.map(async (pair) => {
-      const canWhatsApp = Boolean(pair.counterparty.phone) && pair.amountOwedToMe.gt(0);
-      const detail = canWhatsApp ? await getPairDetail(user.id, pair.counterparty.id) : null;
+      const canMessage = pair.amountOwedToMe.gt(0);
+      const detail = canMessage ? await getPairDetail(user.id, pair.counterparty.id) : null;
       return { pair, detail };
     }),
   );
