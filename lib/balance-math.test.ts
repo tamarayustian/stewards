@@ -25,6 +25,7 @@ const ghost: Counterparty = { id: 'u3', name: 'Ghost', phone: null, isRegistered
 function share(partial: Partial<ShareRow> & Pick<ShareRow, 'splitAmount'>): ShareRow {
   return {
     splitId: 's1',
+    expenseId: 'e1',
     date: new Date('2026-08-16T12:00:00Z'),
     note: 'Dinner',
     amount: dec('100.00'),
@@ -112,6 +113,7 @@ describe('buildWhatsAppDraft', () => {
   const items: PairItem[] = [
     {
       id: 's1',
+      expenseId: 'e1',
       date: new Date('2026-08-16T12:00:00Z'),
       note: 'Dinner',
       amount: 100,
@@ -123,6 +125,7 @@ describe('buildWhatsAppDraft', () => {
     },
     {
       id: 's2',
+      expenseId: 'e2',
       date: new Date('2026-08-18T12:00:00Z'),
       note: null,
       amount: 60,
@@ -148,6 +151,7 @@ describe('buildWhatsAppDraft', () => {
       ...items,
       {
         id: 's3',
+        expenseId: 'e3',
         date: new Date('2026-08-17T12:00:00Z'),
         note: 'Lunch',
         amount: 50,

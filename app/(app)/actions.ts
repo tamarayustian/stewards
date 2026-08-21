@@ -261,19 +261,34 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      paidById: { not: user.id },
-      splits: { some: { userId: user.id, settledAt: null, amount: { gt: 0 } } },
-      OR: [{ groupId: null }, { group: { deletedAt: null } }],
+      OR: [
+        // Borrower can settle their own split (they paid the payer)
+        {
+          paidById: { not: user.id },
+          splits: { some: { userId: user.id, settledAt: null, amount: { gt: 0 } } },
+        },
+        // Payer can settle a borrower's split (they received payment)
+        {
+          paidById: user.id,
+          splits: { some: { userId: { not: user.id }, settledAt: null, amount: { gt: 0 } } },
+        },
+      ],
+      AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true },
+    select: { groupId: true, paidById: true },
   });
 
   if (!expense) {
     return { error: 'Nothing to settle on this expense.' };
   }
 
+  // Determine which split to settle: borrower settles their own, payer settles the other's
+  const splitUserId = expense.paidById === user.id
+    ? (formData.get('splitUserId') as string) || user.id
+    : user.id;
+
   await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: user.id } },
+    where: { expenseId_userId: { expenseId, userId: splitUserId } },
     data: { settledAt: new Date() },
   });
 
@@ -296,17 +311,33 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      paidById: { not: user.id },
-      splits: { some: { userId: user.id, settledAt: { not: null }, amount: { gt: 0 } } },
-      OR: [{ groupId: null }, { group: { deletedAt: null } }],
+      OR: [
+        // Borrower can un-settle their own split
+        {
+          paidById: { not: user.id },
+          splits: { some: { userId: user.id, settledAt: { not: null }, amount: { gt: 0 } } },
+        },
+        // Payer can un-settle a borrower's split
+        {
+          paidById: user.id,
+          splits: { some: { userId: { not: user.id }, settledAt: { not: null }, amount: { gt: 0 } } },
+        },
+      ],
+      AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true },
+    select: { groupId: true, paidById: true },
   });
   if (!expense) {
     return { error: 'Nothing to un-settle on this expense.' };
   }
+
+  // Determine which split to un-settle: borrower un-settles their own, payer un-settles the other's
+  const splitUserId = expense.paidById === user.id
+    ? (formData.get('splitUserId') as string) || user.id
+    : user.id;
+
   await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: user.id } },
+    where: { expenseId_userId: { expenseId, userId: splitUserId } },
     data: { settledAt: null },
   });
   revalidatePath('/dashboard');

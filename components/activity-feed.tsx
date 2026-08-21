@@ -2,7 +2,7 @@ import { MessageCircle, Pencil, ReceiptText, Users } from 'lucide-react';
 import Link from 'next/link';
 
 import { DeleteExpenseButton } from '@/components/delete-expense-button';
-import { MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expense-button';
+import { MarkReceivedButton, MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
@@ -102,7 +102,10 @@ export function ActivityFeed({
                 {!item.isPayer && !item.unsettled && item.hasSettled && (
                   <MarkUnpaidButton expenseId={item.id} />
                 )}
-                {item.isPayer && item.unsettled && (
+                {item.isPayer && item.unsettled && item.borrowerId && (
+                  <MarkReceivedButton expenseId={item.id} splitUserId={item.borrowerId} />
+                )}
+                {item.isPayer && item.unsettled && !item.borrowerId && (
                   <Link
                     href="/people"
                     className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"

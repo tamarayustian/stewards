@@ -95,6 +95,7 @@ export type ActivityItem = {
   hasSettled: boolean;
   myShare: Prisma.Decimal;
   participantCount: number;
+  borrowerId: string | null;
 };
 
 export type ActivityFilter = 'all' | 'owe' | 'owed' | 'paid';
@@ -142,8 +143,7 @@ export async function getActivity(
       paidBy: { select: { name: true } },
       group: { select: { name: true } },
       splits: {
-        where: { userId },
-        select: { settledAt: true, amount: true },
+        select: { settledAt: true, amount: true, userId: true },
       },
       _count: { select: { splits: true } },
     },
@@ -152,8 +152,12 @@ export async function getActivity(
   });
 
   return expenses.map((e) => {
-    const mySplit = e.splits[0];
+    const mySplit = e.splits.find((s) => s.userId === userId);
     const unsettled = !mySplit?.settledAt;
+    const unsettledBorrowers = e.splits.filter(
+      (s) => s.userId !== userId && s.settledAt === null && s.amount.gt(0),
+    );
+    const borrowerId = unsettledBorrowers.length === 1 ? unsettledBorrowers[0].userId : null;
     return {
       id: e.id,
       amount: e.amount,
@@ -167,6 +171,7 @@ export async function getActivity(
       hasSettled: mySplit !== undefined,
       myShare: mySplit?.amount ?? new Prisma.Decimal(0),
       participantCount: e._count.splits,
+      borrowerId,
     };
   });
 }

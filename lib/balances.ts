@@ -31,7 +31,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
         amount: true,
         userId: true,
         expense: {
-          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
         },
         user: { select: { name: true, phone: true, isRegistered: true } },
       },
@@ -47,6 +47,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
         amount: true,
         expense: {
           select: {
+            id: true,
             createdAt: true,
             note: true,
             amount: true,
@@ -65,6 +66,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
     const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
     return {
       splitId: split.id,
+      expenseId: split.expense.id,
       date: split.expense.createdAt,
       note: split.expense.note,
       amount: split.expense.amount,
@@ -85,6 +87,7 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
     const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
     return {
       splitId: split.id,
+      expenseId: split.expense.id,
       date: split.expense.createdAt,
       note: split.expense.note,
       amount: split.expense.amount,
@@ -123,7 +126,7 @@ export async function getPairDetail(
         id: true,
         amount: true,
         expense: {
-          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
         },
       },
     }),
@@ -137,7 +140,7 @@ export async function getPairDetail(
         id: true,
         amount: true,
         expense: {
-          select: { createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
         },
       },
     }),
@@ -157,6 +160,7 @@ export async function getPairDetail(
     const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
     return {
       splitId: split.id,
+      expenseId: split.expense.id,
       date: split.expense.createdAt,
       note: split.expense.note,
       amount: split.expense.amount,
@@ -172,6 +176,7 @@ export async function getPairDetail(
     const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
     return {
       splitId: split.id,
+      expenseId: split.expense.id,
       date: split.expense.createdAt,
       note: split.expense.note,
       amount: split.expense.amount,

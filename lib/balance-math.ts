@@ -14,6 +14,7 @@ export interface Counterparty {
 
 export interface ShareRow {
   splitId: string;
+  expenseId: string;
   date: Date;
   note: string | null;
   amount: Prisma.Decimal;
@@ -34,6 +35,7 @@ export interface PairSummary {
 
 export interface PairItem {
   id: string;
+  expenseId: string;
   date: Date;
   note: string | null;
   amount: number;
@@ -97,6 +99,7 @@ export function buildPairDetail(
   const items: PairItem[] = [
     ...owedToMe.map((row) => ({
       id: row.splitId,
+      expenseId: row.expenseId,
       date: row.date,
       note: row.note,
       amount: Number(row.amount),
@@ -108,6 +111,7 @@ export function buildPairDetail(
     })),
     ...iOwe.map((row) => ({
       id: row.splitId,
+      expenseId: row.expenseId,
       date: row.date,
       note: row.note,
       amount: Number(row.amount),

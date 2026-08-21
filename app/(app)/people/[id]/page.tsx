@@ -10,6 +10,7 @@ import { CopyMessageButton } from '@/components/copy-message-button';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
 import { RemindButton } from '@/components/remind-button';
+import { MarkReceivedButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { WhatsAppButton } from '@/components/whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { getPairDetail, listReminders } from '@/lib/balances';
@@ -214,11 +215,18 @@ export default async function PersonDetailPage({
                     · {item.direction === 'theyOweMe' ? 'You paid' : 'They paid'}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-medium">
-                  {item.direction === 'theyOweMe'
-                    ? formatMoney(item.theirShare, item.currency)
-                    : formatMoney(item.myShare, item.currency)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="shrink-0 text-sm font-medium">
+                    {item.direction === 'theyOweMe'
+                      ? formatMoney(item.theirShare, item.currency)
+                      : formatMoney(item.myShare, item.currency)}
+                  </p>
+                  {item.direction === 'theyOweMe' ? (
+                    <MarkReceivedButton expenseId={item.expenseId} splitUserId={counterparty.id} />
+                  ) : (
+                    <SettleExpenseButton expenseId={item.expenseId} />
+                  )}
+                </div>
               </li>
             ))
           )}
