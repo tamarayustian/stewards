@@ -142,10 +142,10 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
           </Drawer>
         </header>
 
-        <main className="flex flex-1 flex-col overflow-y-auto">{children}</main>
+        <main className="flex flex-1 flex-col overflow-y-auto pb-16 md:pb-0">{children}</main>
 
         {/* Mobile bottom tab bar */}
-        <nav className="flex items-center justify-around border-t border-border bg-background py-1 pb-[env(safe-area-inset-bottom)] md:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-background py-1 pb-[env(safe-area-inset-bottom)] md:hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
