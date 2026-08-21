@@ -578,10 +578,10 @@ export async function sendReminder(_prev: unknown, formData: FormData) {
   return {};
 }
 
-// Revalidates both the list page and the dynamic pair pages (pattern match revalidates all).
-async function revalidateBalances() {
+// Revalidates both the list page and the dynamic person pages (pattern match revalidates all).
+async function revalidatePeople() {
   revalidatePath('/people');
-  revalidatePath('/people/[userId]');
+  revalidatePath('/people/[id]');
 }
 
 export async function markRemindersRead(_prev: unknown, formData: FormData) {
@@ -601,7 +601,7 @@ export async function markRemindersRead(_prev: unknown, formData: FormData) {
     data: { readAt: new Date() },
   });
 
-  await revalidateBalances();
+  await revalidatePeople();
   return {};
 }
 
@@ -631,7 +631,7 @@ export async function updateContactPhone(_prev: unknown, formData: FormData) {
   }
 
   await db.user.update({ where: { id: userId }, data: { phone } });
-  await revalidateBalances();
+  await revalidatePeople();
   return {};
 }
 
@@ -758,6 +758,70 @@ export async function updatePassword(_prev: unknown, formData: FormData) {
   if (updateError) {
     return { error: updateError.message };
   }
+
+  return { success: true };
+}
+
+const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_IMAGES = 3;
+
+export async function submitFeedback(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  const type = formData.get('type') as string;
+  const message = (formData.get('message') as string)?.trim();
+  const email = (formData.get('email') as string)?.trim() || null;
+
+  if (!type || !['bug', 'feature', 'feedback'].includes(type)) {
+    return { error: 'Please select a feedback type.' };
+  }
+  if (!message) {
+    return { error: 'Please enter a message.' };
+  }
+
+  const imageFiles: File[] = [];
+  for (let i = 0; i < MAX_IMAGES; i++) {
+    const file = formData.get(`image_${i}`) as File | null;
+    if (file && file.size > 0) {
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        return { error: `Invalid file type: ${file.name}. Only PNG, JPG, and WebP are allowed.` };
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        return { error: `${file.name} exceeds 5MB limit.` };
+      }
+      imageFiles.push(file);
+    }
+  }
+
+  const cookieStore = await cookies();
+  const supabase = createServerClient(cookieStore);
+
+  const imageUrls: string[] = [];
+  for (const file of imageFiles) {
+    const ext = file.name.split('.').pop() ?? 'png';
+    const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from('feedback-images')
+      .upload(path, buffer, { contentType: file.type });
+    if (uploadError) {
+      return { error: `Failed to upload ${file.name}: ${uploadError.message}` };
+    }
+    const { data: urlData } = supabase.storage.from('feedback-images').getPublicUrl(path);
+    imageUrls.push(urlData.publicUrl);
+  }
+
+  await db.feedback.create({
+    data: {
+      userId: user.id,
+      type,
+      message,
+      email,
+      images: imageUrls,
+    },
+  });
 
   return { success: true };
 }
