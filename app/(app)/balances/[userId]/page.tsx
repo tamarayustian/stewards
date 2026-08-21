@@ -53,7 +53,7 @@ export default async function BalanceDetailPage({
         variant="ghost"
         size="sm"
         nativeButton={false}
-        render={<Link href="/balances" />}
+        render={<Link href="/activity?view=people" />}
         className="gap-1.5"
       >
         <ArrowLeft className="size-4" />

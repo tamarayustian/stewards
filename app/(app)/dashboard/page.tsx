@@ -142,7 +142,7 @@ export default async function DashboardPage({
           <h2 className="text-base font-semibold">Recent activity</h2>
           <Button
             nativeButton={false}
-            render={<Link href="/expenses" />}
+            render={<Link href="/activity?view=feed" />}
             variant="ghost"
             size="sm"
             className="text-primary"
