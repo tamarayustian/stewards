@@ -58,73 +58,72 @@ export function ActivityFeed({
       {items.length > 0 ? (
         <div className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-              <div
-                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
-                  item.isPayer ? 'bg-primary/10' : 'bg-muted'
-                }`}
-              >
-                <ReceiptText
-                  className={`size-4 ${item.isPayer ? 'text-primary' : 'text-muted-foreground'}`}
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2">
+            <div
+              key={item.id}
+              className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:gap-3"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${
+                    item.isPayer ? 'bg-primary/10' : 'bg-muted'
+                  }`}
+                >
+                  <ReceiptText
+                    className={`size-4 ${item.isPayer ? 'text-primary' : 'text-muted-foreground'}`}
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
                   <p className="min-w-0 truncate text-sm font-medium">
                     {item.note ?? item.context}
                   </p>
-                  {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
-                    <span className="shrink-0">
-                      <SettleExpenseButton expenseId={item.id} />
-                    </span>
-                  )}
-                  {!item.isPayer && !item.unsettled && item.hasSettled && (
-                    <span className="shrink-0">
-                      <MarkUnpaidButton expenseId={item.id} />
-                    </span>
-                  )}
-                  {item.isPayer && item.unsettled && (
-                    <span className="shrink-0">
-                      <Link
-                        href="/activity?view=people"
-                        className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"
-                      >
-                        <MessageCircle className="size-3" />
-                        Remind
-                      </Link>
-                    </span>
-                  )}
+                  <p className="truncate text-xs text-muted-foreground">
+                    {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
+                    {timeAgo(item.createdAt)}
+                  </p>
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
-                  {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
-                  {timeAgo(item.createdAt)}
-                </p>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold">
+                    {formatMoney(
+                      item.isPayer ? item.amount : item.myShare,
+                      item.currency as Currency,
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.isPayer
+                      ? `split ${item.participantCount} ${item.participantCount === 1 ? 'way' : 'ways'}`
+                      : `share of ${formatMoney(item.amount, item.currency as Currency)}`}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold">
-                  {formatMoney(
-                    item.isPayer ? item.amount : item.myShare,
-                    item.currency as Currency,
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {item.isPayer
-                    ? `split ${item.participantCount} ${item.participantCount === 1 ? 'way' : 'ways'}`
-                    : `share of ${formatMoney(item.amount, item.currency as Currency)}`}
-                </p>
+              <div className="flex items-center gap-2 pl-12 sm:pl-0">
+                {!item.isPayer && item.unsettled && item.myShare.gt(0) && (
+                  <SettleExpenseButton expenseId={item.id} />
+                )}
+                {!item.isPayer && !item.unsettled && item.hasSettled && (
+                  <MarkUnpaidButton expenseId={item.id} />
+                )}
+                {item.isPayer && item.unsettled && (
+                  <Link
+                    href="/activity?view=people"
+                    className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"
+                  >
+                    <MessageCircle className="size-3" />
+                    Remind
+                  </Link>
+                )}
+                <Button
+                  nativeButton={false}
+                  render={<Link href={`/expenses/${item.id}/edit`} />}
+                  variant="outline"
+                  size="icon"
+                  className="relative size-7 after:absolute after:-inset-1 after:content-['']"
+                  title="Edit expense"
+                  aria-label="Edit expense"
+                >
+                  <Pencil className="size-3.5" />
+                </Button>
+                <DeleteExpenseButton expenseId={item.id} />
               </div>
-              <Button
-                nativeButton={false}
-                render={<Link href={`/expenses/${item.id}/edit`} />}
-                variant="outline"
-                size="icon"
-                className="relative size-7 after:absolute after:-inset-1 after:content-['']"
-                title="Edit expense"
-                aria-label="Edit expense"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <DeleteExpenseButton expenseId={item.id} />
             </div>
           ))}
         </div>

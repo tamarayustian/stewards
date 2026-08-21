@@ -103,7 +103,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
       </aside>
 
       {/* Content area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile header */}
         <header className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
           <div className="flex items-center gap-2">
