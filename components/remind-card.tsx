@@ -25,7 +25,7 @@ export function RemindCard({ youAreOwed, owedCount }: RemindCardProps) {
             </p>
           </div>
         </div>
-        <Button nativeButton={false} render={<Link href="/activity?view=people" />}>
+        <Button nativeButton={false} render={<Link href="/people" />}>
           <MessageCircle className="size-4" />
           Remind friends
         </Button>

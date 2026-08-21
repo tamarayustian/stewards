@@ -38,7 +38,7 @@ export default async function BalanceDetailPage({
   ]);
 
   if (!detail) {
-    redirect('/balances');
+    redirect('/people');
   }
 
   const profile = await db.user.findUnique({ where: { id: user.id }, select: { currency: true } });
@@ -53,7 +53,7 @@ export default async function BalanceDetailPage({
         variant="ghost"
         size="sm"
         nativeButton={false}
-        render={<Link href="/activity?view=people" />}
+        render={<Link href="/people" />}
         className="gap-1.5"
       >
         <ArrowLeft className="size-4" />

@@ -35,20 +35,20 @@ export default async function GroupDetailPage({
     getActivity(user.id, activeFilter, 50, groupId),
   ]);
 
-  if (!group) redirect('/groups');
+  if (!group) redirect('/people');
 
   return (
     <div className="space-y-6 p-6">
       <div>
         <Button
           nativeButton={false}
-          render={<Link href="/groups" />}
+          render={<Link href="/people" />}
           variant="ghost"
           size="sm"
           className="text-muted-foreground"
         >
           <ArrowLeft className="size-4" />
-          Back to groups
+          Back to people
         </Button>
         <h1 className="mt-2 text-2xl font-semibold">{group.name}</h1>
         {group.description && (
@@ -108,7 +108,7 @@ export default async function GroupDetailPage({
       <section>
         <h2 className="text-base font-semibold">Expenses</h2>
         <div className="mt-3">
-          <ActivityFeed items={activity} filter={activeFilter} basePath={`/groups/${group.id}`} />
+          <ActivityFeed items={activity} filter={activeFilter} basePath={`/people/${group.id}`} />
         </div>
       </section>
     </div>

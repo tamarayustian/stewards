@@ -104,7 +104,7 @@ export function ActivityFeed({
                 )}
                 {item.isPayer && item.unsettled && (
                   <Link
-                    href="/activity?view=people"
+                    href="/people"
                     className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20"
                   >
                     <MessageCircle className="size-3" />

@@ -139,7 +139,7 @@ describe('buildWhatsAppDraft', () => {
     const lines = draft.split('\n');
     expect(lines[0]).toBe('Tamara — you owe me HK$100.00 across 1 expense');
     expect(lines[1]).toContain('Dinner');
-    expect(lines[2]).toBe('Settle up in Stewards: http://localhost:3000/balances');
+    expect(lines[2]).toBe('Settle up in Stewards: http://localhost:3000/people');
     expect(draft).not.toContain('60.00');
   });
 

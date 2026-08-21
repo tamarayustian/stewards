@@ -18,8 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/activity', label: 'Expenses', icon: ReceiptText },
-  { href: '/groups', label: 'Groups', icon: Users },
+  { href: '/expenses', label: 'Expenses', icon: ReceiptText },
+  { href: '/people', label: 'People', icon: Users },
   { href: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -49,7 +49,7 @@ export function BalanceList({
                     nativeButton={false}
                     variant="ghost"
                     size="sm"
-                    render={<Link href={`/balances/${reminder.fromId}`} />}
+                    render={<Link href={`/people/${reminder.fromId}`} />}
                   >
                     View breakdown
                   </Button>
@@ -109,7 +109,7 @@ export function BalanceList({
                       nativeButton={false}
                       variant="ghost"
                       size="sm"
-                      render={<Link href={`/balances/${counterparty.id}`} />}
+                      render={<Link href={`/people/${counterparty.id}`} />}
                     >
                       Details
                     </Button>

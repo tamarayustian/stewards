@@ -137,9 +137,9 @@ export async function createExpense(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   if (groupId) {
-    revalidatePath(`/groups/${groupId}`);
+    revalidatePath(`/people/${groupId}`);
   }
 
   redirect('/dashboard');
@@ -210,7 +210,7 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
     data: { deletedAt: new Date() },
   });
 
-  revalidatePath('/groups');
+  revalidatePath('/people');
   revalidatePath('/dashboard');
 }
 
@@ -241,9 +241,9 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   if (expense.groupId) {
-    revalidatePath(`/groups/${expense.groupId}`);
+    revalidatePath(`/people/${expense.groupId}`);
   }
 }
 
@@ -278,10 +278,10 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   revalidatePath('/expenses');
   if (expense.groupId) {
-    revalidatePath(`/groups/${expense.groupId}`);
+    revalidatePath(`/people/${expense.groupId}`);
   }
 }
 
@@ -310,10 +310,10 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     data: { settledAt: null },
   });
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   revalidatePath('/expenses');
   if (expense.groupId) {
-    revalidatePath(`/groups/${expense.groupId}`);
+    revalidatePath(`/people/${expense.groupId}`);
   }
 }
 
@@ -339,7 +339,7 @@ export async function settleAll() {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   revalidatePath('/expenses');
 }
 
@@ -423,9 +423,9 @@ export async function editExpense(_prev: unknown, formData: FormData) {
   });
 
   revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath('/people');
   if (expense.groupId) {
-    revalidatePath(`/groups/${expense.groupId}`);
+    revalidatePath(`/people/${expense.groupId}`);
   }
 
   redirect('/dashboard');
@@ -450,8 +450,8 @@ export async function createGroup(_prev: unknown, formData: FormData) {
     },
   });
 
-  revalidatePath('/groups');
-  redirect(`/groups/${group.id}`);
+  revalidatePath('/people');
+  redirect(`/people/${group.id}`);
 }
 
 export async function inviteToGroup(_prev: unknown, formData: FormData) {
@@ -501,8 +501,8 @@ export async function inviteToGroup(_prev: unknown, formData: FormData) {
 
   await resolveInvitesForEmail(email);
 
-  revalidatePath('/groups');
-  revalidatePath(`/groups/${groupId}`);
+  revalidatePath('/people');
+  revalidatePath(`/people/${groupId}`);
 }
 
 export async function cancelInvite(_prev: unknown, formData: FormData) {
@@ -529,7 +529,7 @@ export async function cancelInvite(_prev: unknown, formData: FormData) {
     return { error: 'Invite not found.' };
   }
 
-  revalidatePath(`/groups/${groupId}`);
+  revalidatePath(`/people/${groupId}`);
 }
 
 export async function dismissGroupNotices(_prev: unknown, _formData: FormData) {
@@ -574,14 +574,14 @@ export async function sendReminder(_prev: unknown, formData: FormData) {
   }
 
   await db.reminder.create({ data: { fromId: user.id, toId } });
-  revalidatePath('/balances');
+  revalidatePath('/people');
   return {};
 }
 
 // Revalidates both the list page and the dynamic pair pages (pattern match revalidates all).
 async function revalidateBalances() {
-  revalidatePath('/balances');
-  revalidatePath('/balances/[userId]');
+  revalidatePath('/people');
+  revalidatePath('/people/[userId]');
 }
 
 export async function markRemindersRead(_prev: unknown, formData: FormData) {
@@ -647,7 +647,7 @@ export async function updateCurrency(_prev: unknown, formData: FormData) {
   await db.user.update({ where: { id: user.id }, data: { currency } });
   revalidatePath('/settings');
   revalidatePath('/dashboard');
-  revalidatePath('/balances');
+  revalidatePath('/people');
   return { success: true };
 }
 

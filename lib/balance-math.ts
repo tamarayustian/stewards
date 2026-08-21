@@ -170,7 +170,7 @@ export function buildWhatsAppDraft(
   return [
     `${name} — you owe me ${formatMoney(total, viewerCurrency)} across ${count} ${count === 1 ? 'expense' : 'expenses'}`,
     ...lines,
-    `Settle up in Stewards: ${origin}/balances`,
+    `Settle up in Stewards: ${origin}/people`,
   ].join('\n');
 }
 
