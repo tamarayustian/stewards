@@ -40,7 +40,7 @@ export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
         type="submit"
         variant="ghost"
         size="sm"
-        className={`relative h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20 after:absolute after:-inset-2.5 after:content-['']${phase === 'celebrating' ? ' settle-celebration' : ''}`}
+        className={`relative h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20 after:absolute after:-inset-1.5 after:content-['']${phase === 'celebrating' ? ' settle-celebration' : ''}`}
         disabled={pending || phase === 'celebrating'}
         title="Mark this share as paid"
       >
@@ -65,7 +65,7 @@ export function MarkUnpaidButton({ expenseId }: { expenseId: string }) {
         type="submit"
         variant="ghost"
         size="sm"
-        className="relative h-6 rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground after:absolute after:-inset-2.5 after:content-['']"
+        className="relative h-6 rounded-full bg-muted px-2 text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground after:absolute after:-inset-1.5 after:content-['']"
         disabled={pending}
         title="Mark this share as unpaid"
       >

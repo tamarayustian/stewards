@@ -24,7 +24,7 @@ export function DeleteExpenseButton({ expenseId }: { expenseId: string }) {
             <Button
               variant="outline"
               size="icon"
-              className="relative size-7 after:absolute after:-inset-2 after:content-['']"
+              className="relative size-7 after:absolute after:-inset-1 after:content-['']"
               title="Delete expense"
               aria-label="Delete expense"
             >

@@ -30,7 +30,7 @@ export function BalanceList({
           </div>
           <ul className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
             {reminders.map((reminder) => (
-              <li key={reminder.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <li key={reminder.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                 <div className="min-w-0">
                   <p className="text-sm">
                     <span className="font-medium">{reminder.fromName}</span>{' '}

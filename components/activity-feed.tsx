@@ -44,7 +44,7 @@ export function ActivityFeed({
           <Link
             key={f.key}
             href={`${basePath}${f.key === 'all' ? '' : `${basePath.includes('?') ? '&' : '?'}filter=${f.key}`}`}
-            className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-2 after:content-[''] ${
+            className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-y-2 after:-inset-x-1 after:content-[''] ${
               filter === f.key
                 ? 'bg-card text-foreground ring-1 ring-foreground/10'
                 : 'text-muted-foreground hover:text-foreground'
@@ -118,7 +118,7 @@ export function ActivityFeed({
                 render={<Link href={`/expenses/${item.id}/edit`} />}
                 variant="outline"
                 size="icon"
-                className="relative size-7 after:absolute after:-inset-2 after:content-['']"
+                className="relative size-7 after:absolute after:-inset-1 after:content-['']"
                 title="Edit expense"
                 aria-label="Edit expense"
               >

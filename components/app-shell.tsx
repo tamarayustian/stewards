@@ -145,7 +145,7 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
         <main className="flex flex-1 flex-col overflow-y-auto">{children}</main>
 
         {/* Mobile bottom tab bar */}
-        <nav className="flex items-center justify-around border-t border-border bg-background py-1 md:hidden">
+        <nav className="flex items-center justify-around border-t border-border bg-background py-1 pb-[env(safe-area-inset-bottom)] md:hidden">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);

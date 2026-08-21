@@ -45,7 +45,7 @@ export default async function ActivityPage({
 
     return (
       <div className="space-y-6 p-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold">Expenses</h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -80,7 +80,7 @@ export default async function ActivityPage({
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold">Expenses</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
