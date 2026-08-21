@@ -5,6 +5,7 @@ import { InviteFriend } from '@/components/invite-friend';
 import { CurrencyCard } from '@/components/currency-card';
 import { ProfileCard } from '@/components/profile-card';
 import { AccountCard } from '@/components/account-card';
+import { FeedbackCard } from '@/components/feedback-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Currency } from '@/lib/currencies';
@@ -55,6 +56,8 @@ export default async function SettingsPage() {
           <InviteFriend />
         </CardContent>
       </Card>
+
+      <FeedbackCard email={profile?.email ?? ''} />
 
       <form action={signout}>
         <Button type="submit" variant="outline" className="w-full justify-start gap-2 sm:w-auto">

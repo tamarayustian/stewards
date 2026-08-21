@@ -27,6 +27,7 @@ model User {
   groupInvites  GroupInvite[]  @relation("GroupInviteInviter")
   sentReminders     Reminder[] @relation("ReminderSender")
   receivedReminders Reminder[] @relation("ReminderRecipient")
+  feedback          Feedback[]
 }
 
 model Group {
@@ -130,4 +131,19 @@ model Reminder {
 
   @@index([toId, readAt])
   @@index([fromId, toId])
+}
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String // "bug" | "feature" | "feedback"
+  message   String
+  email     String?
+  images    String[]
+  status    String   @default("open") // "open" | "reviewed" | "done"
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
 }
