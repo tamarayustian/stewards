@@ -17,11 +17,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="en"
-      className={`${karla.variable} ${fraunces.variable} ${ibmPlexMono.variable} h-full antialiased`}
-    >
-      <body className="flex h-full flex-col">{children}</body>
+      <html
+        lang="en"
+        className={`${karla.variable} ${fraunces.variable} ${ibmPlexMono.variable} h-dvh antialiased`}
+      >
+        <body className="flex h-dvh flex-col">{children}</body>
     </html>
   );
 }
