@@ -1,12 +1,13 @@
-import { BookUser, Users } from 'lucide-react';
+import { BookUser, Trash2, UserX, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
-import { DeleteGroupButton } from '@/components/delete-group-button';
+import { deleteGroup, removeContact } from '@/app/(app)/actions';
+import { ConfirmAction } from '@/components/confirm-action';
 import { GroupForm } from '@/components/group-form';
 import { PeopleForm } from '@/components/people-form';
-import { RemoveContactButton } from '@/components/remove-contact-button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { listContacts, listGroups } from '@/lib/expenses';
 import { createServerClientReadOnly } from '@/lib/supabase';
@@ -29,9 +30,9 @@ export default async function GroupsPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Groups</h1>
+          <h1 className="text-xl font-semibold">People</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            The people and places you split with regularly.
+            Groups and people you split expenses with.
           </p>
         </div>
         <GroupForm />
@@ -58,15 +59,41 @@ export default async function GroupsPage() {
                     </p>
                   </div>
                 </Link>
-                <DeleteGroupButton
-                  groupId={group.id}
-                  disabled={group.unsettledCount > 0}
-                  blockedReason={
-                    group.unsettledCount > 0
-                      ? 'Settle all expenses before deleting this group.'
-                      : undefined
-                  }
-                />
+                <div className="flex items-center gap-2">
+                  <ConfirmAction
+                    action={deleteGroup}
+                    fields={[{ name: 'groupId', value: group.id }]}
+                    title="Delete this group?"
+                    description="The group and its expenses will be hidden from everyone."
+                    confirmLabel="Delete"
+                    pendingLabel="Deleting…"
+                    trigger={
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="relative after:absolute after:-inset-2 after:content-['']"
+                        disabled={group.unsettledCount > 0}
+                        aria-disabled={group.unsettledCount > 0}
+                        title={
+                          group.unsettledCount > 0
+                            ? 'Settle all expenses before deleting this group.'
+                            : undefined
+                        }
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </Button>
+                    }
+                  />
+                  {group.unsettledCount > 0 && (
+                    <span
+                      className="hidden text-xs text-muted-foreground sm:inline"
+                      title="Settle all expenses before deleting this group."
+                    >
+                      Settle all expenses before deleting this group.
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -89,9 +116,9 @@ export default async function GroupsPage() {
 
       <div id="people" className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold">People</h2>
+          <h2 className="text-xl font-semibold">Contacts</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            The people you split expenses with.
+            Individual people you split expenses with.
           </p>
         </div>
 
@@ -112,7 +139,20 @@ export default async function GroupsPage() {
                       {contact.isRegistered ? contact.email : 'Contact — no account yet'}
                     </p>
                   </div>
-                  <RemoveContactButton contactId={contact.id} name={contact.name} />
+                  <ConfirmAction
+                    action={removeContact}
+                    fields={[{ name: 'contactId', value: contact.id }]}
+                    title={`Remove ${contact.name}?`}
+                    description="They'll stop appearing when you add new expenses. Past expenses stay as they are."
+                    confirmLabel="Remove"
+                    pendingLabel="Removing…"
+                    trigger={
+                      <Button variant="ghost" size="sm" className="text-muted-foreground">
+                        <UserX className="size-3.5" />
+                        Remove
+                      </Button>
+                    }
+                  />
                 </CardContent>
               </Card>
             ))}

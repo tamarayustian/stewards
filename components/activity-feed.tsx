@@ -1,7 +1,8 @@
-import { MessageCircle, Pencil, ReceiptText, Users } from 'lucide-react';
+import { MessageCircle, Pencil, ReceiptText, Trash2, Users } from 'lucide-react';
 import Link from 'next/link';
 
-import { DeleteExpenseButton } from '@/components/delete-expense-button';
+import { deleteExpense } from '@/app/(app)/actions';
+import { ConfirmAction } from '@/components/confirm-action';
 import { MarkReceivedButton, MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { PillTabs } from '@/components/pill-tabs';
 import { Button } from '@/components/ui/button';
@@ -111,7 +112,25 @@ export function ActivityFeed({
                 >
                   <Pencil className="size-3.5" />
                 </Button>
-                <DeleteExpenseButton expenseId={item.id} />
+                <ConfirmAction
+                  action={deleteExpense}
+                  fields={[{ name: 'expenseId', value: item.id }]}
+                  title="Delete this expense?"
+                  description="The expense and its splits will be hidden from you and everyone else."
+                  confirmLabel="Delete"
+                  pendingLabel="Deleting…"
+                  trigger={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="relative size-7 after:absolute after:-inset-1 after:content-['']"
+                      title="Delete expense"
+                      aria-label="Delete expense"
+                    >
+                      <Trash2 className="size-3.5 text-destructive" />
+                    </Button>
+                  }
+                />
               </div>
             </div>
           ))}

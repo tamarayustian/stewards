@@ -1,10 +1,11 @@
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, UserX, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { cancelInvite } from '@/app/(app)/actions';
 import { AddPhoneForm } from '@/components/add-phone-form';
-import { CancelInviteButton } from '@/components/cancel-invite-button';
+import { ConfirmAction } from '@/components/confirm-action';
 import { ActivityFeed } from '@/components/activity-feed';
 import { CopyMessageButton } from '@/components/copy-message-button';
 import { InviteMemberForm } from '@/components/invite-member-form';
@@ -107,7 +108,31 @@ export default async function PersonDetailPage({
                       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                         {isJoined ? 'Joined' : 'Pending'}
                       </span>
-                      {!isJoined && <CancelInviteButton inviteId={invite.id} groupId={group.id} />}
+                      {!isJoined && (
+                        <ConfirmAction
+                          action={cancelInvite}
+                          fields={[
+                            { name: 'inviteId', value: invite.id },
+                            { name: 'groupId', value: group.id },
+                          ]}
+                          title="Cancel invite"
+                          description="Cancel this invite? The person won't be able to join the group."
+                          confirmLabel="Cancel invite"
+                          pendingLabel="Cancelling…"
+                          cancelLabel="Keep invite"
+                          trigger={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground"
+                            >
+                              <UserX className="size-3.5" />
+                              Cancel
+                            </Button>
+                          }
+                        />
+                      )}
                     </div>
                   </li>
                 );
