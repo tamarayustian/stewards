@@ -2,13 +2,15 @@
 
 import { Link2, ReceiptText, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState, useTransition } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 
-import { addFriend, createExpense, editExpense } from '@/app/(app)/actions';
+import { createExpense, editExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAddFriend } from '@/components/use-add-friend';
+import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 import { fetchExchangeRate } from '@/lib/rates';
@@ -106,11 +108,6 @@ export function AddExpenseForm({
       : [],
   );
   const [friends, setFriends] = useState<UserOption[]>(users);
-  const [friendName, setFriendName] = useState('');
-  const [friendEmail, setFriendEmail] = useState('');
-  const [friendPhone, setFriendPhone] = useState('');
-  const [addError, setAddError] = useState<string | null>(null);
-  const [inviteCopied, setInviteCopied] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [totalAmount, setTotalAmount] = useState(initialExpense?.amount ?? '');
   const [amounts, setAmounts] = useState<Record<string, string>>(initialExpense?.splits ?? {});
@@ -127,7 +124,18 @@ export function AddExpenseForm({
     initialExpense ? editExpense : createExpense,
     undefined,
   );
-  const [addPending, startAddTransition] = useTransition();
+  const friend = useAddFriend((added) => {
+    setFriends((prev) => (prev.some((f) => f.id === added.id) ? prev : [...prev, added]));
+    setSelectedUsers((prev) => (prev.includes(added.id) ? prev : [...prev, added.id]));
+    setShowAddFriend(false);
+  });
+  const { copied, copyInviteLink } = useInviteLink();
+
+  function copyInviteToClipboard() {
+    void copyInviteLink({ name: friend.name, email: friend.email }).then((ok) => {
+      if (!ok) friend.setError('Could not copy the link.');
+    });
+  }
   const router = useRouter();
 
   useEffect(() => {
@@ -289,42 +297,6 @@ export function AddExpenseForm({
     setCustomized(true);
   }
 
-  function handleAddFriend() {
-    const fd = new FormData();
-    fd.set('name', friendName);
-    if (friendEmail.trim()) fd.set('email', friendEmail.trim());
-    if (friendPhone.trim()) fd.set('phone', friendPhone.trim());
-
-    startAddTransition(async () => {
-      const result = await addFriend(fd);
-      if (result?.contact) {
-        const added = result.contact;
-        setFriends((prev) => (prev.some((f) => f.id === added.id) ? prev : [...prev, added]));
-        setSelectedUsers((prev) => (prev.includes(added.id) ? prev : [...prev, added.id]));
-        setFriendName('');
-        setFriendEmail('');
-        setFriendPhone('');
-        setAddError(null);
-        setShowAddFriend(false);
-      } else if (result?.error) {
-        setAddError(result.error);
-      }
-    });
-  }
-
-  function copyInviteLink() {
-    const url = new URL('/register', window.location.href);
-    if (friendEmail.trim()) url.searchParams.set('email', friendEmail.trim());
-    if (friendName.trim()) url.searchParams.set('name', friendName.trim());
-    navigator.clipboard
-      .writeText(url.toString())
-      .then(() => {
-        setInviteCopied(true);
-        setTimeout(() => setInviteCopied(false), 2000);
-      })
-      .catch(() => setAddError('Could not copy the link.'));
-  }
-
   function preventSubmit(event: React.KeyboardEvent) {
     if (event.key === 'Enter') event.preventDefault();
   }
@@ -336,23 +308,23 @@ export function AddExpenseForm({
         Add a friend by name
       </p>
       <Input
-        value={friendName}
-        onChange={(e) => setFriendName(e.target.value)}
+        value={friend.name}
+        onChange={(e) => friend.setName(e.target.value)}
         onKeyDown={preventSubmit}
         placeholder="Friend's name"
         aria-label="Friend's name"
       />
       <Input
-        value={friendEmail}
-        onChange={(e) => setFriendEmail(e.target.value)}
+        value={friend.email}
+        onChange={(e) => friend.setEmail(e.target.value)}
         type="email"
         onKeyDown={preventSubmit}
         placeholder="Email (optional — for invite link)"
         aria-label="Friend's email"
       />
       <Input
-        value={friendPhone}
-        onChange={(e) => setFriendPhone(e.target.value)}
+        value={friend.phone}
+        onChange={(e) => friend.setPhone(e.target.value)}
         type="tel"
         onKeyDown={preventSubmit}
         placeholder="Phone (optional — for WhatsApp)"
@@ -362,17 +334,17 @@ export function AddExpenseForm({
         <Button
           type="button"
           size="sm"
-          onClick={handleAddFriend}
-          disabled={addPending || friendName.trim().length === 0}
+          onClick={friend.submit}
+          disabled={friend.pending || friend.name.trim().length === 0}
         >
-          {addPending ? 'Adding...' : 'Add friend'}
+          {friend.pending ? 'Adding...' : 'Add friend'}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={copyInviteLink}>
+        <Button type="button" variant="ghost" size="sm" onClick={copyInviteToClipboard}>
           <Link2 className="size-3.5" />
-          {inviteCopied ? 'Invite link copied' : 'Copy invite link'}
+          {copied ? 'Invite link copied' : 'Copy invite link'}
         </Button>
       </div>
-      {addError && <p className="text-sm text-destructive">{addError}</p>}
+      {friend.error && <p className="text-sm text-destructive">{friend.error}</p>}
     </div>
   );
 
