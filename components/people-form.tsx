@@ -1,38 +1,18 @@
 'use client';
 
 import { UserPlus } from 'lucide-react';
-import { useState, useTransition } from 'react';
 
-import { addFriend } from '@/app/(app)/actions';
+import { useAddFriend } from '@/components/use-add-friend';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export function PeopleForm() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const friend = useAddFriend();
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const fd = new FormData();
-    fd.set('name', name);
-    if (email.trim()) fd.set('email', email.trim());
-    if (phone.trim()) fd.set('phone', phone.trim());
-
-    startTransition(async () => {
-      const result = await addFriend(fd);
-      if (result?.contact) {
-        setName('');
-        setEmail('');
-        setPhone('');
-        setError(null);
-      } else if (result?.error) {
-        setError(result.error);
-      }
-    });
+    friend.submit();
   }
 
   return (
@@ -40,34 +20,34 @@ export function PeopleForm() {
       <Label>Add a person</Label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={friend.name}
+          onChange={(e) => friend.setName(e.target.value)}
           placeholder="Name"
           aria-label="Name"
           className="sm:flex-1"
         />
         <Input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={friend.email}
+          onChange={(e) => friend.setEmail(e.target.value)}
           type="email"
           placeholder="Email (optional — finds their account)"
           aria-label="Email"
           className="sm:flex-1"
         />
         <Input
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          value={friend.phone}
+          onChange={(e) => friend.setPhone(e.target.value)}
           type="tel"
           placeholder="Phone (optional)"
           aria-label="Phone"
           className="sm:flex-1"
         />
-        <Button type="submit" disabled={pending || name.trim().length === 0}>
+        <Button type="submit" disabled={friend.pending || friend.name.trim().length === 0}>
           <UserPlus className="size-3.5" />
-          {pending ? 'Adding...' : 'Add'}
+          {friend.pending ? 'Adding...' : 'Add'}
         </Button>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {friend.error && <p className="text-sm text-destructive">{friend.error}</p>}
     </form>
   );
 }
