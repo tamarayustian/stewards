@@ -1,20 +1,8 @@
+import { COUNTRIES } from '@/lib/countries';
+
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const VALID_COUNTRY_CODES = new Set([
-  '+852',
-  '+1',
-  '+86',
-  '+886',
-  '+44',
-  '+81',
-  '+82',
-  '+65',
-  '+61',
-  '+49',
-  '+33',
-  '+62',
-  '+63',
-]);
+const VALID_COUNTRY_CODES: ReadonlySet<string> = new Set(COUNTRIES.map((c) => c.code));
 
 export function validateEmail(email: string): string | undefined {
   if (!EMAIL_RE.test(email)) {
