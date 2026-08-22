@@ -6,24 +6,12 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useInviteLink } from '@/components/use-invite-link';
 
 export function InviteFriend() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  function copyInviteLink() {
-    const url = new URL('/register', window.location.href);
-    if (email.trim()) url.searchParams.set('email', email.trim());
-    if (name.trim()) url.searchParams.set('name', name.trim());
-    navigator.clipboard
-      .writeText(url.toString())
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => {});
-  }
+  const { copied, copyInviteLink } = useInviteLink();
 
   return (
     <div className="space-y-3">
@@ -53,7 +41,13 @@ export function InviteFriend() {
           />
         </div>
       </div>
-      <Button type="button" variant="outline" onClick={copyInviteLink}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          void copyInviteLink({ name, email });
+        }}
+      >
         <Link2 className="size-4" />
         {copied ? 'Invite link copied' : 'Copy invite link'}
       </Button>
