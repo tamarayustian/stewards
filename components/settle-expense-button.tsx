@@ -8,60 +8,20 @@ import { Button } from '@/components/ui/button';
 
 type Phase = 'idle' | 'celebrating' | 'settled';
 
-export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
-  const [state, action, pending] = useActionState(settleExpense, undefined);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const wasPendingRef = useRef(false);
-
-  useEffect(() => {
-    const justCompleted = wasPendingRef.current && !pending;
-    wasPendingRef.current = pending;
-
-    if (justCompleted && !state?.error) {
-      setPhase('celebrating');
-      const timer = setTimeout(() => setPhase('settled'), 1200);
-      return () => clearTimeout(timer);
-    }
-  }, [pending, state]);
-
-  if (phase === 'settled') {
-    return (
-      <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent">
-        <CheckCheck className="size-3" />
-        Paid
-      </span>
-    );
-  }
-
-  return (
-    <form action={action} className="flex items-center gap-2">
-      <input type="hidden" name="expenseId" value={expenseId} />
-      <Button
-        type="submit"
-        variant="ghost"
-        size="sm"
-        className={`relative h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20 after:absolute after:-inset-1.5 after:content-['']${phase === 'celebrating' ? ' settle-celebration' : ''}`}
-        disabled={pending || phase === 'celebrating'}
-        title="Mark this share as paid"
-      >
-        <Check className="size-3" />
-        {pending ? 'Marking…' : 'Mark paid'}
-      </Button>
-      {state?.error && (
-        <span role="alert" className="text-xs text-destructive">
-          {state.error}
-        </span>
-      )}
-    </form>
-  );
-}
-
-export function MarkReceivedButton({
+function SettleChip({
   expenseId,
   splitUserId,
+  icon: Icon,
+  label,
+  settledLabel,
+  title,
 }: {
   expenseId: string;
-  splitUserId: string;
+  splitUserId?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  settledLabel: string;
+  title: string;
 }) {
   const [state, action, pending] = useActionState(settleExpense, undefined);
   const [phase, setPhase] = useState<Phase>('idle');
@@ -82,7 +42,7 @@ export function MarkReceivedButton({
     return (
       <span className="inline-flex h-6 items-center gap-1 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent">
         <CheckCheck className="size-3" />
-        Received
+        {settledLabel}
       </span>
     );
   }
@@ -90,17 +50,17 @@ export function MarkReceivedButton({
   return (
     <form action={action} className="flex items-center gap-2">
       <input type="hidden" name="expenseId" value={expenseId} />
-      <input type="hidden" name="splitUserId" value={splitUserId} />
+      {splitUserId && <input type="hidden" name="splitUserId" value={splitUserId} />}
       <Button
         type="submit"
         variant="ghost"
         size="sm"
         className={`relative h-6 rounded-full bg-accent/10 px-2 text-xs font-medium text-accent hover:bg-accent/20 after:absolute after:-inset-1.5 after:content-['']${phase === 'celebrating' ? ' settle-celebration' : ''}`}
         disabled={pending || phase === 'celebrating'}
-        title="Mark this share as received"
+        title={title}
       >
-        <HandCoins className="size-3" />
-        {pending ? 'Marking…' : 'Mark received'}
+        <Icon className="size-3" />
+        {pending ? 'Marking…' : label}
       </Button>
       {state?.error && (
         <span role="alert" className="text-xs text-destructive">
@@ -108,6 +68,37 @@ export function MarkReceivedButton({
         </span>
       )}
     </form>
+  );
+}
+
+export function SettleExpenseButton({ expenseId }: { expenseId: string }) {
+  return (
+    <SettleChip
+      expenseId={expenseId}
+      icon={Check}
+      label="Mark paid"
+      settledLabel="Paid"
+      title="Mark this share as paid"
+    />
+  );
+}
+
+export function MarkReceivedButton({
+  expenseId,
+  splitUserId,
+}: {
+  expenseId: string;
+  splitUserId: string;
+}) {
+  return (
+    <SettleChip
+      expenseId={expenseId}
+      splitUserId={splitUserId}
+      icon={HandCoins}
+      label="Mark received"
+      settledLabel="Received"
+      title="Mark this share as received"
+    />
   );
 }
 
