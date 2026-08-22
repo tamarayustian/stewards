@@ -7,6 +7,7 @@ import { startTransition, Suspense, useActionState, useState } from 'react';
 
 import { signup } from '@/app/auth/actions';
 import { validateEmail, validatePassword, validatePhone } from '@/lib/auth-validation';
+import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '@/lib/countries';
 import { CURRENCIES } from '@/lib/currencies';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
@@ -130,23 +131,14 @@ function RegisterForm() {
                 <select
                   id="countryCode"
                   name="countryCode"
-                  defaultValue="+852"
+                  defaultValue={DEFAULT_COUNTRY_CODE}
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="+852">HK +852</option>
-                  <option value="+1">US +1</option>
-                  <option value="+86">CN +86</option>
-                  <option value="+886">TW +886</option>
-                  <option value="+44">UK +44</option>
-                  <option value="+81">JP +81</option>
-                  <option value="+82">KR +82</option>
-                  <option value="+65">SG +65</option>
-                  <option value="+61">AU +61</option>
-                  <option value="+1">CA +1</option>
-                  <option value="+49">DE +49</option>
-                  <option value="+33">FR +33</option>
-                  <option value="+62">ID +62</option>
-                  <option value="+63">PH +63</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.label} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
                 </select>
                 <Input
                   id="phone"
