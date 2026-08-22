@@ -31,7 +31,7 @@ export function PillTabs({
           key={tab.key}
           href={hrefFor(tab.key)}
           className={cn(
-            'rounded-md px-3 py-2 min-h-11 text-xs font-medium md:min-h-0 md:py-1 relative z-10',
+            'rounded-md px-3 py-2 min-h-11 text-xs font-medium md:min-h-0 md:py-1 relative z-10 inline-flex items-center',
             currentTab === tab.key
               ? 'bg-card text-foreground ring-1 ring-foreground/10'
               : 'text-muted-foreground hover:text-foreground',
