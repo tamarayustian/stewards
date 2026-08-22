@@ -6,16 +6,17 @@ import { redirect } from 'next/navigation';
 import { ActivityFeed } from '@/components/activity-feed';
 import { BalanceList } from '@/components/balance-list';
 import { Button } from '@/components/ui/button';
+import { PillTabs } from '@/components/pill-tabs';
 import { getPairBalances, getPairDetail, listReminders } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { getActivity, type ActivityFilter } from '@/lib/expenses';
 import { createServerClientReadOnly } from '@/lib/supabase';
 
-const views = [
+const viewTabs = [
   { key: 'feed', label: 'Feed' },
   { key: 'people', label: 'By Person' },
-] as const;
+];
 
 export default async function ActivityPage({
   searchParams,
@@ -57,7 +58,7 @@ export default async function ActivityPage({
               <Plus className="size-4" />
               Split an expense
             </Button>
-            <ViewToggle current={view} />
+            <PillTabs searchParam="view" tabs={viewTabs} currentTab={view} />
           </div>
         </div>
         <ActivityFeed items={activity} filter={filter} basePath="/expenses?view=feed" />
@@ -92,7 +93,7 @@ export default async function ActivityPage({
             <Plus className="size-4" />
             Split an expense
           </Button>
-          <ViewToggle current={view} />
+          <PillTabs searchParam="view" tabs={viewTabs} currentTab={view} />
         </div>
       </div>
       <BalanceList reminders={reminders} rows={rows} userCurrency={userCurrency} />
@@ -100,23 +101,4 @@ export default async function ActivityPage({
   );
 }
 
-function ViewToggle({ current }: { current: string }) {
-  return (
-    <div className="flex gap-1 rounded-lg bg-muted p-1">
-      {views.map((v) => (
-        <Link
-          key={v.key}
-          href={`/expenses?view=${v.key}`}
-          className={`rounded-md px-3 py-1 text-xs font-medium ${
-            current === v.key
-              ? 'bg-card text-foreground ring-1 ring-foreground/10'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-          aria-current={current === v.key ? 'page' : undefined}
-        >
-          {v.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
+

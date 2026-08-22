@@ -3,11 +3,19 @@ import Link from 'next/link';
 
 import { DeleteExpenseButton } from '@/components/delete-expense-button';
 import { MarkReceivedButton, MarkUnpaidButton, SettleExpenseButton } from '@/components/settle-expense-button';
+import { PillTabs } from '@/components/pill-tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
 import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
+
+const filterTabs = [
+  { key: 'all', label: 'All' },
+  { key: 'owe', label: 'You owe' },
+  { key: 'owed', label: 'Owed to you' },
+  { key: 'paid', label: 'Settled' },
+];
 
 function timeAgo(date: Date) {
   const diff = Date.now() - date.getTime();
@@ -21,13 +29,6 @@ function timeAgo(date: Date) {
   return `${days}d ago`;
 }
 
-const tabs: { key: ActivityFilter; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'owe', label: 'You owe' },
-  { key: 'owed', label: 'Owed to you' },
-  { key: 'paid', label: 'Settled' },
-];
-
 export function ActivityFeed({
   items,
   filter,
@@ -39,22 +40,7 @@ export function ActivityFeed({
 }) {
   return (
     <>
-      <div className="mt-3 flex w-fit gap-1 rounded-lg bg-muted p-1">
-        {tabs.map((f) => (
-          <Link
-            key={f.key}
-            href={`${basePath}${f.key === 'all' ? '' : `${basePath.includes('?') ? '&' : '?'}filter=${f.key}`}`}
-            className={`relative rounded-md px-3 py-1 text-xs font-medium after:absolute after:-inset-y-2 after:-inset-x-1 after:content-[''] ${
-              filter === f.key
-                ? 'bg-card text-foreground ring-1 ring-foreground/10'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            aria-current={filter === f.key ? 'page' : undefined}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </div>
+      <PillTabs searchParam="filter" tabs={filterTabs} currentTab={filter} baseUrl={basePath} />
       {items.length > 0 ? (
         <div className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
           {items.map((item) => (
