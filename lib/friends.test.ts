@@ -12,7 +12,11 @@ describe('buildAddFriendFormData', () => {
   });
 
   it('omits missing optional fields', () => {
-    const fd = buildAddFriendFormData({ name: 'Amy', email: 'amy@example.com', phone: '+852 9123 4567' });
+    const fd = buildAddFriendFormData({
+      name: 'Amy',
+      email: 'amy@example.com',
+      phone: '+852 9123 4567',
+    });
     expect(fd.get('name')).toBe('Amy');
     expect(fd.get('email')).toBe('amy@example.com');
     expect(fd.get('phone')).toBe('+852 9123 4567');
