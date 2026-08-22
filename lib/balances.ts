@@ -31,7 +31,14 @@ export async function getPairBalances(userId: string): Promise<PairSummary[]> {
         amount: true,
         userId: true,
         expense: {
-          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: {
+            id: true,
+            createdAt: true,
+            note: true,
+            amount: true,
+            currency: true,
+            rate: true,
+          },
         },
         user: { select: { name: true, phone: true, isRegistered: true } },
       },
@@ -126,7 +133,14 @@ export async function getPairDetail(
         id: true,
         amount: true,
         expense: {
-          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: {
+            id: true,
+            createdAt: true,
+            note: true,
+            amount: true,
+            currency: true,
+            rate: true,
+          },
         },
       },
     }),
@@ -140,7 +154,14 @@ export async function getPairDetail(
         id: true,
         amount: true,
         expense: {
-          select: { id: true, createdAt: true, note: true, amount: true, currency: true, rate: true },
+          select: {
+            id: true,
+            createdAt: true,
+            note: true,
+            amount: true,
+            currency: true,
+            rate: true,
+          },
         },
       },
     }),

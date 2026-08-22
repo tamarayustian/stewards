@@ -283,9 +283,8 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   }
 
   // Determine which split to settle: borrower settles their own, payer settles the other's
-  const splitUserId = expense.paidById === user.id
-    ? (formData.get('splitUserId') as string) || user.id
-    : user.id;
+  const splitUserId =
+    expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
   await db.expenseSplit.update({
     where: { expenseId_userId: { expenseId, userId: splitUserId } },
@@ -320,7 +319,9 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
         // Payer can un-settle a borrower's split
         {
           paidById: user.id,
-          splits: { some: { userId: { not: user.id }, settledAt: { not: null }, amount: { gt: 0 } } },
+          splits: {
+            some: { userId: { not: user.id }, settledAt: { not: null }, amount: { gt: 0 } },
+          },
         },
       ],
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
@@ -332,9 +333,8 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
   }
 
   // Determine which split to un-settle: borrower un-settles their own, payer un-settles the other's
-  const splitUserId = expense.paidById === user.id
-    ? (formData.get('splitUserId') as string) || user.id
-    : user.id;
+  const splitUserId =
+    expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
   await db.expenseSplit.update({
     where: { expenseId_userId: { expenseId, userId: splitUserId } },

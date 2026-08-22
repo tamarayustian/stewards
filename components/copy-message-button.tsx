@@ -26,13 +26,7 @@ export function CopyMessageButton({
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={copyMessage}
-      className="gap-1.5"
-    >
+    <Button type="button" variant="outline" size="sm" onClick={copyMessage} className="gap-1.5">
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {copied ? 'Copied!' : 'Copy message'}
     </Button>
