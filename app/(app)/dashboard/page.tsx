@@ -8,6 +8,7 @@ import { ActivityFeed } from '@/components/activity-feed';
 import { EmptyState } from '@/components/empty-state';
 import { SettleUpCard } from '@/components/settle-up-card';
 import { RemindCard } from '@/components/remind-card';
+import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -80,34 +81,10 @@ export default async function DashboardPage({
       {balances.youOwe.gt(0) || balances.youAreOwed.gt(0) ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {balances.youOwe.gt(0) && (
-            <Card>
-              <CardContent className="flex items-center gap-4">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10">
-                  <ArrowUpFromLine className="size-5 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">To pay</p>
-                  <p className="text-lg font-semibold text-destructive">
-                    {formatMoney(balances.youOwe, userCurrency)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard icon={ArrowUpFromLine} tone="destructive" label="To pay" value={formatMoney(balances.youOwe, userCurrency)} />
           )}
           {balances.youAreOwed.gt(0) && (
-            <Card>
-              <CardContent className="flex items-center gap-4">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-accent/10">
-                  <ArrowDownToLine className="size-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">To collect</p>
-                  <p className="text-lg font-semibold text-accent">
-                    {formatMoney(balances.youAreOwed, userCurrency)}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <StatCard icon={ArrowDownToLine} tone="accent" label="To collect" value={formatMoney(balances.youAreOwed, userCurrency)} />
           )}
         </div>
       ) : (
