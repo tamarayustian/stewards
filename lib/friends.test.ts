@@ -11,7 +11,7 @@ describe('buildAddFriendFormData', () => {
     expect(fd.get('phone')).toBeNull();
   });
 
-  it('omits missing optional fields', () => {
+  it('keeps provided optional fields', () => {
     const fd = buildAddFriendFormData({
       name: 'Amy',
       email: 'amy@example.com',
