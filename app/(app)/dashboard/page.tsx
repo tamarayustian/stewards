@@ -81,10 +81,20 @@ export default async function DashboardPage({
       {balances.youOwe.gt(0) || balances.youAreOwed.gt(0) ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {balances.youOwe.gt(0) && (
-            <StatCard icon={ArrowUpFromLine} tone="destructive" label="To pay" value={formatMoney(balances.youOwe, userCurrency)} />
+            <StatCard
+              icon={ArrowUpFromLine}
+              tone="destructive"
+              label="To pay"
+              value={formatMoney(balances.youOwe, userCurrency)}
+            />
           )}
           {balances.youAreOwed.gt(0) && (
-            <StatCard icon={ArrowDownToLine} tone="accent" label="To collect" value={formatMoney(balances.youAreOwed, userCurrency)} />
+            <StatCard
+              icon={ArrowDownToLine}
+              tone="accent"
+              label="To collect"
+              value={formatMoney(balances.youAreOwed, userCurrency)}
+            />
           )}
         </div>
       ) : (

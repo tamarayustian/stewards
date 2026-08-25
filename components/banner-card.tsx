@@ -22,7 +22,9 @@ export function BannerCard({ icon: Icon, tone, title, message, action }: BannerC
     <Card>
       <CardContent className="flex flex-col gap-3 py-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${TONES[tone].tile}`}>
+          <div
+            className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${TONES[tone].tile}`}
+          >
             <Icon className={`size-5 ${TONES[tone].icon}`} />
           </div>
           <div>
