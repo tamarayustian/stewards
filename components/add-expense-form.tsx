@@ -555,7 +555,7 @@ export function AddExpenseForm({
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
               <CurrencySelect
-                variant="compact"
+                className="w-full"
                 id="currency"
                 name="currency"
                 value={currency}
