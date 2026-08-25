@@ -5,7 +5,8 @@ import { useActionState } from 'react';
 import { updateCurrency } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CURRENCIES, type Currency } from '@/lib/currencies';
+import { CurrencySelect } from '@/components/currency-select';
+import type { Currency } from '@/lib/currencies';
 
 export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency }) {
   const [state, action, pending] = useActionState(updateCurrency, undefined);
@@ -16,17 +17,11 @@ export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency })
       </CardHeader>
       <CardContent>
         <form action={action} className="flex items-center gap-3">
-          <select
+          <CurrencySelect
             name="currency"
             defaultValue={currentCurrency}
-            className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-          >
-            {Object.entries(CURRENCIES).map(([code, info]) => (
-              <option key={code} value={code}>
-                {info.symbol} — {info.name}
-              </option>
-            ))}
-          </select>
+            className="flex-1"
+          />
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Saving...' : 'Save'}
           </Button>

@@ -7,13 +7,15 @@ import { startTransition, Suspense, useActionState, useState } from 'react';
 
 import { signup } from '@/app/auth/actions';
 import { validateEmail, validatePassword, validatePhone } from '@/lib/auth-validation';
-import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '@/lib/countries';
-import { CURRENCIES } from '@/lib/currencies';
+import { CountrySelect } from '@/components/country-select';
+import { CurrencySelect } from '@/components/currency-select';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DEFAULT_COUNTRY_CODE } from '@/lib/countries';
+import { CURRENCIES } from '@/lib/currencies';
 
 function RegisterForm() {
   const searchParams = useSearchParams();
@@ -128,18 +130,11 @@ function RegisterForm() {
             <div className="space-y-2">
               <Label htmlFor="phone">Phone number</Label>
               <div className="flex gap-2">
-                <select
+                <CountrySelect
                   id="countryCode"
                   name="countryCode"
                   defaultValue={DEFAULT_COUNTRY_CODE}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c.label} value={c.code}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
+                />
                 <Input
                   id="phone"
                   name="phone"
@@ -155,18 +150,7 @@ function RegisterForm() {
 
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <select
-                id="currency"
-                name="currency"
-                defaultValue="HKD"
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {Object.entries(CURRENCIES).map(([code, info]) => (
-                  <option key={code} value={code}>
-                    {info.symbol} — {info.name}
-                  </option>
-                ))}
-              </select>
+              <CurrencySelect id="currency" name="currency" defaultValue="HKD" />
               {errors.currency && <p className="text-xs text-destructive">{errors.currency}</p>}
             </div>
 

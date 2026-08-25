@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 
 const MAX_IMAGES = 3;
 const ACCEPT = 'image/png,image/jpeg,image/webp';
@@ -60,16 +61,11 @@ export function FeedbackCard({ email }: { email: string }) {
         <form ref={formRef} action={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="feedback-type">Type</Label>
-            <select
-              id="feedback-type"
-              name="type"
-              required
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
+            <Select id="feedback-type" name="type" required className="w-full">
               <option value="feedback">General feedback</option>
               <option value="feature">Feature request</option>
               <option value="bug">Bug report</option>
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-2">

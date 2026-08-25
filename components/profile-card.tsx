@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CountrySelect } from '@/components/country-select';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '@/lib/countries';
 
 export function ProfileCard({ name, phone }: { name: string; phone: string | null }) {
@@ -44,19 +45,12 @@ export function ProfileCard({ name, phone }: { name: string; phone: string | nul
           <div className="space-y-2">
             <Label htmlFor="phone">Phone number</Label>
             <div className="flex gap-2">
-              <select
+              <CountrySelect
                 id="countryCode"
                 name="countryCode"
                 defaultValue={defaultCountry}
                 aria-label="Country code"
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={`${c.code}-${c.label}`} value={c.code}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
+              />
               <Input
                 id="phone"
                 name="phone"
