@@ -100,7 +100,11 @@ export default async function GroupsPage() {
           ))}
         </div>
       ) : (
-        <EmptyState icon={Users} title="No groups yet" message="Create a group to start splitting expenses." />
+        <EmptyState
+          icon={Users}
+          title="No groups yet"
+          message="Create a group to start splitting expenses."
+        />
       )}
 
       <div id="people" className="space-y-6">
