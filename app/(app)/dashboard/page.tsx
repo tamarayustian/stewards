@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { GroupJoinedNotice } from '@/components/group-joined-notice';
 import { ActivityFeed } from '@/components/activity-feed';
+import { EmptyState } from '@/components/empty-state';
 import { SettleUpCard } from '@/components/settle-up-card';
 import { RemindCard } from '@/components/remind-card';
 import { Button } from '@/components/ui/button';
@@ -153,29 +154,23 @@ export default async function DashboardPage({
         {hasActivity ? (
           <ActivityFeed items={activity} filter={filter} basePath="/dashboard" />
         ) : (
-          <Card className="mt-3">
-            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <ReceiptText className="size-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium">No expenses yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Split your first cost with a group or directly with friends.
-                </p>
-              </div>
-              <div className="flex flex-col items-center gap-2 sm:flex-row">
-                <Button nativeButton={false} render={<Link href="/expenses/new" />}>
-                  <Plus className="size-4" />
-                  Split an expense
-                </Button>
-                <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
-                  <UserPlus className="size-4" />
-                  Invite friends
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            className="mt-3"
+            icon={ReceiptText}
+            title="No expenses yet"
+            message="Split your first cost with a group or directly with friends."
+          >
+            <div className="flex flex-col items-center gap-2 sm:flex-row">
+              <Button nativeButton={false} render={<Link href="/expenses/new" />}>
+                <Plus className="size-4" />
+                Split an expense
+              </Button>
+              <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
+                <UserPlus className="size-4" />
+                Invite friends
+              </Button>
+            </div>
+          </EmptyState>
         )}
       </div>
     </div>

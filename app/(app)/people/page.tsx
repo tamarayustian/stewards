@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 
 import { deleteGroup, removeContact } from '@/app/(app)/actions';
 import { ConfirmAction } from '@/components/confirm-action';
+import { EmptyState } from '@/components/empty-state';
 import { GroupForm } from '@/components/group-form';
 import { PeopleForm } from '@/components/people-form';
 import { Button } from '@/components/ui/button';
@@ -99,19 +100,7 @@ export default async function GroupsPage() {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <Users className="size-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium">No groups yet</p>
-              <p className="text-sm text-muted-foreground">
-                Create a group to start splitting expenses.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState icon={Users} title="No groups yet" message="Create a group to start splitting expenses." />
       )}
 
       <div id="people" className="space-y-6">
@@ -158,20 +147,11 @@ export default async function GroupsPage() {
             ))}
           </div>
         ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-              <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-                <BookUser className="size-6 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="font-medium">No people yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Add people you actually split money with — they&apos;ll show up here and in the
-                  expense form.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={BookUser}
+            title="No people yet"
+            message="Add people you actually split money with — they'll show up here and in the expense form."
+          />
         )}
       </div>
     </div>

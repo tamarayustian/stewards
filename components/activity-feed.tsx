@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { deleteExpense } from '@/app/(app)/actions';
 import { ConfirmAction } from '@/components/confirm-action';
+import { EmptyState } from '@/components/empty-state';
 import {
   MarkReceivedButton,
   MarkUnpaidButton,
@@ -10,7 +11,6 @@ import {
 } from '@/components/settle-expense-button';
 import { PillTabs } from '@/components/pill-tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
 import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
@@ -140,25 +140,20 @@ export function ActivityFeed({
           ))}
         </div>
       ) : (
-        <Card className="mt-3">
-          <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <Users className="size-6 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium">All clear!</p>
-              <p className="text-sm text-muted-foreground">
-                {filter === 'all'
-                  ? 'No expenses yet — split one!'
-                  : filter === 'owe'
-                    ? "You're all settled up."
-                    : filter === 'owed'
-                      ? 'No one owes you right now — nice!'
-                      : 'All settled — nothing pending.'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          className="mt-3"
+          icon={Users}
+          title="All clear!"
+          message={
+            filter === 'all'
+              ? 'No expenses yet — split one!'
+              : filter === 'owe'
+                ? "You're all settled up."
+                : filter === 'owed'
+                  ? 'No one owes you right now — nice!'
+                  : 'All settled — nothing pending.'
+          }
+        />
       )}
     </>
   );
