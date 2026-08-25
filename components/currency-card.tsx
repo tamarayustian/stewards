@@ -17,11 +17,7 @@ export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency })
       </CardHeader>
       <CardContent>
         <form action={action} className="flex items-center gap-3">
-          <CurrencySelect
-            name="currency"
-            defaultValue={currentCurrency}
-            className="flex-1"
-          />
+          <CurrencySelect name="currency" defaultValue={currentCurrency} className="flex-1" />
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Saving...' : 'Save'}
           </Button>
