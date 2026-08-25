@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
+import { CurrencySelect } from '@/components/currency-select';
 import { useAddFriend } from '@/components/use-add-friend';
 import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
@@ -430,18 +432,18 @@ export function AddExpenseForm({
             {!initialExpense && mode === 'group' && (
               <div className="space-y-2">
                 <Label>Group</Label>
-                <select
+                <Select
+                  variant="compact"
                   name="groupId"
                   value={selectedGroupId}
                   onChange={(e) => selectGroup(e.target.value)}
-                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.name} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -514,19 +516,19 @@ export function AddExpenseForm({
             {/* Who paid */}
             <div className="space-y-2">
               <Label htmlFor="paidBy">Who paid?</Label>
-              <select
+              <Select
+                variant="compact"
                 id="paidBy"
                 name="paidById"
                 value={payerId}
                 onChange={(e) => setPayerId(e.target.value)}
-                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {payerOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {/* Amount */}
@@ -552,7 +554,8 @@ export function AddExpenseForm({
 
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <select
+              <CurrencySelect
+                variant="compact"
                 id="currency"
                 name="currency"
                 value={currency}
@@ -568,14 +571,7 @@ export function AddExpenseForm({
                     setRateError(null);
                   }
                 }}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {Object.entries(CURRENCIES).map(([code, info]) => (
-                  <option key={code} value={code}>
-                    {info.symbol} — {info.name}
-                  </option>
-                ))}
-              </select>
+              />
               {rateLoading && (
                 <p className="text-xs text-muted-foreground">Fetching exchange rate…</p>
               )}
