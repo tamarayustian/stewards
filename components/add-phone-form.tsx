@@ -4,6 +4,7 @@ import { Phone } from 'lucide-react';
 import { useActionState, useState } from 'react';
 
 import { updateContactPhone } from '@/app/(app)/actions';
+import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -33,11 +34,7 @@ export function AddPhoneForm({ userId }: { userId: string }) {
         <Phone className="size-3.5" />
         {pending ? 'Saving…' : 'Add phone'}
       </Button>
-      {state?.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
+      <FormError message={state?.error} />
     </form>
   );
 }

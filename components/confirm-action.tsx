@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 
 export function ConfirmAction({
@@ -54,11 +55,7 @@ export function ConfirmAction({
           </div>
         </AlertDialogPopup>
       </AlertDialogRoot>
-      {state?.error && (
-        <span role="alert" className="text-xs text-destructive">
-          {state.error}
-        </span>
-      )}
+      <FormError message={state?.error} />
     </>
   );
 }

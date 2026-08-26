@@ -4,6 +4,7 @@ import { Send } from 'lucide-react';
 import { useActionState, useState } from 'react';
 
 import { inviteToGroup } from '@/app/(app)/actions';
+import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,11 +31,7 @@ export function InviteMemberForm({ groupId }: { groupId: string }) {
           {pending ? 'Inviting…' : 'Invite'}
         </Button>
       </div>
-      {state?.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
+      <FormError message={state?.error} />
     </form>
   );
 }

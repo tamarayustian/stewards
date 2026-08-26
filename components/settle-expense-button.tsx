@@ -4,6 +4,7 @@ import { Check, CheckCheck, HandCoins } from 'lucide-react';
 import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { settleExpense, unsettleExpense } from '@/app/(app)/actions';
+import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 
 type Phase = 'idle' | 'celebrating' | 'settled';
@@ -62,11 +63,7 @@ function SettleChip({
         <Icon className="size-3" />
         {pending ? 'Marking…' : label}
       </Button>
-      {state?.error && (
-        <span role="alert" className="text-xs text-destructive">
-          {state.error}
-        </span>
-      )}
+      <FormError message={state?.error} />
     </form>
   );
 }
@@ -125,11 +122,7 @@ export function MarkUnpaidButton({
         <CheckCheck className="size-3" />
         {pending ? 'Marking…' : 'Paid'}
       </Button>
-      {state?.error && (
-        <span role="alert" className="text-xs text-destructive">
-          {state.error}
-        </span>
-      )}
+      <FormError message={state?.error} />
     </form>
   );
 }

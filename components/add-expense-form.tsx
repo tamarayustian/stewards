@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { CurrencySelect } from '@/components/currency-select';
+import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
@@ -666,7 +667,7 @@ export function AddExpenseForm({
               </p>
             )}
 
-            {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
+            <FormError message={state?.error} />
 
             {rateInfo && (
               <>

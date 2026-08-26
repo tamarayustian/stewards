@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CountrySelect } from '@/components/country-select';
+import { FormError, FormSuccess } from '@/components/form-message';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '@/lib/countries';
 
 export function ProfileCard({ name, phone }: { name: string; phone: string | null }) {
@@ -64,8 +65,8 @@ export function ProfileCard({ name, phone }: { name: string; phone: string | nul
             </div>
           </div>
 
-          {state?.error && <p className="text-xs text-destructive">{state.error}</p>}
-          {state?.success && <p className="text-xs text-accent">Profile updated.</p>}
+          <FormError message={state?.error} />
+          <FormSuccess message={state?.success ? 'Profile updated.' : undefined} />
 
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Saving...' : 'Save'}

@@ -2,6 +2,7 @@
 
 import { UserPlus } from 'lucide-react';
 
+import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +48,7 @@ export function PeopleForm() {
           {friend.pending ? 'Adding...' : 'Add'}
         </Button>
       </div>
-      {friend.error && <p className="text-sm text-destructive">{friend.error}</p>}
+      <FormError message={friend.error ?? undefined} />
     </form>
   );
 }

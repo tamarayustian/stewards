@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormError, FormSuccess } from '@/components/form-message';
 import { Select } from '@/components/ui/select';
 
 const MAX_IMAGES = 3;
@@ -131,8 +132,8 @@ export function FeedbackCard({ email }: { email: string }) {
             />
           </div>
 
-          {state?.error && <p className="text-xs text-destructive">{state.error}</p>}
-          {state?.success && <p className="text-xs text-accent">Feedback sent — thank you!</p>}
+          <FormError message={state?.error} />
+          <FormSuccess message={state?.success ? 'Feedback sent — thank you!' : undefined} />
 
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Sending...' : 'Send feedback'}

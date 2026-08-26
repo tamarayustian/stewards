@@ -6,6 +6,7 @@ import { updateCurrency } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CurrencySelect } from '@/components/currency-select';
+import { FormError, FormSuccess } from '@/components/form-message';
 import type { Currency } from '@/lib/currencies';
 
 export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency }) {
@@ -22,8 +23,8 @@ export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency })
             {pending ? 'Saving...' : 'Save'}
           </Button>
         </form>
-        {state?.success && <p className="mt-2 text-xs text-accent">Currency updated.</p>}
-        {state?.error && <p className="mt-2 text-xs text-destructive">{state.error}</p>}
+        <FormSuccess message={state?.success ? 'Currency updated.' : undefined} />
+        <FormError message={state?.error} />
       </CardContent>
     </Card>
   );

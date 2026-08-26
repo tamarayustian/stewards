@@ -4,6 +4,7 @@ import { Mail, Shield } from 'lucide-react';
 import { useActionState } from 'react';
 
 import { updateEmail, updatePassword } from '@/app/(app)/actions';
+import { FormError, FormSuccess } from '@/components/form-message';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,10 +41,12 @@ export function AccountCard({ email }: { email: string | null }) {
               <p className="text-xs text-muted-foreground">Required to confirm this change.</p>
             </div>
 
-            {emailState?.error && <p className="text-xs text-destructive">{emailState.error}</p>}
-            {emailState?.success && (
-              <p className="text-xs text-accent">Confirmation link sent. Check your inbox.</p>
-            )}
+            <FormError message={emailState?.error} />
+            <FormSuccess
+              message={
+                emailState?.success ? 'Confirmation link sent. Check your inbox.' : undefined
+              }
+            />
 
             <Button type="submit" size="sm" disabled={emailPending}>
               {emailPending ? 'Saving...' : 'Update email'}
@@ -76,8 +79,8 @@ export function AccountCard({ email }: { email: string | null }) {
               <p className="text-xs text-muted-foreground">At least 6 characters</p>
             </div>
 
-            {pwState?.error && <p className="text-xs text-destructive">{pwState.error}</p>}
-            {pwState?.success && <p className="text-xs text-accent">Password updated.</p>}
+            <FormError message={pwState?.error} />
+            <FormSuccess message={pwState?.success ? 'Password updated.' : undefined} />
 
             <Button type="submit" size="sm" disabled={pwPending}>
               {pwPending ? 'Updating...' : 'Update password'}

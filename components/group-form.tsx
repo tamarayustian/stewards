@@ -7,6 +7,7 @@ import { createGroup } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { FormError } from '@/components/form-message';
 import { Label } from '@/components/ui/label';
 
 export function GroupForm() {
@@ -34,11 +35,7 @@ export function GroupForm() {
             <Label htmlFor="group-description">Description (optional)</Label>
             <Input id="group-description" name="description" placeholder="e.g. Flat 4B bills" />
           </div>
-          {state?.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {state.error}
-            </p>
-          )}
+          <FormError message={state?.error} />
           <div className="flex justify-end gap-2">
             <Button
               type="button"

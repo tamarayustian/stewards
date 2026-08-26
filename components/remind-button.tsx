@@ -4,6 +4,7 @@ import { BellRing } from 'lucide-react';
 import { useActionState } from 'react';
 
 import { sendReminder } from '@/app/(app)/actions';
+import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 
 export function RemindButton({ toId }: { toId: string }) {
@@ -22,11 +23,7 @@ export function RemindButton({ toId }: { toId: string }) {
         <BellRing className="size-3.5" />
         {pending ? 'Reminding…' : 'Remind'}
       </Button>
-      {state?.error && (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
+      <FormError message={state?.error} />
     </form>
   );
 }
