@@ -1,9 +1,9 @@
-import { ArrowLeft, UserX, Users } from 'lucide-react';
+import { UserX, Users } from 'lucide-react';
 import { cookies } from 'next/headers';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { cancelInvite } from '@/app/(app)/actions';
+import { BackLink } from '@/components/back-link';
 import { ConfirmAction } from '@/components/confirm-action';
 import { ActivityFeed } from '@/components/activity-feed';
 import { CounterpartyActions } from '@/components/counterparty-actions';
@@ -49,16 +49,7 @@ export default async function PersonDetailPage({
     return (
       <div className="space-y-6 p-6">
         <div>
-          <Button
-            nativeButton={false}
-            render={<Link href="/people" />}
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            Back to people
-          </Button>
+          <BackLink href="/people" label="Back to people" className="text-muted-foreground" />
           <h1 className="mt-2 text-2xl font-semibold">{group.name}</h1>
           {group.description && (
             <p className="mt-1 text-sm text-muted-foreground">{group.description}</p>
@@ -160,16 +151,7 @@ export default async function PersonDetailPage({
 
     return (
       <div className="space-y-6 p-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/people" />}
-          className="gap-1.5"
-        >
-          <ArrowLeft className="size-4" />
-          Back
-        </Button>
+        <BackLink href="/people" label="Back" className="gap-1.5" />
 
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
