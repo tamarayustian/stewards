@@ -1,10 +1,11 @@
 'use client';
 
 import { Mail, Shield } from 'lucide-react';
-import { useActionState } from 'react';
+import { useEffect, useActionState } from 'react';
 
 import { updateEmail, updatePassword } from '@/app/(app)/actions';
-import { FormError, FormSuccess } from '@/components/form-message';
+import { FormError } from '@/components/form-message';
+import { useToast } from '@/components/toast';
 import { PasswordInput } from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,15 @@ import { Label } from '@/components/ui/label';
 export function AccountCard({ email }: { email: string | null }) {
   const [emailState, emailAction, emailPending] = useActionState(updateEmail, undefined);
   const [pwState, pwAction, pwPending] = useActionState(updatePassword, undefined);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (emailState?.success) toast({ title: 'Confirmation link sent. Check your inbox.', variant: 'success' });
+  }, [emailState?.success, toast]);
+
+  useEffect(() => {
+    if (pwState?.success) toast({ title: 'Password updated', variant: 'success' });
+  }, [pwState?.success, toast]);
 
   return (
     <div className="space-y-6">
@@ -42,11 +52,6 @@ export function AccountCard({ email }: { email: string | null }) {
             </div>
 
             <FormError message={emailState?.error} />
-            <FormSuccess
-              message={
-                emailState?.success ? 'Confirmation link sent. Check your inbox.' : undefined
-              }
-            />
 
             <Button type="submit" size="sm" disabled={emailPending}>
               {emailPending ? 'Saving...' : 'Update email'}
@@ -80,7 +85,6 @@ export function AccountCard({ email }: { email: string | null }) {
             </div>
 
             <FormError message={pwState?.error} />
-            <FormSuccess message={pwState?.success ? 'Password updated.' : undefined} />
 
             <Button type="submit" size="sm" disabled={pwPending}>
               {pwPending ? 'Updating...' : 'Update password'}

@@ -1,14 +1,15 @@
 'use client';
 
 import { ImagePlus, MessageSquare, X } from 'lucide-react';
-import { useActionState, useRef, useState } from 'react';
+import { useEffect, useActionState, useRef, useState } from 'react';
 
 import { submitFeedback } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FormError, FormSuccess } from '@/components/form-message';
+import { FormError } from '@/components/form-message';
+import { useToast } from '@/components/toast';
 import { Select } from '@/components/ui/select';
 
 const MAX_IMAGES = 3;
@@ -16,6 +17,11 @@ const ACCEPT = 'image/png,image/jpeg,image/webp';
 
 export function FeedbackCard({ email }: { email: string }) {
   const [state, action, pending] = useActionState(submitFeedback, undefined);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (state?.success) toast({ title: 'Feedback sent — thank you!', variant: 'success' });
+  }, [state?.success, toast]);
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +139,6 @@ export function FeedbackCard({ email }: { email: string }) {
           </div>
 
           <FormError message={state?.error} />
-          <FormSuccess message={state?.success ? 'Feedback sent — thank you!' : undefined} />
 
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Sending...' : 'Send feedback'}

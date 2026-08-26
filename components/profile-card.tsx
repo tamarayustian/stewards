@@ -1,7 +1,7 @@
 'use client';
 
 import { User } from 'lucide-react';
-import { useActionState } from 'react';
+import { useEffect, useActionState } from 'react';
 
 import { updateProfile } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CountrySelect } from '@/components/country-select';
-import { FormError, FormSuccess } from '@/components/form-message';
+import { FormError } from '@/components/form-message';
+import { useToast } from '@/components/toast';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE } from '@/lib/countries';
 
 export function ProfileCard({ name, phone }: { name: string; phone: string | null }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (state?.success) toast({ title: 'Profile updated', variant: 'success' });
+  }, [state?.success, toast]);
 
   // Parse existing phone into country code + number for display
   let defaultCountry: string = DEFAULT_COUNTRY_CODE;
@@ -66,7 +72,7 @@ export function ProfileCard({ name, phone }: { name: string; phone: string | nul
           </div>
 
           <FormError message={state?.error} />
-          <FormSuccess message={state?.success ? 'Profile updated.' : undefined} />
+
 
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? 'Saving...' : 'Save'}
