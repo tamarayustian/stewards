@@ -61,7 +61,7 @@ export default async function ActivityPage({
             <PillTabs searchParam="view" tabs={viewTabs} currentTab={view} />
           </div>
         </div>
-        <ActivityFeed items={activity} filter={filter} basePath="/expenses?view=feed" />
+        <ActivityFeed items={activity} filter={filter} />
       </div>
     );
   }

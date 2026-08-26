@@ -139,7 +139,7 @@ export default async function DashboardPage({
           </Button>
         </div>
         {hasActivity ? (
-          <ActivityFeed items={activity} filter={filter} basePath="/dashboard" />
+          <ActivityFeed items={activity} filter={filter} />
         ) : (
           <EmptyState
             className="mt-3"

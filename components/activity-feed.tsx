@@ -37,15 +37,13 @@ function timeAgo(date: Date) {
 export function ActivityFeed({
   items,
   filter,
-  basePath = '/dashboard',
 }: {
   items: ActivityItem[];
   filter: ActivityFilter;
-  basePath?: string;
 }) {
   return (
     <>
-      <PillTabs searchParam="filter" tabs={filterTabs} currentTab={filter} baseUrl={basePath} />
+      <PillTabs searchParam="filter" tabs={filterTabs} currentTab={filter} />
       {items.length > 0 ? (
         <div className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
           {items.map((item) => (

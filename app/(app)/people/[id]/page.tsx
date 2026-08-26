@@ -132,7 +132,7 @@ export default async function PersonDetailPage({
         <section>
           <h2 className="text-base font-semibold">Expenses</h2>
           <div className="mt-3">
-            <ActivityFeed items={activity} filter={activeFilter} basePath={`/people/${group.id}`} />
+            <ActivityFeed items={activity} filter={activeFilter} />
           </div>
         </section>
       </div>
