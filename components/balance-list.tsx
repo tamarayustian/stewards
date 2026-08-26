@@ -1,10 +1,7 @@
 import Link from 'next/link';
 
-import { AddPhoneForm } from '@/components/add-phone-form';
-import { CopyMessageButton } from '@/components/copy-message-button';
+import { CounterpartyActions } from '@/components/counterparty-actions';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
-import { RemindButton } from '@/components/remind-button';
-import { WhatsAppButton } from '@/components/whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { type PairSummary, type PairDetail } from '@/lib/balance-math';
 import { type Currency } from '@/lib/currencies';
@@ -86,36 +83,22 @@ export function BalanceList({
                         : `You owe ${counterparty.name} ${formatMoney(pair.net.abs(), userCurrency)}`}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    {pair.amountOwedToMe.gt(0) && counterparty.isRegistered && (
-                      <RemindButton toId={counterparty.id} />
-                    )}
-                    {pair.amountOwedToMe.gt(0) && counterparty.phone && detail && (
-                      <WhatsAppButton
-                        name={counterparty.name}
-                        phone={counterparty.phone}
-                        items={detail.items}
-                        viewerCurrency={userCurrency}
-                      />
-                    )}
-                    {pair.amountOwedToMe.gt(0) && !counterparty.phone && detail && (
-                      <>
-                        <CopyMessageButton
-                          name={counterparty.name}
-                          items={detail.items}
-                          viewerCurrency={userCurrency}
-                        />
-                        <AddPhoneForm userId={counterparty.id} />
-                      </>
-                    )}
-                    <Button
-                      nativeButton={false}
-                      variant="ghost"
-                      size="sm"
-                      render={<Link href={`/people/${counterparty.id}`} />}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CounterpartyActions
+                      hasOwedToMe={pair.amountOwedToMe.gt(0) && !!detail}
+                      counterparty={pair.counterparty}
+                      items={detail?.items ?? []}
+                      viewerCurrency={userCurrency}
                     >
-                      Details
-                    </Button>
+                      <Button
+                        nativeButton={false}
+                        variant="ghost"
+                        size="sm"
+                        render={<Link href={`/people/${counterparty.id}`} />}
+                      >
+                        Details
+                      </Button>
+                    </CounterpartyActions>
                   </div>
                 </li>
               );

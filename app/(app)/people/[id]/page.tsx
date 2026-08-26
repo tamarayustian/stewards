@@ -4,15 +4,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { cancelInvite } from '@/app/(app)/actions';
-import { AddPhoneForm } from '@/components/add-phone-form';
 import { ConfirmAction } from '@/components/confirm-action';
 import { ActivityFeed } from '@/components/activity-feed';
-import { CopyMessageButton } from '@/components/copy-message-button';
+import { CounterpartyActions } from '@/components/counterparty-actions';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
-import { RemindButton } from '@/components/remind-button';
 import { MarkReceivedButton, SettleExpenseButton } from '@/components/settle-expense-button';
-import { WhatsAppButton } from '@/components/whatsapp-button';
 import { Button } from '@/components/ui/button';
 import { getPairDetail, listReminders } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
@@ -194,30 +191,16 @@ export default async function PersonDetailPage({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {detail.amountOwedToMe.gt(0) && counterparty.isRegistered && (
-              <RemindButton toId={counterparty.id} />
-            )}
-            {detail.amountOwedToMe.gt(0) && counterparty.phone && (
-              <WhatsAppButton
-                name={counterparty.name}
-                phone={counterparty.phone}
-                items={detail.items}
-                viewerCurrency={userCurrency}
-              />
-            )}
-            {detail.amountOwedToMe.gt(0) && !counterparty.phone && (
-              <>
-                <CopyMessageButton
-                  name={counterparty.name}
-                  items={detail.items}
-                  viewerCurrency={userCurrency}
-                />
-                <AddPhoneForm userId={counterparty.id} />
-              </>
-            )}
-            {detail.amountOwedToMe.gt(0) && unreadFromThem && (
-              <MarkRemindersReadButton fromId={counterparty.id} />
-            )}
+            <CounterpartyActions
+              hasOwedToMe={detail.amountOwedToMe.gt(0)}
+              counterparty={detail.counterparty}
+              items={detail.items}
+              viewerCurrency={userCurrency}
+            >
+              {unreadFromThem && (
+                <MarkRemindersReadButton fromId={counterparty.id} />
+              )}
+            </CounterpartyActions>
           </div>
         </div>
 
