@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Fraunces, IBM_Plex_Mono, Karla } from 'next/font/google';
+import { ToastProvider } from '@/components/toast';
 import './globals.css';
 
 const karla = Karla({ variable: '--font-karla', subsets: ['latin'] });
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       lang="en"
       className={`${karla.variable} ${fraunces.variable} ${ibmPlexMono.variable} h-dvh antialiased`}
     >
-      <body className="flex h-dvh flex-col">{children}</body>
+      <body className="flex h-dvh flex-col">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
