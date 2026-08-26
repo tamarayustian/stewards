@@ -6,12 +6,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/toast';
 import { useInviteLink } from '@/components/use-invite-link';
 
 export function InviteFriend() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const { copied, copyInviteLink } = useInviteLink();
+  const { toast } = useToast();
+  const { copyInviteLink } = useInviteLink();
 
   return (
     <div className="space-y-3">
@@ -44,12 +46,17 @@ export function InviteFriend() {
       <Button
         type="button"
         variant="outline"
-        onClick={() => {
-          void copyInviteLink({ name, email });
+        onClick={async () => {
+          const ok = await copyInviteLink({ name, email });
+          if (ok) {
+            toast({ title: 'Invite link copied', variant: 'success' });
+          } else {
+            toast({ title: 'Could not copy link', variant: 'error' });
+          }
         }}
       >
         <Link2 className="size-4" />
-        {copied ? 'Invite link copied' : 'Copy invite link'}
+        Copy invite link
       </Button>
     </div>
   );
