@@ -24,27 +24,25 @@ export function CounterpartyActions({
   if (!hasOwedToMe) return null;
   return (
     <>
-      {counterparty.isRegistered ? (
-        <>
-          {counterparty.phone ? (
-            <WhatsAppButton
-              name={counterparty.name}
-              phone={counterparty.phone}
-              items={items}
-              viewerCurrency={viewerCurrency}
-            />
-          ) : (
-            <RemindButton toId={counterparty.id} />
-          )}
-        </>
-      ) : counterparty.phone ? (
-        <CopyMessageButton
+      {counterparty.isRegistered && (
+        <RemindButton toId={counterparty.id} />
+      )}
+      {counterparty.phone ? (
+        <WhatsAppButton
           name={counterparty.name}
+          phone={counterparty.phone}
           items={items}
           viewerCurrency={viewerCurrency}
         />
       ) : (
-        <AddPhoneForm userId={counterparty.id} />
+        <>
+          <CopyMessageButton
+            name={counterparty.name}
+            items={items}
+            viewerCurrency={viewerCurrency}
+          />
+          <AddPhoneForm userId={counterparty.id} />
+        </>
       )}
       {children}
     </>
