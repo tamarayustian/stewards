@@ -23,8 +23,8 @@ export function CurrencyCard({ currentCurrency }: { currentCurrency: Currency })
             {pending ? 'Saving...' : 'Save'}
           </Button>
         </form>
-        <FormSuccess message={state?.success ? 'Currency updated.' : undefined} />
-        <FormError message={state?.error} />
+        <FormSuccess message={state?.success ? 'Currency updated.' : undefined} className="mt-2" />
+        <FormError message={state?.error} className="mt-2" />
       </CardContent>
     </Card>
   );
