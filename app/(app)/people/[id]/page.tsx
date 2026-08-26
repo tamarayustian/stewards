@@ -197,9 +197,7 @@ export default async function PersonDetailPage({
               items={detail.items}
               viewerCurrency={userCurrency}
             >
-              {unreadFromThem && (
-                <MarkRemindersReadButton fromId={counterparty.id} />
-              )}
+              {unreadFromThem && <MarkRemindersReadButton fromId={counterparty.id} />}
             </CounterpartyActions>
           </div>
         </div>

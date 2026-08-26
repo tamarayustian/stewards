@@ -24,9 +24,7 @@ export function CounterpartyActions({
   if (!hasOwedToMe) return null;
   return (
     <>
-      {counterparty.isRegistered && (
-        <RemindButton toId={counterparty.id} />
-      )}
+      {counterparty.isRegistered && <RemindButton toId={counterparty.id} />}
       {counterparty.phone ? (
         <WhatsAppButton
           name={counterparty.name}
