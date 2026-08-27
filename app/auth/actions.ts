@@ -98,6 +98,7 @@ export async function login(_prev: unknown, formData: FormData) {
   if (data.user) {
     await ensureUserRow(data.user);
     await resolveInvitesForEmail(data.user.email ?? '');
+    await syncPendingClaims(data.user.id);
     const pending = await countPendingClaims(data.user.id);
     revalidatePath('/', 'layout');
     redirect(pending > 0 ? '/auth/claim' : '/dashboard');
