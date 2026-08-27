@@ -28,6 +28,9 @@ model User {
   sentReminders     Reminder[] @relation("ReminderSender")
   receivedReminders Reminder[] @relation("ReminderRecipient")
   feedback          Feedback[]
+  claimsAsOwner     UserClaim[] @relation("ClaimUser")
+  claimsAsGhost     UserClaim[] @relation("ClaimGhost")
+  notices           Notice[]   @relation("NoticeUser")
 }
 
 model Group {
@@ -146,4 +149,31 @@ model Feedback {
 
   @@index([userId])
   @@index([status])
+}
+
+model UserClaim {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation("ClaimUser", fields: [userId], references: [id], onDelete: Cascade)
+  ghostId    String
+  ghost      User      @relation("ClaimGhost", fields: [ghostId], references: [id], onDelete: Cascade)
+  status     String    @default("pending")
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@unique([userId, ghostId])
+  @@index([userId, status])
+}
+
+model Notice {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation("NoticeUser", fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  friendName String
+  friendId   String?
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, readAt])
 }
