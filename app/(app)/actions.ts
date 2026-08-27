@@ -5,6 +5,12 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { getPairBalances } from '@/lib/balances';
+import {
+  countPendingClaims,
+  listPendingClaims,
+  mergeGhostIntoUser,
+  syncPendingClaims,
+} from '@/lib/claims';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { resolveInvitesForEmail } from '@/lib/invites';
@@ -855,4 +861,64 @@ export async function submitFeedback(_prev: unknown, formData: FormData) {
   });
 
   return { success: true };
+}
+
+export async function claimGhost(_prevState: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const claimId = formData.get('claimId');
+  if (typeof claimId !== 'string' || !claimId) return { error: 'Claim not found.' };
+
+  const claim = await db.userClaim.findFirst({
+    where: { id: claimId, userId: user.id, status: 'pending' },
+    select: { id: true, ghostId: true },
+  });
+  if (!claim) return { error: 'Claim not found.' };
+
+  const me = await db.user.findUnique({
+    where: { id: user.id },
+    select: { name: true },
+  });
+
+  await db.$transaction(async (tx) => {
+    const adders = await tx.contact.findMany({
+      where: { contactId: claim.ghostId },
+      select: { ownerId: true },
+    });
+    await tx.userClaim.update({
+      where: { id: claim.id },
+      data: { status: 'claimed', resolvedAt: new Date() },
+    });
+    await mergeGhostIntoUser(tx, claim.ghostId, user.id);
+    if (adders.length > 0) {
+      await tx.notice.createMany({
+        data: adders.map((adder) => ({
+          userId: adder.ownerId,
+          type: 'friend_joined',
+          friendName: me?.name ?? 'Someone',
+          friendId: user.id,
+        })),
+      });
+    }
+  });
+
+  revalidatePath('/auth/claim');
+  revalidatePath('/dashboard');
+  return {};
+}
+
+export async function declineGhost(_prevState: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  const claimId = formData.get('claimId');
+  if (typeof claimId !== 'string' || !claimId) return { error: 'Claim not found.' };
+
+  const result = await db.userClaim.updateMany({
+    where: { id: claimId, userId: user.id, status: 'pending' },
+    data: { status: 'declined', resolvedAt: new Date() },
+  });
+  if (result.count === 0) return { error: 'Claim not found.' };
+
+  revalidatePath('/auth/claim');
+  return {};
 }

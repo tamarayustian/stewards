@@ -1,3 +1,4 @@
+import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
 
 export interface GhostIdentity {
@@ -176,4 +177,75 @@ export async function mergeGhostIntoUser(
   }
 
   await tx.user.delete({ where: { id: ghostId } });
+}
+
+export async function syncPendingClaims(userId: string): Promise<void> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, name: true, phone: true },
+  });
+  if (!user) return;
+
+  const ghosts = await db.user.findMany({
+    where: { id: { not: userId }, isRegistered: false, deletedAt: null },
+    select: { id: true, email: true, name: true, phone: true },
+  });
+  const ghostRows: GhostIdentity[] = ghosts;
+
+  const existing = await db.userClaim.findMany({
+    where: { userId },
+    select: { ghostId: true },
+  });
+  const existingPairs = new Set(existing.map((e) => e.ghostId));
+
+  const matches = filterUnclaimed(
+    ghostRows.filter((g) => matchesIdentity({ email: user.email, name: user.name, phone: user.phone }, g)),
+    existingPairs,
+  );
+
+  if (matches.length > 0) {
+    await db.userClaim.createMany({
+      data: matches.map((g) => ({ userId, ghostId: g.id })),
+    });
+  }
+}
+
+export async function countPendingClaims(userId: string): Promise<number> {
+  return db.userClaim.count({ where: { userId, status: 'pending' } });
+}
+
+export type PendingClaimRow = {
+  claimId: string;
+  ghostName: string;
+  adderName: string | null;
+  sharedExpenseCount: number;
+};
+
+export async function listPendingClaims(userId: string): Promise<PendingClaimRow[]> {
+  const claims = await db.userClaim.findMany({
+    where: { userId, status: 'pending' },
+    include: { ghost: { select: { id: true, name: true } } },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const rows: PendingClaimRow[] = [];
+  for (const claim of claims) {
+    const adder = await db.contact.findFirst({
+      where: { contactId: claim.ghost.id },
+      include: { owner: { select: { name: true } } },
+    });
+    const [paidCount, splitCount] = await Promise.all([
+      db.expense.count({ where: { paidById: claim.ghost.id, deletedAt: null } }),
+      db.expenseSplit.count({
+        where: { userId: claim.ghost.id, expense: { deletedAt: null } },
+      }),
+    ]);
+    rows.push({
+      claimId: claim.id,
+      ghostName: claim.ghost.name,
+      adderName: adder?.owner.name ?? null,
+      sharedExpenseCount: paidCount + splitCount,
+    });
+  }
+  return rows;
 }
