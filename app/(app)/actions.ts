@@ -583,6 +583,19 @@ export async function dismissGroupNotices(_prev: unknown, _formData: FormData) {
   return {};
 }
 
+export async function dismissFriendNotices(_prevState: unknown, _formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+
+  await db.notice.updateMany({
+    where: { userId: user.id, type: 'friend_joined', readAt: null },
+    data: { readAt: new Date() },
+  });
+
+  revalidatePath('/dashboard');
+  return {};
+}
+
 export async function sendReminder(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {

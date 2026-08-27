@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { FriendJoinedNotice } from '@/components/friend-joined-notice';
 import { GroupJoinedNotice } from '@/components/group-joined-notice';
 import { ActivityFeed } from '@/components/activity-feed';
 import { EmptyState } from '@/components/empty-state';
@@ -47,7 +48,7 @@ export default async function DashboardPage({
     getBalances(user.id),
     getActivity(user.id),
     filter === 'all' ? null : getActivity(user.id, filter),
-    listPendingNotices(user.email),
+    listPendingNotices(user.email, user.id),
   ]);
   const activity = filteredActivity ?? allActivity;
 
@@ -70,13 +71,17 @@ export default async function DashboardPage({
 
       <Separator />
 
-      {notices.map((notice) => (
-        <GroupJoinedNotice
-          key={notice.inviteId}
-          groupName={notice.groupName}
-          inviterName={notice.inviterName}
-        />
-      ))}
+      {notices.map((notice) =>
+        notice.kind === 'group' ? (
+          <GroupJoinedNotice
+            key={notice.inviteId}
+            groupName={notice.groupName}
+            inviterName={notice.inviterName}
+          />
+        ) : (
+          <FriendJoinedNotice key={notice.noticeId} friendName={notice.friendName} />
+        ),
+      )}
 
       {balances.youOwe.gt(0) || balances.youAreOwed.gt(0) ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
