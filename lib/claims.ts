@@ -1,3 +1,5 @@
+import { Prisma } from '@/lib/generated/prisma/client';
+
 export interface GhostIdentity {
   id: string;
   email: string | null;
@@ -63,4 +65,115 @@ export function decideRepoints(
   return items.map((item) =>
     occupiedKeys.has(item.key) ? { kind: 'drop', id: item.id } : { kind: 'repoint', id: item.id },
   );
+}
+
+export async function mergeGhostIntoUser(
+  tx: Prisma.TransactionClient,
+  ghostId: string,
+  targetUserId: string,
+): Promise<void> {
+  await tx.expense.updateMany({
+    where: { paidById: ghostId },
+    data: { paidById: targetUserId },
+  });
+
+  const ghostSplits = await tx.expenseSplit.findMany({
+    where: { userId: ghostId },
+    select: { id: true, expenseId: true, amount: true },
+  });
+  if (ghostSplits.length > 0) {
+    const targetSplits = await tx.expenseSplit.findMany({
+      where: { userId: targetUserId, expenseId: { in: ghostSplits.map((s) => s.expenseId) } },
+      select: { id: true, expenseId: true },
+    });
+    const decisions = decideSplitTransfers(
+      ghostSplits.map((s) => ({ id: s.id, expenseId: s.expenseId, amount: s.amount.toString() })),
+      targetSplits,
+    );
+    for (let i = 0; i < ghostSplits.length; i++) {
+      const decision = decisions[i];
+      if (decision.kind === 'sum') {
+        const target = targetSplits.find((t) => t.expenseId === ghostSplits[i].expenseId)!;
+        await tx.expenseSplit.update({
+          where: { id: target.id },
+          data: { amount: { increment: ghostSplits[i].amount } },
+        });
+        await tx.expenseSplit.delete({ where: { id: ghostSplits[i].id } });
+      } else {
+        await tx.expenseSplit.update({
+          where: { id: ghostSplits[i].id },
+          data: { userId: targetUserId },
+        });
+      }
+    }
+  }
+
+  const ghostMemberships = await tx.groupMember.findMany({
+    where: { userId: ghostId },
+    select: { id: true, groupId: true },
+  });
+  if (ghostMemberships.length > 0) {
+    const targetMemberships = await tx.groupMember.findMany({
+      where: { userId: targetUserId, groupId: { in: ghostMemberships.map((m) => m.groupId) } },
+      select: { groupId: true },
+    });
+    const occupied = new Set(targetMemberships.map((m) => m.groupId));
+    const decisions = decideRepoints(
+      ghostMemberships.map((m) => ({ id: m.id, key: m.groupId })),
+      occupied,
+    );
+    for (const decision of decisions) {
+      if (decision.kind === 'drop') {
+        await tx.groupMember.delete({ where: { id: decision.id } });
+      } else {
+        await tx.groupMember.update({ where: { id: decision.id }, data: { userId: targetUserId } });
+      }
+    }
+  }
+
+  const ownerContacts = await tx.contact.findMany({
+    where: { ownerId: ghostId },
+    select: { id: true, contactId: true },
+  });
+  if (ownerContacts.length > 0) {
+    const targetHas = await tx.contact.findMany({
+      where: { ownerId: targetUserId, contactId: { in: ownerContacts.map((c) => c.contactId) } },
+      select: { contactId: true },
+    });
+    const decisions = decideRepoints(
+      ownerContacts.map((c) => ({ id: c.id, key: c.contactId })),
+      new Set(targetHas.map((c) => c.contactId)),
+    );
+    for (const decision of decisions) {
+      if (decision.kind === 'drop') {
+        await tx.contact.delete({ where: { id: decision.id } });
+      } else {
+        await tx.contact.update({ where: { id: decision.id }, data: { ownerId: targetUserId } });
+      }
+    }
+  }
+
+  const contactLinks = await tx.contact.findMany({
+    where: { contactId: ghostId },
+    select: { id: true, ownerId: true },
+  });
+  if (contactLinks.length > 0) {
+    const targetLinked = await tx.contact.findMany({
+      where: { contactId: targetUserId, ownerId: { in: contactLinks.map((c) => c.ownerId) } },
+      select: { ownerId: true },
+    });
+    const decisions = decideRepoints(
+      contactLinks.map((c) => ({ id: c.id, key: c.ownerId })),
+      new Set(targetLinked.map((c) => c.ownerId)),
+    );
+    for (const decision of decisions) {
+      if (decision.kind === 'drop') {
+        await tx.contact.delete({ where: { id: decision.id } });
+      } else {
+        await tx.contact.update({ where: { id: decision.id }, data: { contactId: targetUserId } });
+      }
+    }
+  }
+
+  await tx.user.delete({ where: { id: ghostId } });
 }

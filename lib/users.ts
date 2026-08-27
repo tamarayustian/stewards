@@ -1,4 +1,5 @@
 import db from '@/lib/db';
+import { mergeGhostIntoUser } from '@/lib/claims';
 import { CURRENCIES } from '@/lib/currencies';
 
 type AuthUser = {
@@ -42,30 +43,13 @@ export async function ensureUserRow(user: AuthUser) {
 
     if (contact && contact.id !== id) {
       await db.$transaction(async (tx) => {
-        await tx.expense.updateMany({
-          where: { paidById: contact.id },
-          data: { paidById: id },
+        await tx.user.upsert({
+          where: { id },
+          create: { id, name, phone, currency: currency ?? 'HKD', isRegistered: true, email: null },
+          update: {},
         });
-        await tx.expenseSplit.updateMany({
-          where: { userId: contact.id },
-          data: { userId: id },
-        });
-        await tx.groupMember.updateMany({
-          where: { userId: contact.id },
-          data: { userId: id },
-        });
-        await tx.contact.updateMany({
-          where: { ownerId: contact.id },
-          data: { ownerId: id },
-        });
-        await tx.contact.updateMany({
-          where: { contactId: contact.id },
-          data: { contactId: id },
-        });
-        await tx.user.delete({ where: { id: contact.id } });
-        await tx.user.create({
-          data: { id, email, name, phone, currency: currency ?? 'HKD', isRegistered: true },
-        });
+        await mergeGhostIntoUser(tx, contact.id, id);
+        await tx.user.update({ where: { id }, data: { email } });
       });
       return { merged: true as const, email };
     }
