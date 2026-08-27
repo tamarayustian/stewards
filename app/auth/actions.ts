@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { ensureUserRow } from '@/lib/users';
 import { validatePhone } from '@/lib/auth-validation';
+import { countPendingClaims, syncPendingClaims } from '@/lib/claims';
 
 export async function signup(_prev: unknown, formData: FormData) {
   const email = formData.get('email') as string;
@@ -56,8 +57,9 @@ export async function signup(_prev: unknown, formData: FormData) {
   if (data.user && data.session) {
     await ensureUserRow(data.user);
     await resolveInvitesForEmail(data.user.email ?? '');
+    await syncPendingClaims(data.user.id);
     revalidatePath('/', 'layout');
-    redirect('/dashboard');
+    redirect((await countPendingClaims(data.user.id)) > 0 ? '/auth/claim' : '/dashboard');
   }
 
   // No session means email confirmation is required
@@ -96,6 +98,9 @@ export async function login(_prev: unknown, formData: FormData) {
   if (data.user) {
     await ensureUserRow(data.user);
     await resolveInvitesForEmail(data.user.email ?? '');
+    const pending = await countPendingClaims(data.user.id);
+    revalidatePath('/', 'layout');
+    redirect(pending > 0 ? '/auth/claim' : '/dashboard');
   }
 
   revalidatePath('/', 'layout');

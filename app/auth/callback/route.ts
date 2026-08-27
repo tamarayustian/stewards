@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { ensureUserRow } from '@/lib/users';
+import { countPendingClaims, syncPendingClaims } from '@/lib/claims';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,7 +37,9 @@ export async function GET(request: Request) {
     if (!error && data.user) {
       await ensureUserRow(data.user);
       await resolveInvitesForEmail(data.user.email ?? '');
-      return NextResponse.redirect(`${origin}${next}`);
+      await syncPendingClaims(data.user.id);
+      const pending = await countPendingClaims(data.user.id);
+      return NextResponse.redirect(`${origin}${pending > 0 ? '/auth/claim' : next}`);
     }
   }
 
