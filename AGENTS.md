@@ -90,3 +90,8 @@ Never write vague messages like "update", "fix stuff", "changes" or "wip".
 ## Pre-launch TODOs
 
 - **Email invites**: copy-link invites are shipped. Real email invites need `SUPABASE_SERVICE_ROLE_KEY` (already in `.env`, currently unused) via `auth.admin.inviteUserByEmail` — deferred to post-launch.
+
+## Legal
+
+- Privacy Policy and Terms & Conditions are public at `/privacy` and `/terms` (linked in footer).
+- For a solo public deployment: policies should reflect actual data (Supabase auth+DB, Vercel hosting, contacts shared between users, reminders, soft deletes). Keep them accurate over time.

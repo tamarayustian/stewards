@@ -31,3 +31,8 @@ Cold/corporate finance apps — no bank app vibes, no Mint-style dashboards, no 
 
 - Target WCAG 2.1 AA (contrast ≥4.5:1 body, ≥3:1 large text; keyboard navigable; screen reader support).
 - Support prefers-reduced-motion.
+
+## Legal
+
+- Privacy Policy: [/privacy](app/(public)/privacy/page.tsx)
+- Terms & Conditions: [/terms](app/(public)/terms/page.tsx)
