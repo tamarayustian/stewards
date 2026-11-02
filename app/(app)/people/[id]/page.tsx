@@ -1,5 +1,4 @@
 import { UserX, Users } from 'lucide-react';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { cancelInvite } from '@/app/(app)/actions';
@@ -11,12 +10,12 @@ import { InviteMemberForm } from '@/components/invite-member-form';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
 import { MarkReceivedButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { Button } from '@/components/ui/button';
-import { getPairDetail, listReminders } from '@/lib/balances';
+import { getCurrentUser } from '@/lib/auth';
+import { getPairDetail } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { getActivity, getGroup, type ActivityFilter } from '@/lib/expenses';
 import { formatMoney } from '@/lib/money';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 export default async function PersonDetailPage({
   params,
@@ -30,19 +29,13 @@ export default async function PersonDetailPage({
   const activeFilter: ActivityFilter =
     filter === 'owe' || filter === 'owed' || filter === 'paid' ? filter : 'all';
 
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) redirect('/login');
 
-  const [group, detail, reminders] = await Promise.all([
-    getGroup(id, user.id),
-    getPairDetail(user.id, id),
-    listReminders(user.id),
-  ]);
+  // Resolve the group first: group pages never need pair detail or reminders,
+  // so this avoids four wasted split queries and a full pair-balance scan.
+  const group = await getGroup(id, user.id);
 
   if (group) {
     const activity = await getActivity(user.id, activeFilter, 50, id);
@@ -139,14 +132,25 @@ export default async function PersonDetailPage({
     );
   }
 
+  const detail = await getPairDetail(user.id, id);
+
   if (detail) {
-    const profile = await db.user.findUnique({
-      where: { id: user.id },
-      select: { currency: true },
-    });
+    // Reminders only surface when the viewer still owes this person on a
+    // non-zero net balance, so one count against this sender replaces the
+    // full pair-balance scan listReminders() used to run here.
+    const showReminders = detail.amountIOwe.gt(0) && !detail.net.isZero();
+    const [profile, unreadCount] = await Promise.all([
+      db.user.findUnique({
+        where: { id: user.id },
+        select: { currency: true },
+      }),
+      showReminders
+        ? db.reminder.count({ where: { toId: user.id, fromId: id, readAt: null } })
+        : Promise.resolve(0),
+    ]);
     const userCurrency = (profile?.currency ?? 'HKD') as Currency;
 
-    const unreadFromThem = reminders.some((r) => r.fromId === id && !r.readAt);
+    const unreadFromThem = unreadCount > 0;
     const { counterparty } = detail;
 
     return (
