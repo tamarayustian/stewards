@@ -58,8 +58,10 @@ export async function signup(_prev: unknown, formData: FormData) {
     await ensureUserRow(data.user);
     await resolveInvitesForEmail(data.user.email ?? '');
     await syncPendingClaims(data.user.id);
-    revalidatePath('/', 'layout');
-    redirect((await countPendingClaims(data.user.id)) > 0 ? '/auth/claim' : '/dashboard');
+    const pending = await countPendingClaims(data.user.id);
+    const destination = pending > 0 ? '/auth/claim' : '/dashboard';
+    revalidatePath(destination);
+    redirect(destination);
   }
 
   // No session means email confirmation is required
@@ -100,11 +102,12 @@ export async function login(_prev: unknown, formData: FormData) {
     await resolveInvitesForEmail(data.user.email ?? '');
     await syncPendingClaims(data.user.id);
     const pending = await countPendingClaims(data.user.id);
-    revalidatePath('/', 'layout');
-    redirect(pending > 0 ? '/auth/claim' : '/dashboard');
+    const destination = pending > 0 ? '/auth/claim' : '/dashboard';
+    revalidatePath(destination);
+    redirect(destination);
   }
 
-  revalidatePath('/', 'layout');
+  revalidatePath('/dashboard');
   redirect('/dashboard');
 }
 
@@ -126,6 +129,8 @@ export async function signout() {
   );
 
   await supabase.auth.signOut();
-  revalidatePath('/', 'layout');
+  // Invalidating the destination clears stale authenticated payloads from the
+  // client router cache without re-rendering the whole app's root layout.
+  revalidatePath('/login');
   redirect('/login');
 }
