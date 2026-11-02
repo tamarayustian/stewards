@@ -1,15 +1,7 @@
 import type { Metadata } from 'next';
-import { Fraunces, IBM_Plex_Mono, Karla } from 'next/font/google';
 import { ToastProvider } from '@/components/toast';
+import { fraunces, ibmPlexMono, karla } from '@/lib/fonts';
 import './globals.css';
-
-const karla = Karla({ variable: '--font-karla', subsets: ['latin'] });
-const fraunces = Fraunces({ variable: '--font-fraunces', subsets: ['latin'] });
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-ibm-plex-mono',
-  subsets: ['latin'],
-  weight: ['400', '500'],
-});
 
 export const metadata: Metadata = {
   title: 'Stewards',
