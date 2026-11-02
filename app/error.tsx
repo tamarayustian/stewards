@@ -1,41 +1,36 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
+import { ErrorShell } from '@/components/error-shell';
+import { ErrorState } from '@/components/error-state';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function Error({
-  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const router = useRouter();
-
   return (
-    <div className="flex flex-1 items-center justify-center px-4">
-      <Card className="w-full max-w-sm text-center">
-        <CardHeader className="items-center">
-          <div className="mb-2 flex size-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle className="size-6 text-destructive" />
-          </div>
-          <CardTitle>Something went wrong</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            An unexpected error occurred. Please try again.
-          </p>
-          <div className="flex justify-center gap-3">
-            <Button variant="outline" onClick={() => router.push('/dashboard')}>
-              Go to dashboard
-            </Button>
-            <Button onClick={() => reset()}>Try again</Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <ErrorShell>
+      <ErrorState
+        icon={AlertTriangle}
+        title="Something broke on our end."
+        message="Nothing you did. Your data is safe. Try again, or head back home."
+      >
+        <Button variant="outline" nativeButton={false} render={<Link href="/" />}>
+          Back home
+        </Button>
+        <Button onClick={() => reset()}>Try again</Button>
+      </ErrorState>
+      <p className="relative mt-8 text-xs text-muted-foreground">
+        Still stuck? Email{' '}
+        <a href="mailto:support@stewards.app" className="underline underline-offset-4 hover:text-foreground">
+          support@stewards.app
+        </a>
+      </p>
+    </ErrorShell>
   );
 }
