@@ -1,5 +1,4 @@
 import { BookUser, Trash2, UserX, Users } from 'lucide-react';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -10,16 +9,11 @@ import { GroupForm } from '@/components/group-form';
 import { PeopleForm } from '@/components/people-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getCurrentUser } from '@/lib/auth';
 import { listContacts, listGroups } from '@/lib/expenses';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 export default async function GroupsPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect('/login');

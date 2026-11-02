@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { getCurrentUser } from '@/lib/auth';
 import { getPairBalances } from '@/lib/balances';
 import {
   countPendingClaims,
@@ -20,15 +21,6 @@ import { fetchExchangeRate } from '@/lib/rates';
 import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
-
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
-}
 
 export async function createExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();

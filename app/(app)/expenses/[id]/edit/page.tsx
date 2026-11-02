@@ -1,21 +1,15 @@
-import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 import { AddExpenseForm } from '@/components/add-expense-form';
+import { getCurrentUser } from '@/lib/auth';
 import db from '@/lib/db';
 import { type Currency } from '@/lib/currencies';
 import { listGroups, listUsersForDirect } from '@/lib/expenses';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 export default async function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect('/login');

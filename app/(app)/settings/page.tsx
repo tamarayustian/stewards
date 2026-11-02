@@ -8,18 +8,13 @@ import { AccountCard } from '@/components/account-card';
 import { FeedbackCard } from '@/components/feedback-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCurrentUser } from '@/lib/auth';
 import type { Currency } from '@/lib/currencies';
 import db from '@/lib/db';
-import { createServerClientReadOnly } from '@/lib/supabase';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 export default async function SettingsPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const profile = await db.user.findUnique({

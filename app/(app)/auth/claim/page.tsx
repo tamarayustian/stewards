@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 import { claimGhost, declineGhost } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
+import { getCurrentUser } from '@/lib/auth';
 import { listPendingClaims } from '@/lib/claims';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 async function onSubmitClaim(formData: FormData) {
   'use server';
@@ -18,11 +17,7 @@ async function onSubmitDecline(formData: FormData) {
 }
 
 export default async function ClaimPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect('/login');
 
   const claims = await listPendingClaims(user.id);
