@@ -191,13 +191,13 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
       group: {
         include: {
           members: { include: { user: { select: { id: true, name: true } } } },
-          _count: { select: { members: true } },
-          expenses: {
-            where: {
-              deletedAt: null,
-              splits: { some: { settledAt: null } },
+          _count: {
+            select: {
+              // Counted in SQL instead of shipping every matching expense id.
+              expenses: {
+                where: { deletedAt: null, splits: { some: { settledAt: null } } },
+              },
             },
-            select: { id: true },
           },
         },
       },
@@ -208,8 +208,8 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
   return memberships.map((m) => ({
     id: m.group.id,
     name: m.group.name,
-    memberCount: m.group._count.members,
-    unsettledCount: m.group.expenses.length,
+    memberCount: m.group.members.length,
+    unsettledCount: m.group._count.expenses,
     members: m.group.members.map((member) => ({
       id: member.user.id,
       name: member.user.name,
@@ -240,9 +240,12 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
     include: {
       members: { include: { user: { select: { id: true, name: true } } } },
       invites: { include: { inviter: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
-      expenses: {
-        where: { deletedAt: null, splits: { some: { settledAt: null } } },
-        select: { id: true },
+      _count: {
+        select: {
+          expenses: {
+            where: { deletedAt: null, splits: { some: { settledAt: null } } },
+          },
+        },
       },
     },
   });
@@ -260,7 +263,7 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
       inviterName: i.inviter.name,
       createdAt: i.createdAt,
     })),
-    unsettledCount: group.expenses.length,
+    unsettledCount: group._count.expenses,
   };
 }
 
