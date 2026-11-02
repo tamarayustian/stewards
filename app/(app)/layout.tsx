@@ -1,10 +1,9 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { AppShell } from '@/components/app-shell';
+import { getCurrentUser } from '@/lib/auth';
 import { countUnreadReminders } from '@/lib/balances';
 import db from '@/lib/db';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 function getInitials(name: string) {
   return name
@@ -16,24 +15,19 @@ function getInitials(name: string) {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect('/login');
   }
 
-  const [profile, unreadReminders] = await Promise.all([
-    db.user.findUnique({
-      where: { id: user.id },
-      select: { name: true },
-    }),
-    countUnreadReminders(user.id),
-  ]);
+  // Start the badge count but don't await it: AppShell streams it in so the
+  // page is not blocked on the nav badge.
+  const unreadReminders = countUnreadReminders(user.id);
+  const profile = await db.user.findUnique({
+    where: { id: user.id },
+    select: { name: true },
+  });
 
   const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
   const initials = getInitials(displayName);

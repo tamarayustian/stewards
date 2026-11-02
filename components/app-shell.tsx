@@ -3,6 +3,7 @@
 import { LayoutDashboard, LogOut, ReceiptText, Settings, Sprout, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Suspense, use } from 'react';
 
 import { signout } from '@/app/auth/actions';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -27,7 +28,34 @@ interface AppShellProps {
   children: React.ReactNode;
   userName: string;
   userInitials: string;
-  unreadReminders: number;
+  // Resolved (streamed) inside Suspense so the nav renders immediately.
+  unreadReminders: Promise<number>;
+}
+
+function UnreadBadge({
+  count,
+  variant,
+}: {
+  count: Promise<number>;
+  variant: 'desktop' | 'mobile';
+}) {
+  const unreadReminders = use(count);
+
+  if (unreadReminders <= 0) return null;
+
+  if (variant === 'mobile') {
+    return (
+      <span className="absolute right-1 top-0 size-4 rounded-full bg-destructive text-center text-[9px] font-semibold leading-4 text-white">
+        {unreadReminders > 9 ? '9+' : unreadReminders}
+      </span>
+    );
+  }
+
+  return (
+    <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">
+      {unreadReminders}
+    </span>
+  );
 }
 
 export function AppShell({ children, userName, userInitials, unreadReminders }: AppShellProps) {
@@ -62,10 +90,10 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               >
                 <Icon className={`size-4 ${active ? 'text-primary' : ''}`} />
                 {item.label}
-                {item.href === '/expenses' && unreadReminders > 0 && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-white">
-                    {unreadReminders}
-                  </span>
+                {item.href === '/expenses' && (
+                  <Suspense fallback={null}>
+                    <UnreadBadge count={unreadReminders} variant="desktop" />
+                  </Suspense>
                 )}
               </Button>
             );
@@ -160,10 +188,10 @@ export function AppShell({ children, userName, userInitials, unreadReminders }: 
               >
                 <Icon className="size-5" />
                 {item.label}
-                {item.href === '/expenses' && unreadReminders > 0 && (
-                  <span className="absolute right-1 top-0 size-4 rounded-full bg-destructive text-center text-[9px] font-semibold leading-4 text-white">
-                    {unreadReminders > 9 ? '9+' : unreadReminders}
-                  </span>
+                {item.href === '/expenses' && (
+                  <Suspense fallback={null}>
+                    <UnreadBadge count={unreadReminders} variant="mobile" />
+                  </Suspense>
                 )}
               </Link>
             );
