@@ -180,22 +180,24 @@ export async function mergeGhostIntoUser(
 }
 
 export async function syncPendingClaims(userId: string): Promise<void> {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { email: true, name: true, phone: true },
-  });
-  if (!user) return;
+  // All three reads are independent; batching them keeps login to one round trip.
+  const [user, ghosts, existing] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: { email: true, name: true, phone: true },
+    }),
+    db.user.findMany({
+      where: { id: { not: userId }, isRegistered: false, deletedAt: null },
+      select: { id: true, email: true, name: true, phone: true },
+    }),
+    db.userClaim.findMany({
+      where: { userId },
+      select: { ghostId: true },
+    }),
+  ]);
+  if (!user || ghosts.length === 0) return;
 
-  const ghosts = await db.user.findMany({
-    where: { id: { not: userId }, isRegistered: false, deletedAt: null },
-    select: { id: true, email: true, name: true, phone: true },
-  });
   const ghostRows: GhostIdentity[] = ghosts;
-
-  const existing = await db.userClaim.findMany({
-    where: { userId },
-    select: { ghostId: true },
-  });
   const existingPairs = new Set(existing.map((e) => e.ghostId));
 
   const matches = filterUnclaimed(
@@ -227,25 +229,42 @@ export async function listPendingClaims(userId: string): Promise<PendingClaimRow
     include: { ghost: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'asc' },
   });
+  if (claims.length === 0) return [];
 
-  const rows: PendingClaimRow[] = [];
-  for (const claim of claims) {
-    const adder = await db.contact.findFirst({
-      where: { contactId: claim.ghost.id },
+  const ghostIds = claims.map((claim) => claim.ghost.id);
+
+  // Three grouped reads for all claims instead of 3 queries per claim.
+  const [adders, paidCounts, splitCounts] = await Promise.all([
+    db.contact.findMany({
+      where: { contactId: { in: ghostIds } },
       include: { owner: { select: { name: true } } },
-    });
-    const [paidCount, splitCount] = await Promise.all([
-      db.expense.count({ where: { paidById: claim.ghost.id, deletedAt: null } }),
-      db.expenseSplit.count({
-        where: { userId: claim.ghost.id, expense: { deletedAt: null } },
-      }),
-    ]);
-    rows.push({
+    }),
+    db.expense.groupBy({
+      by: ['paidById'],
+      where: { paidById: { in: ghostIds }, deletedAt: null },
+      _count: { _all: true },
+    }),
+    db.expenseSplit.groupBy({
+      by: ['userId'],
+      where: { userId: { in: ghostIds }, expense: { deletedAt: null } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const adderByGhost = new Map<string, string>();
+  for (const contact of adders) {
+    if (!adderByGhost.has(contact.contactId)) adderByGhost.set(contact.contactId, contact.owner.name);
+  }
+  const paidByGhost = new Map(paidCounts.map((row) => [row.paidById, row._count._all]));
+  const splitByGhost = new Map(splitCounts.map((row) => [row.userId, row._count._all]));
+
+  return claims.map((claim) => {
+    const ghostId = claim.ghost.id;
+    return {
       claimId: claim.id,
       ghostName: claim.ghost.name,
-      adderName: adder?.owner.name ?? null,
-      sharedExpenseCount: paidCount + splitCount,
-    });
-  }
-  return rows;
+      adderName: adderByGhost.get(ghostId) ?? null,
+      sharedExpenseCount: (paidByGhost.get(ghostId) ?? 0) + (splitByGhost.get(ghostId) ?? 0),
+    };
+  });
 }
