@@ -1,5 +1,4 @@
 import { ArrowDownToLine, ArrowUpFromLine, Plus, ReceiptText, UserPlus } from 'lucide-react';
-import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -13,24 +12,19 @@ import { StatCard } from '@/components/stat-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { getCurrentUser } from '@/lib/auth';
 import db from '@/lib/db';
-import { getActivity, getBalances, type ActivityFilter } from '@/lib/expenses';
+import { getActivity, getBalances, hasAnyActivity, type ActivityFilter } from '@/lib/expenses';
 import { listPendingNotices } from '@/lib/invites';
 import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
-import { createServerClientReadOnly } from '@/lib/supabase';
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
-  const cookieStore = await cookies();
-  const supabase = createServerClientReadOnly(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect('/login');
@@ -40,21 +34,19 @@ export default async function DashboardPage({
   const filter: ActivityFilter =
     filterParam === 'owe' || filterParam === 'owed' || filterParam === 'paid' ? filterParam : 'all';
 
-  const [profile, balances, allActivity, filteredActivity, notices] = await Promise.all([
+  const [profile, balances, activity, hasActivity, notices] = await Promise.all([
     db.user.findUnique({
       where: { id: user.id },
       select: { name: true, email: true, currency: true },
     }),
     getBalances(user.id),
-    getActivity(user.id),
-    filter === 'all' ? null : getActivity(user.id, filter),
+    getActivity(user.id, filter),
+    hasAnyActivity(user.id),
     listPendingNotices(user.email, user.id),
   ]);
-  const activity = filteredActivity ?? allActivity;
 
   const userCurrency = (profile?.currency ?? 'HKD') as Currency;
   const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
-  const hasActivity = allActivity.length > 0;
 
   return (
     <div className="space-y-6 p-6">

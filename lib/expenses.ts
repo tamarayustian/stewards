@@ -9,15 +9,15 @@ export type BalanceSummary = {
 };
 
 export async function getBalances(userId: string): Promise<BalanceSummary> {
-  const viewer = await db.user.findUnique({ where: { id: userId }, select: { currency: true } });
-  const viewerCurrency = (viewer?.currency ?? 'HKD') as string;
-
   const activeExpenseWhere = {
     deletedAt: null,
     OR: [{ groupId: null }, { group: { deletedAt: null } }],
   };
 
-  const [oweSplits, owedSplits, unsettledCount] = await Promise.all([
+  // The viewer's currency is only needed for the in-memory conversion below, so
+  // every read can go out in one batch instead of waiting on the user lookup.
+  const [viewer, oweSplits, owedSplits, unsettledCount, owedRows] = await Promise.all([
+    db.user.findUnique({ where: { id: userId }, select: { currency: true } }),
     db.expenseSplit.findMany({
       where: {
         userId,
@@ -48,7 +48,19 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
         expense: { ...activeExpenseWhere, paidById: { not: userId } },
       },
     }),
+    db.expenseSplit.findMany({
+      where: {
+        settledAt: null,
+        userId: { not: userId },
+        expense: { ...activeExpenseWhere, paidById: userId },
+        amount: { gt: 0 },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    }),
   ]);
+
+  const viewerCurrency = (viewer?.currency ?? 'HKD') as string;
 
   function toHome(
     splitAmount: Prisma.Decimal,
@@ -67,17 +79,6 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
     (sum, s) => sum.plus(toHome(s.amount, s.expense.currency, s.expense.rate)),
     new Prisma.Decimal(0),
   );
-
-  const owedRows = await db.expenseSplit.findMany({
-    where: {
-      settledAt: null,
-      userId: { not: userId },
-      expense: { ...activeExpenseWhere, paidById: userId },
-      amount: { gt: 0 },
-    },
-    select: { userId: true },
-    distinct: ['userId'],
-  });
 
   return { youOwe, youAreOwed, unsettledCount, owedCount: owedRows.length };
 }
@@ -174,6 +175,21 @@ export async function getActivity(
       borrowerId,
     };
   });
+}
+
+// Cheap existence check: filtered dashboard views only need to know whether the
+// user has any activity at all, not a second copy of the full feed.
+export async function hasAnyActivity(userId: string): Promise<boolean> {
+  const count = await db.expense.count({
+    where: {
+      deletedAt: null,
+      AND: [
+        { OR: [{ groupId: null }, { group: { deletedAt: null } }] },
+        { OR: [{ paidById: userId }, { splits: { some: { userId } } }] },
+      ],
+    },
+  });
+  return count > 0;
 }
 
 export type GroupSummary = {
