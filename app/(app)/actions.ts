@@ -623,7 +623,7 @@ export async function sendReminder(_prev: unknown, formData: FormData) {
 // Revalidates both the list page and the dynamic person pages (pattern match revalidates all).
 async function revalidatePeople() {
   revalidatePath('/people');
-  revalidatePath('/people/[id]');
+  revalidatePath('/people/[id]', 'page');
 }
 
 export async function markRemindersRead(_prev: unknown, formData: FormData) {
