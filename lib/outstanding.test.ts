@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Prisma } from '@/lib/generated/prisma/client';
 import { Prisma as PrismaValue } from '@/lib/generated/prisma/browser';
 import {
+  hasOutstandingShare,
   outstandingCents,
   outstandingDecimal,
   summarizePairCredits,
@@ -34,6 +35,24 @@ describe('outstandingCents', () => {
 
   it('accepts Decimal inputs', () => {
     expect(outstandingCents(dec('100.00'), dec('0.75'))).toBe(9925);
+  });
+});
+
+describe('hasOutstandingShare', () => {
+  it('treats a zero-amount payer split as no debt', () => {
+    expect(hasOutstandingShare('0.00', '0.00')).toBe(false);
+  });
+
+  it('keeps a part-paid share outstanding', () => {
+    expect(hasOutstandingShare('100.00', '25.25')).toBe(true);
+  });
+
+  it('drops a fully settled share', () => {
+    expect(hasOutstandingShare('100.00', '100.00')).toBe(false);
+  });
+
+  it('drops an over-settled share', () => {
+    expect(hasOutstandingShare('100.00', '120.00')).toBe(false);
   });
 });
 

@@ -9,7 +9,12 @@ import {
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import { outstandingDecimal, summarizePairCredits, type PairCredit } from '@/lib/outstanding';
+import {
+  hasOutstandingShare,
+  outstandingDecimal,
+  summarizePairCredits,
+  type PairCredit,
+} from '@/lib/outstanding';
 
 export type { PairCredit };
 
@@ -139,11 +144,11 @@ async function loadPairRows(userId: string): Promise<PairRows> {
     // A zero-outstanding row is not a balance: the share is closed even if a
     // later rebuild has not cleared its `settledAt` yet.
     owedToMeRows: owedToMe
-      .map((split) => toOwedToMeRow(split, viewerCurrency))
-      .filter((row) => row.splitAmount.gt(0)),
+      .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+      .map((split) => toOwedToMeRow(split, viewerCurrency)),
     iOweRows: iOwe
-      .map((split) => toIOweRow(split, viewerCurrency))
-      .filter((row) => row.splitAmount.gt(0)),
+      .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+      .map((split) => toIOweRow(split, viewerCurrency)),
   };
 }
 
@@ -328,6 +333,7 @@ export async function getPairDetail(
   const counterparty: Counterparty = { id: otherUserId, ...counterpartyRow };
 
   const owedToMeRows: ShareRow[] = owedToMe
+    .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
     .map((split) => {
       const sameCurrency = split.expense.currency === viewerCurrency;
       const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
@@ -343,10 +349,10 @@ export async function getPairDetail(
         convertedAmount: outstanding.mul(rate),
         party: counterparty,
       };
-    })
-    .filter((row) => row.splitAmount.gt(0));
+    });
 
   const iOweRows: ShareRow[] = iOwe
+    .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
     .map((split) => {
       const sameCurrency = split.expense.currency === viewerCurrency;
       const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
@@ -362,8 +368,7 @@ export async function getPairDetail(
         convertedAmount: outstanding.mul(rate),
         party: counterparty,
       };
-    })
-    .filter((row) => row.splitAmount.gt(0));
+    });
 
   // Every share closed at zero leaves this pair with nothing to show.
   if (owedToMeRows.length === 0 && iOweRows.length === 0) return null;

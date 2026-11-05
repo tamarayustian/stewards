@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import { outstandingCents, outstandingDecimal } from '@/lib/outstanding';
+import { hasOutstandingShare, outstandingDecimal } from '@/lib/outstanding';
 
 export type BalanceSummary = {
   youOwe: Prisma.Decimal;
@@ -61,11 +61,11 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
   // `amount - settledAmount`. Prisma cannot compare two columns, so zero-share
   // rows (a payer's own zero split, or one the rebuild has just closed) are
   // dropped here rather than counted as debt.
-  const owingRows = oweSplits.filter(
-    (split) => outstandingCents(split.amount, split.settledAmount) > 0,
+  const owingRows = oweSplits.filter((split) =>
+    hasOutstandingShare(split.amount, split.settledAmount),
   );
-  const owedRows = owedSplits.filter(
-    (split) => outstandingCents(split.amount, split.settledAmount) > 0,
+  const owedRows = owedSplits.filter((split) =>
+    hasOutstandingShare(split.amount, split.settledAmount),
   );
 
   const youOwe = owingRows.reduce(
@@ -110,7 +110,10 @@ export type ActivityItem = {
   isPayer: boolean;
   unsettled: boolean;
   hasSettled: boolean;
+  /** What is still owed on the viewer's share. */
   myShare: Prisma.Decimal;
+  /** The viewer's original split amount, for settled history rows. */
+  shareAmount: Prisma.Decimal;
   participantCount: number;
   borrowerId: string | null;
 };
@@ -179,7 +182,7 @@ export async function getActivity(
     // Zero-share splits never count: fully settled borrowers drop out here, and
     // the payer's own 0.00 share is ignored on both sides.
     const unsettledBorrowers = e.splits.filter(
-      (s) => s.userId !== userId && outstandingCents(s.amount, s.settledAmount) > 0,
+      (s) => s.userId !== userId && hasOutstandingShare(s.amount, s.settledAmount),
     );
     const hasSettled = mySplit !== undefined;
     const unsettled = isPayer ? unsettledBorrowers.length > 0 : myShare.gt(0);
@@ -196,6 +199,7 @@ export async function getActivity(
       unsettled,
       hasSettled,
       myShare,
+      shareAmount: mySplit ? mySplit.amount : new Prisma.Decimal(0),
       participantCount: e._count.splits,
       borrowerId,
     };
@@ -235,8 +239,13 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
           _count: {
             select: {
               // Counted in SQL instead of shipping every matching expense id.
+              // `amount: { gt: 0 }` skips the payer's own 0.00 share, which no
+              // rebuild ever closes; a part-paid debtor share still counts.
               expenses: {
-                where: { deletedAt: null, splits: { some: { settledAt: null } } },
+                where: {
+                  deletedAt: null,
+                  splits: { some: { settledAt: null, amount: { gt: 0 } } },
+                },
               },
             },
           },
@@ -284,7 +293,11 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
       _count: {
         select: {
           expenses: {
-            where: { deletedAt: null, splits: { some: { settledAt: null } } },
+            // Same guard as `listGroups`: the payer's 0.00 split is not a debt.
+            where: {
+              deletedAt: null,
+              splits: { some: { settledAt: null, amount: { gt: 0 } } },
+            },
           },
         },
       },

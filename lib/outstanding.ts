@@ -32,6 +32,22 @@ export function outstandingDecimal(
 }
 
 /**
+ * Whether a split still carries money owed. Zero-amount splits that every
+ * expense carries (the payer's own share, and a fully paid debtor share) are
+ * not debts; a partially paid share is.
+ *
+ * This is the predicate to reach for when Prisma cannot compare two columns,
+ * and the JS counterpart of the SQL filter
+ * `{ settledAt: null, amount: { gt: 0 } }`.
+ */
+export function hasOutstandingShare(
+  amount: Prisma.Decimal | string,
+  settledAmount: Prisma.Decimal | string,
+): boolean {
+  return outstandingCents(amount, settledAmount) > 0;
+}
+
+/**
  * A payment can outlive the debt it was recorded against (an expense was edited
  * down or deleted). The unallocated remainder is credit: money the payer has
  * already handed over that no split is waiting for. It is displayed next to a
