@@ -46,6 +46,8 @@ export type AllocationPaymentSource = {
   currency: string;
   occurredAt: Date;
   createdAt: Date;
+  /** Optional pin: the split this payment was recorded against. */
+  pinnedSplitId: string | null;
 };
 
 /** Stable key for an unordered pair of users. */
@@ -98,10 +100,10 @@ export function toAllocationPayment(row: AllocationPaymentSource): AllocationPay
     currency: row.currency,
     occurredAt: row.occurredAt,
     createdAt: row.createdAt,
-    // The schema has no pin column. Pinning is expressed by creating a
-    // settlement whose amount equals the target split's outstanding balance;
-    // oldest-first allocation then lands it within the pair.
-    pinnedSplitId: null,
+    // The pin lets a "mark this expense paid" payment clear that split first.
+    // The engine falls back to oldest-first when the pin is missing or no
+    // longer eligible.
+    pinnedSplitId: row.pinnedSplitId,
   };
 }
 
@@ -145,7 +147,8 @@ const pairSplitSelect = {
   },
 } satisfies Prisma.ExpenseSplitSelect;
 
-const pairSettlementSelect = {
+/** Exported for the pin-column regression test; the rebuild is the only writer. */
+export const pairSettlementSelect = {
   id: true,
   fromUserId: true,
   toUserId: true,
@@ -154,6 +157,7 @@ const pairSettlementSelect = {
   occurredAt: true,
   createdAt: true,
   deletedAt: true,
+  pinnedSplitId: true,
 } satisfies Prisma.SettlementSelect;
 
 type PairSplitRow = Prisma.ExpenseSplitGetPayload<{ select: typeof pairSplitSelect }>;

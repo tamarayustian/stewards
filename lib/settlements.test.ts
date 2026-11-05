@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   nextSettledAt,
+  pairSettlementSelect,
   settlementPairKey,
   toAllocationPayment,
   toAllocationSplit,
 } from './settlements';
+import { allocateSettlements } from './settlement-allocation';
 
 describe('settlementPairKey', () => {
   it('builds an unordered pair key', () => {
@@ -69,6 +71,7 @@ describe('toAllocationPayment', () => {
         currency: 'HKD',
         occurredAt: new Date(2026, 1, 2),
         createdAt: new Date(2026, 1, 2, 3),
+        pinnedSplitId: null,
       } as never),
     ).toEqual({
       id: 'p1',
@@ -78,9 +81,68 @@ describe('toAllocationPayment', () => {
       currency: 'HKD',
       occurredAt: new Date(2026, 1, 2),
       createdAt: new Date(2026, 1, 2, 3),
-      // This schema has no pin column; pinning is expressed by settlement amount.
       pinnedSplitId: null,
     });
+  });
+
+  it('passes the pinned split through to the engine', () => {
+    expect(
+      toAllocationPayment({
+        id: 'p2',
+        fromUserId: 'alex',
+        toUserId: 'tam',
+        amount: '100.00',
+        currency: 'HKD',
+        occurredAt: new Date(2026, 1, 3),
+        createdAt: new Date(2026, 1, 3, 4),
+        pinnedSplitId: 's2',
+      } as never),
+    ).toMatchObject({ pinnedSplitId: 's2' });
+  });
+
+  it('clears a pinned split before an older open split', () => {
+    const older = toAllocationSplit({
+      id: 's1',
+      userId: 'alex',
+      amount: '100.00',
+      settledAmount: '0.00',
+      expense: {
+        paidById: 'tam',
+        currency: 'HKD',
+        createdAt: new Date(2026, 0, 1),
+      },
+    } as never);
+    const target = toAllocationSplit({
+      id: 's2',
+      userId: 'alex',
+      amount: '100.00',
+      settledAmount: '0.00',
+      expense: {
+        paidById: 'tam',
+        currency: 'HKD',
+        createdAt: new Date(2026, 0, 2),
+      },
+    } as never);
+    const payment = toAllocationPayment({
+      id: 'p1',
+      fromUserId: 'alex',
+      toUserId: 'tam',
+      amount: '100.00',
+      currency: 'HKD',
+      occurredAt: new Date(2026, 0, 3),
+      createdAt: new Date(2026, 0, 3),
+      pinnedSplitId: 's2',
+    } as never);
+
+    expect(
+      allocateSettlements({ splits: [older, target], payments: [payment] }).allocations,
+    ).toEqual([{ settlementId: 'p1', splitId: 's2', amountCents: 10000 }]);
+  });
+});
+
+describe('pairSettlementSelect', () => {
+  it('loads the pin column the rebuild maps into the engine', () => {
+    expect(pairSettlementSelect).toMatchObject({ pinnedSplitId: true });
   });
 });
 

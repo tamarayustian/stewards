@@ -387,6 +387,7 @@ type SettlementSnapshotRow = {
   note: string | null;
   fromUserId: string;
   toUserId: string;
+  pinnedSplitId: string | null;
   deletedAt: Date | null;
 };
 
@@ -399,6 +400,7 @@ function settlementSnapshot(row: SettlementSnapshotRow): Prisma.InputJsonObject 
     note: row.note,
     fromUserId: row.fromUserId,
     toUserId: row.toUserId,
+    pinnedSplitId: row.pinnedSplitId,
     deletedAt: row.deletedAt?.toISOString() ?? null,
   };
 }
@@ -465,8 +467,8 @@ export async function recordSettlement(_prev: unknown, formData: FormData) {
     return { error: 'Person not found.' };
   }
 
-  // A pinned split is only a hint for oldest-first allocation; it is not
-  // persisted in v1. Still require that it belongs to this pair and currency.
+  // The pin targets one split so "mark this expense paid" clears it first; the
+  // engine falls back to oldest-first when the pin is no longer eligible.
   if (input.splitId) {
     const split = await db.expenseSplit.findFirst({
       where: {
@@ -499,6 +501,7 @@ export async function recordSettlement(_prev: unknown, formData: FormData) {
           occurredAt: input.occurredAt,
           note: input.note,
           requestId: input.requestId,
+          pinnedSplitId: input.splitId,
           createdById: user.id,
         },
       });
@@ -516,10 +519,17 @@ export async function recordSettlement(_prev: unknown, formData: FormData) {
       });
     });
   } catch (error) {
-    // A concurrent retry won the `requestId` race; its transaction rebuilt the
-    // pair and wrote the audit row, so this request has nothing left to do.
-    if (isUniqueViolation(error)) {
-      return { ok: true };
+    // A concurrent retry may have won the `requestId` race. Only treat that as
+    // success when the requested settlement really exists: any other unique
+    // violation rolled the payment back and must surface as an error.
+    if (input.requestId && isUniqueViolation(error)) {
+      const existing = await db.settlement.findUnique({
+        where: { requestId: input.requestId },
+        select: { id: true },
+      });
+      if (existing) {
+        return { ok: true };
+      }
     }
     throw error;
   }

@@ -186,19 +186,20 @@ model Notice {
 }
 
 model Settlement {
-  id          String    @id @default(uuid())
-  fromUserId  String
-  toUserId    String
-  amount      Decimal   @db.Decimal(12, 2)
-  currency    String    @default("HKD")
-  occurredAt  DateTime  @default(now())
-  note        String?
-  createdById String?
-  groupId     String?
-  requestId   String?   @unique
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
+  id            String    @id @default(uuid())
+  fromUserId    String
+  toUserId      String
+  amount        Decimal   @db.Decimal(12, 2)
+  currency      String    @default("HKD")
+  occurredAt    DateTime  @default(now())
+  note          String?
+  createdById   String?
+  groupId       String?
+  requestId     String?   @unique
+  pinnedSplitId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   from        User                  @relation("SettlementFrom", fields: [fromUserId], references: [id])
   to          User                  @relation("SettlementTo", fields: [toUserId], references: [id])
