@@ -14,7 +14,9 @@ type UnsettleState = Awaited<ReturnType<typeof unsettleExpense>> | undefined;
 
 /**
  * Names the scope of an unwind. Reversing one share can erase whole payments and
- * reopen the other shares they were covering, so that has to be said out loud.
+ * release the other shares they were covering, so that has to be said out loud.
+ * Only the tapped share's outcome is verified after the rebuild, so other shares
+ * are reported as released, never as reopened.
  */
 function unsettleTitle(result: {
   settlementsClosed: number;
@@ -26,17 +28,20 @@ function unsettleTitle(result: {
     return 'Marked unpaid';
   }
 
-  const payments = `${settlementsClosed} payment${settlementsClosed === 1 ? '' : 's'}`;
-  const parts = [`Reversed ${payments}`];
+  const payments =
+    settlementsClosed === 1 ? 'Payment reversed' : `${settlementsClosed} payments reversed`;
+  const parts = [payments];
   if (otherSplitsReleased > 0) {
+    // Released, not reopened: only the tapped share's state is verified after
+    // the rebuild.
     parts.push(
-      `${otherSplitsReleased} other share${otherSplitsReleased === 1 ? '' : 's'} reopened`,
+      `${otherSplitsReleased} other share${otherSplitsReleased === 1 ? '' : 's'} released`,
     );
   }
   if (!reopened) {
     parts.push('this share is still covered');
   }
-  return parts.join(' — ');
+  return parts.join(' · ');
 }
 
 function SettleChip({

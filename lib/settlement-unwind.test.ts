@@ -71,6 +71,23 @@ describe('planSettlementUnwind', () => {
     expect(plan.otherSplitsReleased).toBe(0);
   });
 
+  it('counts a split funded by two closed payments once', () => {
+    const plan = planSettlementUnwind({
+      splitId: 's1',
+      allocations: [
+        allocation('p1', 's1'),
+        allocation('p1', 's2'),
+        allocation('p2', 's1'),
+        allocation('p2', 's2'),
+      ],
+      settlements: [settlement('p1', 40_00), settlement('p2', 60_00)],
+    });
+
+    expect(plan.otherSplitsReleased).toBe(1);
+    expect(plan.settlementsClosed).toBe(2);
+    expect(plan.allocationsReleased).toBe(2);
+  });
+
   it('returns an empty plan when nothing funds the split', () => {
     const plan = planSettlementUnwind({
       splitId: 's1',

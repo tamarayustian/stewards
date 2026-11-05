@@ -25,7 +25,10 @@ export type SettlementUnwindPlan = {
   settlementsClosed: number;
   /** Allocations on the tapped split released by closing those settlements. */
   allocationsReleased: number;
-  /** Allocations on any other split released by closing those settlements. */
+  /**
+   * Distinct other splits (not allocations) those settlements were funding. A
+   * split can be funded by several closed payments and is counted once.
+   */
   otherSplitsReleased: number;
   /** Sum of the closed settlements' amounts. */
   amountReversedCents: number;
@@ -39,6 +42,10 @@ export type SettlementUnwindPlan = {
  * A settlement is closed when it funds the tapped split. Allocations pointing at
  * settlements outside `settlements` are ignored: their payment is already gone,
  * so it must not drive a second soft delete.
+ *
+ * The summary counts *released* work, not *reopened* work: whether another split
+ * stays settled depends on the rebuild, which this pure helper cannot see. The
+ * tapped split's outcome is verified by the caller after the rebuild.
  */
 export function planSettlementUnwind(input: {
   splitId: string;
@@ -54,11 +61,11 @@ export function planSettlementUnwind(input: {
   }
 
   let allocationsReleased = 0;
-  let otherSplitsReleased = 0;
+  const otherSplitIds = new Set<string>();
   for (const allocation of input.allocations) {
     if (!toClose.has(allocation.settlementId)) continue;
     if (allocation.splitId === input.splitId) allocationsReleased += 1;
-    else otherSplitsReleased += 1;
+    else otherSplitIds.add(allocation.splitId);
   }
 
   const settlementIds = [...toClose].sort();
@@ -71,7 +78,7 @@ export function planSettlementUnwind(input: {
     settlementIds,
     settlementsClosed: settlementIds.length,
     allocationsReleased,
-    otherSplitsReleased,
+    otherSplitsReleased: otherSplitIds.size,
     amountReversedCents,
   };
 }
