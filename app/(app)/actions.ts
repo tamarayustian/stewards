@@ -22,7 +22,8 @@ import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
 import { validateSettlementEditInput, validateSettlementInput } from '@/lib/settlement-input';
-import { rebuildPairAllocations } from '@/lib/settlements';
+import { groupSettleAllTargets, type SettleTarget } from '@/lib/settlement-targets';
+import { rebuildPairAllocations, toCents } from '@/lib/settlements';
 
 export async function createExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
@@ -247,8 +248,9 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
   }
 }
 
-// Marks the current user's share of an expense as repaid.
-// Only the borrower (non-payer with an unsettled, non-zero split) can settle their own debt.
+// Marks one share of an expense as repaid by recording a settlement pinned to
+// that split. The borrower settles their own share; the payer can record that a
+// borrower paid them by naming that borrower's split.
 export async function settleExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
@@ -261,34 +263,53 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      OR: [
-        // Borrower can settle their own split (they paid the payer)
-        {
-          paidById: { not: user.id },
-          splits: { some: { userId: user.id, settledAt: null, amount: { gt: 0 } } },
-        },
-        // Payer can settle a borrower's split (they received payment)
-        {
-          paidById: user.id,
-          splits: { some: { userId: { not: user.id }, settledAt: null, amount: { gt: 0 } } },
-        },
-      ],
+      // The payer or a participant may act on this expense.
+      OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true, paidById: true },
+    select: {
+      groupId: true,
+      paidById: true,
+      currency: true,
+      splits: { select: { id: true, userId: true, amount: true, settledAmount: true } },
+    },
   });
 
   if (!expense) {
     return { error: 'Nothing to settle on this expense.' };
   }
 
-  // Determine which split to settle: borrower settles their own, payer settles the other's
+  // Determine which split to settle: borrower settles their own, payer settles
+  // the borrower's (named by `splitUserId`).
   const splitUserId =
     expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
-  await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: splitUserId } },
-    data: { settledAt: new Date() },
+  const split = expense.splits.find((row) => row.userId === splitUserId);
+  // Paying yourself is not a payment, so the payer's own share is never a target.
+  if (!split || splitUserId === expense.paidById) {
+    return { error: 'Nothing to settle on this expense.' };
+  }
+
+  // Outstanding is projected from the ledger, never re-derived from `settledAt`.
+  const outstanding = split.amount.minus(split.settledAmount);
+  if (outstanding.lte(0)) {
+    return { error: 'Nothing to settle on this expense.' };
+  }
+
+  await db.$transaction(async (tx) => {
+    await writeSettlement(tx, {
+      fromUserId: splitUserId,
+      toUserId: expense.paidById,
+      amountCents: toCents(outstanding),
+      currency: expense.currency,
+      occurredAt: new Date(),
+      note: null,
+      // Pin the payment so it clears the tapped share, not the oldest one.
+      pinnedSplitId: split.id,
+      groupId: expense.groupId,
+      requestId: null,
+      actorId: user.id,
+    });
   });
 
   revalidatePath('/dashboard');
@@ -299,7 +320,8 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   }
 }
 
-// Reverts a mistaken 'Mark paid': clears settledAt on the current user's split.
+// Reverts a mistaken 'Mark paid' by removing the payments that funded the share.
+// A payment may have covered several shares, so this reopens all of them.
 export async function unsettleExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
@@ -310,55 +332,107 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      OR: [
-        // Borrower can un-settle their own split
-        {
-          paidById: { not: user.id },
-          splits: { some: { userId: user.id, settledAt: { not: null }, amount: { gt: 0 } } },
-        },
-        // Payer can un-settle a borrower's split
-        {
-          paidById: user.id,
-          splits: {
-            some: { userId: { not: user.id }, settledAt: { not: null }, amount: { gt: 0 } },
-          },
-        },
-      ],
+      OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true, paidById: true },
+    select: {
+      groupId: true,
+      paidById: true,
+      splits: { select: { id: true, userId: true } },
+    },
   });
   if (!expense) {
     return { error: 'Nothing to un-settle on this expense.' };
   }
 
-  // Determine which split to un-settle: borrower un-settles their own, payer un-settles the other's
+  // Determine which split to un-settle: borrower own, payer the borrower's.
   const splitUserId =
     expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
-  await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: splitUserId } },
-    data: { settledAt: null },
+  const split = expense.splits.find((row) => row.userId === splitUserId);
+  if (!split) {
+    return { error: 'Nothing to un-settle on this expense.' };
+  }
+
+  const reopened = await db.$transaction(async (tx) => {
+    const allocations = await tx.settlementAllocation.findMany({
+      where: { splitId: split.id, settlement: { deletedAt: null } },
+      select: { settlementId: true },
+    });
+
+    const fundingIds = [...new Set(allocations.map((row) => row.settlementId))];
+    const settlements =
+      fundingIds.length > 0
+        ? await tx.settlement.findMany({
+            where: { id: { in: fundingIds }, deletedAt: null },
+            select: {
+              id: true,
+              amount: true,
+              currency: true,
+              occurredAt: true,
+              note: true,
+              fromUserId: true,
+              toUserId: true,
+              pinnedSplitId: true,
+              deletedAt: true,
+            },
+          })
+        : [];
+
+    const deletedIds = new Set(settlements.map((settlement) => settlement.id));
+    const released = allocations.filter((row) => deletedIds.has(row.settlementId)).length;
+    if (released === 0) {
+      return 0;
+    }
+
+    const deletedAt = new Date();
+    for (const settlement of settlements) {
+      const deleted = await tx.settlement.update({
+        where: { id: settlement.id },
+        data: { deletedAt },
+      });
+
+      await tx.ledgerEvent.create({
+        data: {
+          actorId: user.id,
+          action: 'settlement.deleted',
+          entity: 'Settlement',
+          entityId: settlement.id,
+          before: settlementSnapshot(settlement),
+          after: settlementSnapshot(deleted),
+        },
+      });
+    }
+
+    await rebuildPairAllocations(tx, expense.paidById, splitUserId);
+    return released;
   });
+
+  if (reopened === 0) {
+    return { error: 'Nothing to un-settle on this expense.' };
+  }
+
   revalidatePath('/dashboard');
   revalidatePath('/people');
   revalidatePath('/expenses');
   if (expense.groupId) {
     revalidatePath(`/people/${expense.groupId}`);
   }
+
+  return { ok: true, reopened };
 }
 
-// Marks every one of the current user's unsettled debts as repaid in one go.
+// Marks every one of the current user's outstanding debts as repaid in one go:
+// one settlement per creditor and currency, allocated oldest-first.
 export async function settleAll() {
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }
 
-  await db.expenseSplit.updateMany({
+  const splits = await db.expenseSplit.findMany({
     where: {
       userId: user.id,
-      settledAt: null,
       amount: { gt: 0 },
       expense: {
         deletedAt: null,
@@ -366,7 +440,50 @@ export async function settleAll() {
         OR: [{ groupId: null }, { group: { deletedAt: null } }],
       },
     },
-    data: { settledAt: new Date() },
+    select: {
+      id: true,
+      amount: true,
+      settledAmount: true,
+      expense: { select: { paidById: true, currency: true, createdAt: true } },
+    },
+  });
+
+  const targets: SettleTarget[] = [];
+  for (const split of splits) {
+    const amountCents = toCents(split.amount.minus(split.settledAmount));
+    if (amountCents <= 0) continue;
+    targets.push({
+      creditorId: split.expense.paidById,
+      currency: split.expense.currency,
+      splitId: split.id,
+      amountCents,
+      // Splits carry no date of their own; the expense is the ledger date.
+      occurredAt: split.expense.createdAt,
+      createdAt: split.expense.createdAt,
+    });
+  }
+
+  const groups = groupSettleAllTargets(targets);
+  const occurredAt = new Date();
+
+  await db.$transaction(async (tx) => {
+    for (const group of groups) {
+      await writeSettlement(tx, {
+        fromUserId: user.id,
+        toUserId: group.creditorId,
+        amountCents: group.amountCents,
+        currency: group.currency,
+        occurredAt,
+        note: null,
+        // No pin: the whole group allocates oldest-first across the pair.
+        pinnedSplitId: null,
+        // A group can span several groups and direct expenses, so it is not
+        // attributable to a single group.
+        groupId: null,
+        requestId: null,
+        actorId: user.id,
+      });
+    }
   });
 
   revalidatePath('/dashboard');
@@ -431,12 +548,64 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+type WriteSettlementInput = {
+  fromUserId: string;
+  toUserId: string;
+  amountCents: number;
+  currency: string;
+  occurredAt: Date;
+  note: string | null;
+  /** Split this payment clears first, when still eligible. */
+  pinnedSplitId: string | null;
+  groupId: string | null;
+  requestId: string | null;
+  actorId: string;
+};
+
+/**
+ * The single write path for a payment: insert, rebuild the pair, audit.
+ *
+ * `amountCents` is the minor-unit boundary; `Decimal(12,2)` is built exactly
+ * once here. The caller owns the transaction, so the insert, the rebuilt
+ * projection and the audit row commit or roll back together.
+ */
+async function writeSettlement(tx: Prisma.TransactionClient, input: WriteSettlementInput) {
+  const settlement = await tx.settlement.create({
+    data: {
+      fromUserId: input.fromUserId,
+      toUserId: input.toUserId,
+      amount: new Prisma.Decimal(input.amountCents).div(100),
+      currency: input.currency,
+      occurredAt: input.occurredAt,
+      note: input.note,
+      requestId: input.requestId,
+      pinnedSplitId: input.pinnedSplitId,
+      groupId: input.groupId,
+      createdById: input.actorId,
+    },
+  });
+
+  await rebuildPairAllocations(tx, input.fromUserId, input.toUserId);
+
+  await tx.ledgerEvent.create({
+    data: {
+      actorId: input.actorId,
+      action: 'settlement.created',
+      entity: 'Settlement',
+      entityId: settlement.id,
+      after: settlementSnapshot(settlement),
+    },
+  });
+
+  return settlement;
+}
+
 /**
  * Records a payment the current user made to someone else.
  *
  * `amountCents` is the validated minor-unit boundary; `Decimal(12,2)` is built
- * exactly once here. A repeated `requestId` is a successful no-op, so a
- * double-submitted form cannot create a second payment.
+ * exactly once by `writeSettlement`. A repeated `requestId` is a successful
+ * no-op, so a double-submitted form cannot create a second payment.
  */
 export async function recordSettlement(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
@@ -488,34 +657,19 @@ export async function recordSettlement(_prev: unknown, formData: FormData) {
     }
   }
 
-  const amount = new Prisma.Decimal(input.amountCents).div(100);
-
   try {
     await db.$transaction(async (tx) => {
-      const settlement = await tx.settlement.create({
-        data: {
-          fromUserId: user.id,
-          toUserId: input.toId,
-          amount,
-          currency: input.currency,
-          occurredAt: input.occurredAt,
-          note: input.note,
-          requestId: input.requestId,
-          pinnedSplitId: input.splitId,
-          createdById: user.id,
-        },
-      });
-
-      await rebuildPairAllocations(tx, user.id, input.toId);
-
-      await tx.ledgerEvent.create({
-        data: {
-          actorId: user.id,
-          action: 'settlement.created',
-          entity: 'Settlement',
-          entityId: settlement.id,
-          after: settlementSnapshot(settlement),
-        },
+      await writeSettlement(tx, {
+        fromUserId: user.id,
+        toUserId: input.toId,
+        amountCents: input.amountCents,
+        currency: input.currency,
+        occurredAt: input.occurredAt,
+        note: input.note,
+        pinnedSplitId: input.splitId,
+        groupId: null,
+        requestId: input.requestId,
+        actorId: user.id,
       });
     });
   } catch (error) {

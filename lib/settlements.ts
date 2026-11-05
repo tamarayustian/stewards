@@ -68,7 +68,7 @@ export type CreditByCurrency = Map<string, number>;
  * `0.10` becomes `10` without the `10.000000000000002` drift of `Number(x) * 100`.
  * Numbers are deliberately excluded: callers must pass a Decimal or its string.
  */
-function toCents(value: Prisma.Decimal | string): number {
+export function toCents(value: Prisma.Decimal | string): number {
   return Number(new PrismaValue.Decimal(value).mul(100).toFixed(0));
 }
 
