@@ -22,6 +22,7 @@ import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
 import { validateSettlementEditInput, validateSettlementInput } from '@/lib/settlement-input';
+import { affectedPairsForExpense, affectedPairsForExpenses } from '@/lib/settlement-pairs';
 import { groupSettleAllTargets, type SettleTarget } from '@/lib/settlement-targets';
 import { planSettlementUnwind } from '@/lib/settlement-unwind';
 import { rebuildPairAllocations, toCents } from '@/lib/settlements';
@@ -125,17 +126,27 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     }
   }
 
-  await db.expense.create({
-    data: {
-      groupId,
-      paidById: payerId,
-      amount,
-      currency: currencyCode,
-      rate,
-      rateCurrency,
-      note,
-      splits: { create: splits },
-    },
+  // The insert and the rebuild commit together: a new split can absorb credit
+  // from an existing payment, so the projection is rebuilt in the same
+  // transaction that created it.
+  await db.$transaction(async (tx) => {
+    const expense = await tx.expense.create({
+      data: {
+        groupId,
+        paidById: payerId,
+        amount,
+        currency: currencyCode,
+        rate,
+        rateCurrency,
+        note,
+        splits: { create: splits },
+      },
+      include: { splits: { select: { userId: true } } },
+    });
+
+    for (const [userAId, userBId] of affectedPairsForExpense(expense)) {
+      await rebuildPairAllocations(tx, userAId, userBId);
+    }
   });
 
   revalidatePath('/dashboard');
@@ -230,16 +241,31 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
       deletedAt: null,
       OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
     },
-    select: { groupId: true },
+    select: {
+      groupId: true,
+      paidById: true,
+      splits: { select: { userId: true } },
+    },
   });
 
   if (!expense) {
     return { error: 'Expense not found.' };
   }
 
-  await db.expense.update({
-    where: { id: expenseId },
-    data: { deletedAt: new Date() },
+  // Pairs first, mutation second: the rebuild must see the expense as deleted.
+  const pairs = affectedPairsForExpense(expense);
+
+  await db.$transaction(async (tx) => {
+    // Soft delete only: the ledger can be corrected later, and the splits stay
+    // behind so the rebuild can release what this pair was holding.
+    await tx.expense.update({
+      where: { id: expenseId },
+      data: { deletedAt: new Date() },
+    });
+
+    for (const [userAId, userBId] of pairs) {
+      await rebuildPairAllocations(tx, userAId, userBId);
+    }
   });
 
   revalidatePath('/dashboard');
@@ -953,6 +979,13 @@ export async function editExpense(_prev: unknown, formData: FormData) {
     };
   }
 
+  // A payer change moves the creditor, so both the old pairs and the new ones
+  // must be rebuilt; otherwise the old creditor's pair keeps a phantom debt.
+  const pairs = affectedPairsForExpenses([
+    expense,
+    { paidById: payerId, splits: finalParticipantIds.map((userId) => ({ userId })) },
+  ]);
+
   await db.$transaction(async (tx) => {
     await tx.expense.update({
       where: { id: expenseId },
@@ -966,9 +999,22 @@ export async function editExpense(_prev: unknown, formData: FormData) {
       });
     }
     // Defensive: participants are locked above, so this is normally a no-op.
-    await tx.expenseSplit.deleteMany({
+    // Allocations restrict-delete their split, so they go first even here.
+    const doomedSplits = await tx.expenseSplit.findMany({
       where: { expenseId, userId: { notIn: finalParticipantIds } },
+      select: { id: true },
     });
+    if (doomedSplits.length > 0) {
+      const doomedIds = doomedSplits.map((split) => split.id);
+      await tx.settlementAllocation.deleteMany({ where: { splitId: { in: doomedIds } } });
+      await tx.expenseSplit.deleteMany({ where: { id: { in: doomedIds } } });
+    }
+
+    // The rebuild owns the settled-amount projection: new amounts re-open or
+    // re-close each share from the surviving payments.
+    for (const [userAId, userBId] of pairs) {
+      await rebuildPairAllocations(tx, userAId, userBId);
+    }
   });
 
   revalidatePath('/dashboard');
