@@ -81,6 +81,24 @@ tsc --noEmit          # Type check (no script for this)
 - Models: `User`, `Group`, `GroupMember`, `Expense`, `ExpenseSplit`, `Contact`, `GroupInvite`, `Reminder` — UUID PKs, `Decimal(10,2)` for money, soft delete via `deletedAt DateTime?`. `User.email` is nullable — contacts (friends added by name) are `User` rows with `email: null`; `User.phone` is nullable and only set by the person adding the contact (powers the WhatsApp button). `User.currency` stores the user's home currency (default HKD). `Expense.rate` and `Expense.rateCurrency` store the exchange rate snapshot at creation time (null for same-currency expenses).
 - After schema changes: `pnpm prisma:generate && pnpm prisma:push`.
 
+## Settlement model (decided, not yet implemented)
+
+An **editable living ledger**: expenses and payments can be edited or deleted at any time. Balances are always a pure function of current records; nothing is frozen, and a correction never requires reversing a payment first.
+
+- **`ExpenseSplit.settledAmount` (`Decimal(10,2)`, default 0) is a projection, not immutable truth.** `outstanding = amount - settledAmount`; a person's net is the sum of their outstanding splits. Balances never subtract payments separately — that is what prevents double counting. The projection is rebuilt, never hand-edited.
+- **A payment is a `Settlement`** (`fromUserId`, `toUserId`, `amount`, `currency`, `occurredAt`, `note`, `createdById`, optional `groupId`, `deletedAt`) **plus `SettlementAllocation` rows** (`settlementId`, `splitId`, `amount`). Allocations are also a rebuildable projection, not user-facing truth.
+- **One rebuild function** (`rebuildPairAllocations`) runs in the same transaction as any mutation affecting a pair: expense create/edit/delete, settlement create/edit/delete, payer/split/participant/currency changes, ghost merge. It releases allocations and re-applies active settlements to active splits oldest-first (expense date, then `Expense.createdAt`), preserving a pinned target split when still valid.
+- **One-tap settle** = a settlement for the split's full outstanding, pinned to that split. **Partial payment** = a smaller settlement, allocated oldest-first across the pair unless pinned. Split states (`Open` / `Part-paid` / `Settled`) are derived from allocations.
+- **Edits and deletes are always allowed** (soft delete). Payment amount, date and note are editable; expense amount, splits, payer, date and participants are editable. A destructive edit shows a preview of the resulting balance, then rebuilds. There is no "reverse the payment first" rule.
+- **Excess becomes credit.** If a correction leaves a payment with nothing to allocate, the remainder is credit: `settlement.amount - SUM(allocations)`. Pair credit is the sum of unapplied remainders for that pair and currency. It is applied to future expenses by the rebuild and shown as "HK$40 in your favor" / "Alex has HK$40 in credit". A separate credit table is not needed.
+- **`ExpenseSplit.settledAt`** means fully settled only (`settledAmount = amount`); it is set/cleared by the rebuild.
+- **Audit**: append-only `LedgerEvent` (`actorId`, `action`, `entity`, `before`, `after`, `createdAt`) records changes for trust and debugging. It never participates in balance math.
+- **Invariants** checked after every rebuild: `0 <= settledAmount <= amount`; `SUM(allocation.amount) <= settlement.amount`; an allocation never exceeds the split's outstanding at allocation time; unique `(settlementId, splitId)`; no self-payment; no cross-currency allocation. Concurrency uses `SELECT ... FOR UPDATE`; `Settlement.requestId` makes retries idempotent.
+- **Oldest-first** means expense date, then `Expense.createdAt`.
+- `settleAll` creates one settlement per creditor per currency, allocated oldest-first across all open splits.
+- Backfill existing settled rows with `settledAmount = amount` plus one synthetic settlement per split.
+- Open: refunds (out of scope v1) and whether credit can cross currency (recommended no).
+
 ## Commit Conventions
 
 Use Conventional Commits specification is a lightweight convention on top of commit messages. It provides an easy set of rules for creating an explicit commit history; which makes it easier to write automated tools on top of. This convention dovetails with SemVer, by describing the features, fixes, and breaking changes made in commit messages.
