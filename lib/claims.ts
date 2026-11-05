@@ -1,6 +1,6 @@
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import { affectedPairsForExpenses } from '@/lib/settlement-pairs';
+import { affectedPairsForExpenses, mergeAffectedPairs } from '@/lib/settlement-pairs';
 import { rebuildPairAllocations, toCents } from '@/lib/settlements';
 
 export interface GhostIdentity {
@@ -121,6 +121,19 @@ export function decideSettlementRepoints(
     }
     return { kind: 'repoint', id: settlement.id, fromUserId, toUserId };
   });
+}
+
+/**
+ * The pair each repointed payment now belongs to. A repointed payment can end up
+ * holding nothing but unapplied credit (its old allocations were released with
+ * the ghost's rows); the pair still has to be rebuilt so that credit can clear
+ * the claimant's surviving splits instead of sitting unused. Kept payments
+ * change no pair, and a dropped one has no counterparty by construction.
+ */
+export function settlementRepointPairs(decisions: SettlementMergeDecision[]): string[][] {
+  return decisions.flatMap((decision) =>
+    decision.kind === 'repoint' ? [[decision.fromUserId, decision.toUserId]] : [],
+  );
 }
 
 function fromCents(cents: number): Prisma.Decimal {
@@ -310,11 +323,17 @@ export async function mergeGhostIntoUser(
 
   // Rebuild every pair whose shape this merge changed, in the same transaction:
   // the settled-amount projection and its allocations must never lag the merge.
+  // Repointed payments contribute their new pair even when the ghost shared no
+  // expense with that counterparty — otherwise pure credit never gets applied.
   const touchedExpenses = await tx.expense.findMany({
     where: { id: { in: [...affectedExpenseIds] } },
     select: { paidById: true, splits: { select: { userId: true } } },
   });
-  for (const [userAId, userBId] of affectedPairsForExpenses(touchedExpenses)) {
+  const pairs = mergeAffectedPairs(
+    affectedPairsForExpenses(touchedExpenses),
+    settlementRepointPairs(settlementDecisions),
+  );
+  for (const [userAId, userBId] of pairs) {
     await rebuildPairAllocations(tx, userAId, userBId);
   }
 }

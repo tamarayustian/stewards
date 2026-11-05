@@ -8,6 +8,7 @@ import {
   matchesIdentity,
   mergeSplitTotals,
   normalizeName,
+  settlementRepointPairs,
   type GhostIdentity,
 } from './claims';
 
@@ -169,5 +170,25 @@ describe('decideSettlementRepoints', () => {
         'target',
       ),
     ).toEqual([{ kind: 'drop', id: 's1' }]);
+  });
+});
+
+describe('settlementRepointPairs', () => {
+  it('collects the pair each repointed payment lands on, ignoring kept and dropped ones', () => {
+    const pairs = settlementRepointPairs([
+      { kind: 'repoint', id: 's1', fromUserId: 'target', toUserId: 'tam' },
+      { kind: 'keep', id: 's2' },
+      { kind: 'drop', id: 's3' },
+      { kind: 'repoint', id: 's4', fromUserId: 'sam', toUserId: 'target' },
+    ]);
+
+    expect(pairs).toEqual([
+      ['target', 'tam'],
+      ['sam', 'target'],
+    ]);
+  });
+
+  it('returns nothing when no payment was repointed', () => {
+    expect(settlementRepointPairs([{ kind: 'keep', id: 's1' }])).toEqual([]);
   });
 });

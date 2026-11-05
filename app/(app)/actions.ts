@@ -203,9 +203,15 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
   const group = await db.group.findFirst({
     where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },
     include: {
+      // Every active expense, not only the unsettled ones the guard needs:
+      // deleting the group makes all of them inactive, which reshapes every pair
+      // they imply, so all of them have to be rebuilt.
       expenses: {
-        where: { deletedAt: null, splits: { some: { settledAt: null } } },
-        select: { id: true },
+        where: { deletedAt: null },
+        select: {
+          paidById: true,
+          splits: { select: { userId: true, settledAt: true } },
+        },
       },
     },
   });
@@ -214,13 +220,26 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
     return { error: 'Group not found.' };
   }
 
-  if (group.expenses.length > 0) {
+  const hasUnsettled = group.expenses.some((expense) =>
+    expense.splits.some((split) => split.settledAt === null),
+  );
+  if (hasUnsettled) {
     return { error: 'Settle all expenses before deleting this group.' };
   }
 
-  await db.group.update({
-    where: { id: groupId },
-    data: { deletedAt: new Date() },
+  const pairs = affectedPairsForExpenses(group.expenses);
+
+  await db.$transaction(async (tx) => {
+    await tx.group.update({
+      where: { id: groupId },
+      data: { deletedAt: new Date() },
+    });
+
+    // The rebuild writes the projection the group delete just invalidated:
+    // inactive splits release their allocations and their settled cache.
+    for (const [userAId, userBId] of pairs) {
+      await rebuildPairAllocations(tx, userAId, userBId);
+    }
   });
 
   revalidatePath('/people');

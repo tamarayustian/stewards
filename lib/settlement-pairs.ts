@@ -38,15 +38,32 @@ export function affectedPairsForExpense(expense: ExpensePairSource): string[][] 
 }
 
 /**
+ * Union of several pair groups, deduped by unordered pair. Order is stable: the
+ * first group that implies a pair decides its position and orientation.
+ *
+ * The caller passes one group per source of change — an edit's before and after
+ * expense shapes, the expenses a ghost merge touched, the pairs repointed
+ * payments landed on — because one mutation can reshape several pairs at once.
+ */
+export function mergeAffectedPairs(...groups: string[][][]): string[][] {
+  const out: string[][] = [];
+  const seen = new Set<string>();
+  for (const group of groups) {
+    for (const pair of group) {
+      const key = settlementPairKey(pair[0], pair[1]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(pair);
+    }
+  }
+  return out;
+}
+
+/**
  * Union of several expense shapes (an edit's before and after, or every expense
  * a ghost merge touched), deduped by unordered pair. Order is stable: the first
  * shape that implies a pair decides its position and orientation.
  */
 export function affectedPairsForExpenses(expenses: ExpensePairSource[]): string[][] {
-  const out: string[][] = [];
-  const seen = new Set<string>();
-  for (const expense of expenses) {
-    collect(expense, seen, out);
-  }
-  return out;
+  return mergeAffectedPairs(...expenses.map(affectedPairsForExpense));
 }

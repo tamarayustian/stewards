@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { affectedPairsForExpense, affectedPairsForExpenses } from './settlement-pairs';
+import {
+  affectedPairsForExpense,
+  affectedPairsForExpenses,
+  mergeAffectedPairs,
+} from './settlement-pairs';
 
 it('returns one unordered pair per participant, excluding the payer', () => {
   const out = affectedPairsForExpense({
@@ -64,5 +68,32 @@ describe('affectedPairsForExpenses', () => {
         { paidById: 'tam', splits: [{ userId: 'tam' }] },
       ]),
     ).toEqual([]);
+  });
+});
+
+describe('mergeAffectedPairs', () => {
+  it('unions pair groups and collapses a pair contributed twice', () => {
+    expect(
+      mergeAffectedPairs(
+        [['tam', 'alex']],
+        [
+          ['alex', 'tam'],
+          ['tam', 'sam'],
+        ],
+      ),
+    ).toEqual([
+      ['tam', 'alex'],
+      ['tam', 'sam'],
+    ]);
+  });
+
+  it('treats a reversed pair as the same pair', () => {
+    expect(mergeAffectedPairs([['target', 'tam']], [['tam', 'target']])).toEqual([
+      ['target', 'tam'],
+    ]);
+  });
+
+  it('returns an empty list when every group is empty', () => {
+    expect(mergeAffectedPairs([], [])).toEqual([]);
   });
 });
