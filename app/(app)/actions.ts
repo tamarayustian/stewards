@@ -23,6 +23,7 @@ import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
 import { validateSettlementEditInput, validateSettlementInput } from '@/lib/settlement-input';
 import { groupSettleAllTargets, type SettleTarget } from '@/lib/settlement-targets';
+import { planSettlementUnwind } from '@/lib/settlement-unwind';
 import { rebuildPairAllocations, toCents } from '@/lib/settlements';
 
 export async function createExpense(_prev: unknown, formData: FormData) {
@@ -321,7 +322,8 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
 }
 
 // Reverts a mistaken 'Mark paid' by removing the payments that funded the share.
-// A payment may have covered several shares, so this reopens all of them.
+// A payment may have covered several shares, so this reopens all of them and
+// reports that scope back to the caller.
 export async function unsettleExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
@@ -336,7 +338,6 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
     select: {
-      groupId: true,
       paidById: true,
       splits: { select: { id: true, userId: true } },
     },
@@ -354,39 +355,67 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     return { error: 'Nothing to un-settle on this expense.' };
   }
 
-  const reopened = await db.$transaction(async (tx) => {
-    const allocations = await tx.settlementAllocation.findMany({
+  const result = await db.$transaction(async (tx) => {
+    const before = await tx.expenseSplit.findUnique({
+      where: { id: split.id },
+      select: { amount: true, settledAmount: true },
+    });
+    if (!before) {
+      return null;
+    }
+
+    // The active payments that funded this share.
+    const links = await tx.settlementAllocation.findMany({
       where: { splitId: split.id, settlement: { deletedAt: null } },
       select: { settlementId: true },
     });
-
-    const fundingIds = [...new Set(allocations.map((row) => row.settlementId))];
-    const settlements =
-      fundingIds.length > 0
-        ? await tx.settlement.findMany({
-            where: { id: { in: fundingIds }, deletedAt: null },
-            select: {
-              id: true,
-              amount: true,
-              currency: true,
-              occurredAt: true,
-              note: true,
-              fromUserId: true,
-              toUserId: true,
-              pinnedSplitId: true,
-              deletedAt: true,
-            },
-          })
-        : [];
-
-    const deletedIds = new Set(settlements.map((settlement) => settlement.id));
-    const released = allocations.filter((row) => deletedIds.has(row.settlementId)).length;
-    if (released === 0) {
-      return 0;
+    const fundingIds = [...new Set(links.map((row) => row.settlementId))];
+    if (fundingIds.length === 0) {
+      return null;
     }
 
+    const settlements = await tx.settlement.findMany({
+      where: { id: { in: fundingIds }, deletedAt: null },
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        occurredAt: true,
+        note: true,
+        fromUserId: true,
+        toUserId: true,
+        pinnedSplitId: true,
+        deletedAt: true,
+      },
+    });
+    if (settlements.length === 0) {
+      return null;
+    }
+
+    // Everything those payments cover, so the reversal's scope is reported
+    // instead of guessed.
+    const allocations = await tx.settlementAllocation.findMany({
+      where: { settlementId: { in: settlements.map((settlement) => settlement.id) } },
+      select: { settlementId: true, splitId: true },
+    });
+
+    const plan = planSettlementUnwind({
+      splitId: split.id,
+      allocations,
+      settlements: settlements.map((settlement) => ({
+        id: settlement.id,
+        amountCents: toCents(settlement.amount),
+      })),
+    });
+    if (plan.settlementsClosed === 0) {
+      return null;
+    }
+
+    const closing = new Set(plan.settlementIds);
+    const toClose = settlements.filter((settlement) => closing.has(settlement.id));
+
     const deletedAt = new Date();
-    for (const settlement of settlements) {
+    for (const settlement of toClose) {
       const deleted = await tx.settlement.update({
         where: { id: settlement.id },
         data: { deletedAt },
@@ -405,21 +434,73 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     }
 
     await rebuildPairAllocations(tx, expense.paidById, splitUserId);
-    return released;
+
+    // The rebuild re-applies the remaining payments and any pair credit, so the
+    // share is only open again if its projection actually moved. Never report
+    // success from the pre-rebuild state.
+    const after = await tx.expenseSplit.findUnique({
+      where: { id: split.id },
+      select: { amount: true, settledAmount: true },
+    });
+    const reopened =
+      after !== null &&
+      after.settledAmount.lt(before.settledAmount) &&
+      after.amount.minus(after.settledAmount).gt(0);
+
+    // Both sides of every closed payment: each may own a split that reopened.
+    const parties = new Set<string>();
+    for (const settlement of toClose) {
+      parties.add(settlement.fromUserId);
+      parties.add(settlement.toUserId);
+    }
+
+    // Every expense whose share was released, so its group page is refreshed
+    // too. This includes the tapped expense, which always has a closed
+    // allocation.
+    const releasedSplitIds = [
+      ...new Set(
+        allocations
+          .filter((allocation) => closing.has(allocation.settlementId))
+          .map((allocation) => allocation.splitId),
+      ),
+    ];
+    const releasedSplits = await tx.expenseSplit.findMany({
+      where: { id: { in: releasedSplitIds } },
+      select: { expense: { select: { groupId: true } } },
+    });
+    const groupIds = [
+      ...new Set(
+        releasedSplits
+          .map((row) => row.expense.groupId)
+          .filter((groupId): groupId is string => groupId !== null),
+      ),
+    ];
+
+    return { plan, reopened, parties: [...parties], groupIds };
   });
 
-  if (reopened === 0) {
+  if (!result) {
     return { error: 'Nothing to un-settle on this expense.' };
   }
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
   revalidatePath('/expenses');
-  if (expense.groupId) {
-    revalidatePath(`/people/${expense.groupId}`);
+  for (const groupId of result.groupIds) {
+    revalidatePath(`/people/${groupId}`);
+  }
+  for (const partyId of result.parties) {
+    revalidatePath(`/people/${partyId}`);
   }
 
-  return { ok: true, reopened };
+  return {
+    ok: true,
+    reopened: result.reopened,
+    allocationsReleased: result.plan.allocationsReleased,
+    settlementsClosed: result.plan.settlementsClosed,
+    amountReversedCents: result.plan.amountReversedCents,
+    otherSplitsReleased: result.plan.otherSplitsReleased,
+  };
 }
 
 // Marks every one of the current user's outstanding debts as repaid in one go:

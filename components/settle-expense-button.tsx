@@ -5,9 +5,39 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { settleExpense, unsettleExpense } from '@/app/(app)/actions';
 import { FormError } from '@/components/form-message';
+import { useToast } from '@/components/toast';
 import { Button } from '@/components/ui/button';
 
 type Phase = 'idle' | 'celebrating' | 'settled';
+
+type UnsettleState = Awaited<ReturnType<typeof unsettleExpense>> | undefined;
+
+/**
+ * Names the scope of an unwind. Reversing one share can erase whole payments and
+ * reopen the other shares they were covering, so that has to be said out loud.
+ */
+function unsettleTitle(result: {
+  settlementsClosed: number;
+  otherSplitsReleased: number;
+  reopened: boolean;
+}): string {
+  const { settlementsClosed, otherSplitsReleased, reopened } = result;
+  if (settlementsClosed <= 1 && otherSplitsReleased === 0 && reopened) {
+    return 'Marked unpaid';
+  }
+
+  const payments = `${settlementsClosed} payment${settlementsClosed === 1 ? '' : 's'}`;
+  const parts = [`Reversed ${payments}`];
+  if (otherSplitsReleased > 0) {
+    parts.push(
+      `${otherSplitsReleased} other share${otherSplitsReleased === 1 ? '' : 's'} reopened`,
+    );
+  }
+  if (!reopened) {
+    parts.push('this share is still covered');
+  }
+  return parts.join(' — ');
+}
 
 function SettleChip({
   expenseId,
@@ -106,7 +136,22 @@ export function MarkUnpaidButton({
   expenseId: string;
   splitUserId?: string;
 }) {
-  const [state, action, pending] = useActionState(unsettleExpense, undefined);
+  const { toast } = useToast();
+  // Toast from inside the action: the chip is replaced as soon as the page
+  // revalidates, so an effect on the new state may never get to run.
+  const [state, action, pending] = useActionState<UnsettleState, FormData>(
+    async (_prev, formData) => {
+      const result = await unsettleExpense(undefined, formData);
+      if (!('error' in result)) {
+        const scoped = result.settlementsClosed > 1 || result.otherSplitsReleased > 0;
+        toast({ title: unsettleTitle(result), variant: scoped ? 'info' : 'success' });
+      }
+      return result;
+    },
+    undefined,
+  );
+  const error = state && 'error' in state ? state.error : undefined;
+
   return (
     <form action={action} className="flex shrink-0 items-center gap-2">
       <input type="hidden" name="expenseId" value={expenseId} />
@@ -122,7 +167,7 @@ export function MarkUnpaidButton({
         <CheckCheck className="size-3" />
         {pending ? 'Marking…' : 'Paid'}
       </Button>
-      <FormError message={state?.error} />
+      <FormError message={error} />
     </form>
   );
 }
