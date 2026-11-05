@@ -21,6 +21,8 @@ import { fetchExchangeRate } from '@/lib/rates';
 import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
+import { validateSettlementEditInput, validateSettlementInput } from '@/lib/settlement-input';
+import { rebuildPairAllocations } from '@/lib/settlements';
 
 export async function createExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
@@ -370,6 +372,279 @@ export async function settleAll() {
   revalidatePath('/dashboard');
   revalidatePath('/people');
   revalidatePath('/expenses');
+}
+
+// --- Settlement ledger -------------------------------------------------------
+// A settlement is a payment between two people. Allocations and
+// `ExpenseSplit.settledAmount` are projections: every mutation below rebuilds
+// the affected pair inside its own transaction, then appends a `LedgerEvent`.
+// `LedgerEvent` is audit-only and never participates in balance math.
+
+type SettlementSnapshotRow = {
+  amount: Prisma.Decimal;
+  currency: string;
+  occurredAt: Date;
+  note: string | null;
+  fromUserId: string;
+  toUserId: string;
+  deletedAt: Date | null;
+};
+
+/** JSON-safe audit snapshot; dates are ISO strings and money is exact text. */
+function settlementSnapshot(row: SettlementSnapshotRow): Prisma.InputJsonObject {
+  return {
+    amount: row.amount.toFixed(2),
+    currency: row.currency,
+    occurredAt: row.occurredAt.toISOString(),
+    note: row.note,
+    fromUserId: row.fromUserId,
+    toUserId: row.toUserId,
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Refreshes both parties' pair pages (the path is viewer-scoped, so each side
+ * has its own) plus the group page when the settlement belongs to one.
+ */
+function revalidateSettlementPaths(userIds: string[], groupId: string | null) {
+  revalidatePath('/dashboard');
+  revalidatePath('/expenses');
+  revalidatePath('/people');
+  for (const userId of new Set(userIds)) {
+    revalidatePath(`/people/${userId}`);
+  }
+  if (groupId) {
+    revalidatePath(`/people/${groupId}`);
+  }
+}
+
+/** Prisma's unique-constraint code; used for idempotent `requestId` retries. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2002'
+  );
+}
+
+/**
+ * Records a payment the current user made to someone else.
+ *
+ * `amountCents` is the validated minor-unit boundary; `Decimal(12,2)` is built
+ * exactly once here. A repeated `requestId` is a successful no-op, so a
+ * double-submitted form cannot create a second payment.
+ */
+export async function recordSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const input = validateSettlementInput(formData, user.id);
+  if ('error' in input) {
+    return input;
+  }
+
+  if (input.requestId) {
+    const existing = await db.settlement.findUnique({
+      where: { requestId: input.requestId },
+      select: { id: true },
+    });
+    if (existing) {
+      return { ok: true };
+    }
+  }
+
+  const recipient = await db.user.findFirst({
+    where: { id: input.toId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!recipient) {
+    return { error: 'Person not found.' };
+  }
+
+  // A pinned split is only a hint for oldest-first allocation; it is not
+  // persisted in v1. Still require that it belongs to this pair and currency.
+  if (input.splitId) {
+    const split = await db.expenseSplit.findFirst({
+      where: {
+        id: input.splitId,
+        userId: user.id,
+        expense: {
+          paidById: input.toId,
+          currency: input.currency,
+          deletedAt: null,
+          OR: [{ groupId: null }, { group: { deletedAt: null } }],
+        },
+      },
+      select: { id: true },
+    });
+    if (!split) {
+      return { error: 'Expense not found.' };
+    }
+  }
+
+  const amount = new Prisma.Decimal(input.amountCents).div(100);
+
+  try {
+    await db.$transaction(async (tx) => {
+      const settlement = await tx.settlement.create({
+        data: {
+          fromUserId: user.id,
+          toUserId: input.toId,
+          amount,
+          currency: input.currency,
+          occurredAt: input.occurredAt,
+          note: input.note,
+          requestId: input.requestId,
+          createdById: user.id,
+        },
+      });
+
+      await rebuildPairAllocations(tx, user.id, input.toId);
+
+      await tx.ledgerEvent.create({
+        data: {
+          actorId: user.id,
+          action: 'settlement.created',
+          entity: 'Settlement',
+          entityId: settlement.id,
+          after: settlementSnapshot(settlement),
+        },
+      });
+    });
+  } catch (error) {
+    // A concurrent retry won the `requestId` race; its transaction rebuilt the
+    // pair and wrote the audit row, so this request has nothing left to do.
+    if (isUniqueViolation(error)) {
+      return { ok: true };
+    }
+    throw error;
+  }
+
+  revalidateSettlementPaths([user.id, input.toId], null);
+  return { ok: true };
+}
+
+/**
+ * Edits `amount`, `occurredAt`, and `note`. The parties and currency are fixed
+ * for the life of a settlement: attempts to change them are rejected rather
+ * than silently ignored.
+ */
+export async function editSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const settlementId = (formData.get('settlementId') as string) || '';
+  if (!settlementId) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const settlement = await db.settlement.findFirst({
+    where: {
+      id: settlementId,
+      deletedAt: null,
+      OR: [{ fromUserId: user.id }, { toUserId: user.id }],
+    },
+  });
+  if (!settlement) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const fromUserId = ((formData.get('fromUserId') as string) || '').trim();
+  const toUserId = ((formData.get('toUserId') as string) || '').trim();
+  const currency = ((formData.get('currency') as string) || '').trim();
+
+  if (fromUserId && fromUserId !== settlement.fromUserId) {
+    return { error: "You can't change who paid this settlement." };
+  }
+  if (toUserId && toUserId !== settlement.toUserId) {
+    return { error: "You can't change who received this settlement." };
+  }
+  if (currency && currency.toUpperCase() !== settlement.currency) {
+    return { error: "You can't change the currency of this settlement." };
+  }
+
+  const input = validateSettlementEditInput(formData);
+  if ('error' in input) {
+    return input;
+  }
+
+  const amount = new Prisma.Decimal(input.amountCents).div(100);
+
+  await db.$transaction(async (tx) => {
+    const updated = await tx.settlement.update({
+      where: { id: settlement.id },
+      data: { amount, occurredAt: input.occurredAt, note: input.note },
+    });
+
+    await rebuildPairAllocations(tx, settlement.fromUserId, settlement.toUserId);
+
+    await tx.ledgerEvent.create({
+      data: {
+        actorId: user.id,
+        action: 'settlement.updated',
+        entity: 'Settlement',
+        entityId: settlement.id,
+        before: settlementSnapshot(settlement),
+        after: settlementSnapshot(updated),
+      },
+    });
+  });
+
+  revalidateSettlementPaths([settlement.fromUserId, settlement.toUserId], settlement.groupId);
+  return { ok: true };
+}
+
+/** Soft-deletes a settlement, which reopens exactly the shares it covered. */
+export async function deleteSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const settlementId = (formData.get('settlementId') as string) || '';
+  if (!settlementId) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const settlement = await db.settlement.findFirst({
+    where: {
+      id: settlementId,
+      deletedAt: null,
+      OR: [{ fromUserId: user.id }, { toUserId: user.id }],
+    },
+  });
+  if (!settlement) {
+    return { error: 'Settlement not found.' };
+  }
+
+  await db.$transaction(async (tx) => {
+    const deleted = await tx.settlement.update({
+      where: { id: settlement.id },
+      data: { deletedAt: new Date() },
+    });
+
+    await rebuildPairAllocations(tx, settlement.fromUserId, settlement.toUserId);
+
+    await tx.ledgerEvent.create({
+      data: {
+        actorId: user.id,
+        action: 'settlement.deleted',
+        entity: 'Settlement',
+        entityId: settlement.id,
+        before: settlementSnapshot(settlement),
+        after: settlementSnapshot(deleted),
+      },
+    });
+  });
+
+  revalidateSettlementPaths([settlement.fromUserId, settlement.toUserId], settlement.groupId);
+  return { ok: true };
 }
 
 export async function editExpense(_prev: unknown, formData: FormData) {
