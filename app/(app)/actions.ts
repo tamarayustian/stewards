@@ -210,7 +210,9 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
         where: { deletedAt: null },
         select: {
           paidById: true,
-          splits: { select: { userId: true, settledAt: true } },
+          // `amount` is only for the guard: the payer's own 0.00 split carries
+          // `settledAt: null` forever and is not a debt.
+          splits: { select: { userId: true, settledAt: true, amount: true } },
         },
       },
     },
@@ -220,8 +222,12 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
     return { error: 'Group not found.' };
   }
 
+  // Same meaning as `GroupSummary.unsettledCount` in `listGroups`: a split is
+  // outstanding only when it is open and carries money. The payer's own 0.00
+  // split is open forever, so an amount guard is required or deletion is
+  // impossible for any group with an expense.
   const hasUnsettled = group.expenses.some((expense) =>
-    expense.splits.some((split) => split.settledAt === null),
+    expense.splits.some((split) => split.settledAt === null && split.amount.gt(0)),
   );
   if (hasUnsettled) {
     return { error: 'Settle all expenses before deleting this group.' };
