@@ -17,9 +17,12 @@ export interface ShareRow {
   expenseId: string;
   date: Date;
   note: string | null;
+  /** The expense total, for context beside the share. */
   amount: Prisma.Decimal;
   currency: string;
+  /** What is still owed on this share (`amount - settledAmount`), not the original split. */
   splitAmount: Prisma.Decimal;
+  /** `splitAmount` in the viewer's home currency. */
   convertedAmount: Prisma.Decimal;
   party: Counterparty;
 }
@@ -38,9 +41,12 @@ export interface PairItem {
   expenseId: string;
   date: Date;
   note: string | null;
+  /** The expense total. */
   amount: number;
   currency: string;
+  /** The viewer's outstanding share; plain `number` so it survives Server→Client serialization. */
   myShare: number;
+  /** The counterparty's outstanding share; plain `number` for the same reason. */
   theirShare: number;
   convertedAmount: number;
   direction: Direction;
