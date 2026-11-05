@@ -31,6 +31,9 @@ model User {
   claimsAsOwner     UserClaim[] @relation("ClaimUser")
   claimsAsGhost     UserClaim[] @relation("ClaimGhost")
   notices           Notice[]   @relation("NoticeUser")
+  sentSettlements     Settlement[] @relation("SettlementFrom")
+  receivedSettlements Settlement[] @relation("SettlementTo")
+  createdSettlements  Settlement[] @relation("SettlementCreatedBy")
 }
 
 model Group {
@@ -41,9 +44,10 @@ model Group {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  members  GroupMember[]
-  expenses Expense[]
-  invites  GroupInvite[]
+  members     GroupMember[]
+  expenses    Expense[]
+  invites     GroupInvite[]
+  settlements Settlement[]
 }
 
 model GroupMember {
@@ -94,13 +98,16 @@ model Expense {
 }
 
 model ExpenseSplit {
-  id        String    @id @default(uuid())
-  expenseId String
-  expense   Expense   @relation(fields: [expenseId], references: [id])
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  amount    Decimal   @db.Decimal(12, 2)
-  settledAt DateTime?
+  id            String    @id @default(uuid())
+  expenseId     String
+  expense       Expense   @relation(fields: [expenseId], references: [id])
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  amount        Decimal   @db.Decimal(12, 2)
+  settledAmount Decimal   @default(0) @db.Decimal(12, 2)
+  settledAt     DateTime?
+
+  allocations SettlementAllocation[]
 
   @@unique([expenseId, userId])
   @@index([userId])
@@ -176,4 +183,57 @@ model Notice {
   createdAt  DateTime  @default(now())
 
   @@index([userId, readAt])
+}
+
+model Settlement {
+  id          String    @id @default(uuid())
+  fromUserId  String
+  toUserId    String
+  amount      Decimal   @db.Decimal(12, 2)
+  currency    String    @default("HKD")
+  occurredAt  DateTime  @default(now())
+  note        String?
+  createdById String?
+  groupId     String?
+  requestId   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  from        User                  @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  to          User                  @relation("SettlementTo", fields: [toUserId], references: [id])
+  createdBy   User?                 @relation("SettlementCreatedBy", fields: [createdById], references: [id])
+  group       Group?                @relation(fields: [groupId], references: [id])
+  allocations SettlementAllocation[]
+
+  @@index([fromUserId, toUserId, occurredAt])
+  @@index([toUserId, fromUserId, occurredAt])
+  @@index([groupId])
+}
+
+model SettlementAllocation {
+  id           String   @id @default(uuid())
+  settlementId String
+  splitId      String
+  amount       Decimal  @db.Decimal(12, 2)
+  createdAt    DateTime @default(now())
+
+  settlement Settlement   @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  split      ExpenseSplit @relation(fields: [splitId], references: [id], onDelete: Restrict)
+
+  @@unique([settlementId, splitId])
+  @@index([splitId])
+}
+
+model LedgerEvent {
+  id        String   @id @default(uuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId, createdAt])
 }
