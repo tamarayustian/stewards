@@ -83,6 +83,25 @@ async function writeBatch(batch: BackfillCandidate[]): Promise<void> {
       for (const candidate of batch) {
         const amount = toMoney(candidate.amountCents);
 
+        // Conditional write: the plan was read before this transaction, so only
+        // update a split that still looks like a backfill candidate. A count other
+        // than 1 means a concurrent edit (or another run) moved it; fail the batch
+        // instead of clobbering state nobody re-read.
+        const updated = await tx.expenseSplit.updateMany({
+          where: {
+            id: candidate.splitId,
+            settledAt: { not: null },
+            settledAmount: 0,
+          },
+          data: { settledAmount: amount },
+        });
+
+        if (updated.count !== 1) {
+          throw new Error(
+            `split ${candidate.splitId} changed since planning (expected 1 row, updated ${updated.count}); batch rolled back`,
+          );
+        }
+
         const settlement = await tx.settlement.create({
           data: {
             fromUserId: candidate.fromUserId,
@@ -103,11 +122,6 @@ async function writeBatch(batch: BackfillCandidate[]): Promise<void> {
             },
           },
           select: { id: true },
-        });
-
-        await tx.expenseSplit.update({
-          where: { id: candidate.splitId },
-          data: { settledAmount: amount },
         });
 
         await tx.ledgerEvent.create({
@@ -141,7 +155,10 @@ async function main(): Promise<void> {
   const [splits, backfillRows] = await Promise.all([
     loadLegacySplits(),
     db.settlement.findMany({
-      where: { requestId: { startsWith: 'backfill:' } },
+      // `requestId` comes from app input, so the reserved namespace alone is not
+      // proof of provenance: a user-supplied `backfill:<id>` must not suppress a
+      // real legacy split's synthetic payment. The note is written only here.
+      where: { requestId: { startsWith: 'backfill:' }, note: BACKFILL_NOTE },
       select: { requestId: true },
     }),
   ]);

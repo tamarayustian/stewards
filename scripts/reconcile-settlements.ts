@@ -9,12 +9,22 @@
  *
  * It never repairs beyond the rebuild itself: on an invariant violation it prints
  * the pair key and the failing invariant, then exits non-zero.
+ *
+ * It also refuses to run at all while the backfill has pending candidates: a
+ * rebuild would clear the legacy settled state that the backfill exists to
+ * preserve, and the backfill could no longer find those splits afterwards.
  */
 
 import 'dotenv/config';
 
 import db from '../lib/db';
-import { ledgerPairs, settlementViolations, splitViolations } from '../lib/ledger-maintenance';
+import {
+  BACKFILL_NOTE,
+  backfillBlockerMessage,
+  ledgerPairs,
+  settlementViolations,
+  splitViolations,
+} from '../lib/ledger-maintenance';
 import { rebuildPairAllocations, settlementPairKey, toCents } from '../lib/settlements';
 
 async function reconcilePair(userAId: string, userBId: string): Promise<string[]> {
@@ -85,12 +95,54 @@ async function reconcilePair(userAId: string, userBId: string): Promise<string[]
 }
 
 async function main(): Promise<void> {
-  const [splitRows, settlementRows] = await Promise.all([
+  const [splitRows, settlementRows, backfillRows] = await Promise.all([
     db.expenseSplit.findMany({
-      select: { userId: true, expense: { select: { paidById: true } } },
+      select: {
+        id: true,
+        userId: true,
+        amount: true,
+        settledAmount: true,
+        settledAt: true,
+        expense: {
+          select: {
+            paidById: true,
+            currency: true,
+            deletedAt: true,
+            group: { select: { deletedAt: true } },
+          },
+        },
+      },
     }),
     db.settlement.findMany({ select: { fromUserId: true, toUserId: true } }),
+    db.settlement.findMany({
+      where: { requestId: { startsWith: 'backfill:' }, note: BACKFILL_NOTE },
+      select: { requestId: true },
+    }),
   ]);
+
+  // Guard: never rebuild while a legacy settled split is still waiting for its
+  // synthetic payment. The rebuild would clear `settledAt`/`settledAmount` on it,
+  // the backfill queries could no longer find it, and this run would report
+  // success while destroying the very state it was meant to verify.
+  const blocker = backfillBlockerMessage(
+    splitRows.map((row) => ({
+      id: row.id,
+      debtorId: row.userId,
+      creditorId: row.expense.paidById,
+      amountCents: toCents(row.amount),
+      settledCents: toCents(row.settledAmount),
+      settledAt: row.settledAt,
+      currency: row.expense.currency,
+      inactiveExpense: row.expense.deletedAt !== null || row.expense.group?.deletedAt != null,
+    })),
+    new Set(backfillRows.map((row) => row.requestId).filter((id): id is string => id !== null)),
+  );
+
+  if (blocker !== null) {
+    console.error(blocker);
+    process.exitCode = 1;
+    return;
+  }
 
   const pairs = ledgerPairs(
     splitRows.map((row) => ({ debtorId: row.userId, creditorId: row.expense.paidById })),

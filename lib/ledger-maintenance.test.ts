@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BACKFILL_NOTE,
+  backfillBlockerMessage,
   backfillRequestId,
   ledgerPairs,
   planBackfill,
@@ -118,6 +119,24 @@ describe('planBackfill', () => {
     );
 
     expect(candidates.map((candidate) => candidate.splitId)).toEqual(['c', 'a', 'b']);
+  });
+});
+
+describe('backfillBlockerMessage', () => {
+  it('returns no blocker on a correctly backfilled database', () => {
+    expect(backfillBlockerMessage([split({ settledAt: null })], new Set())).toBeNull();
+    expect(backfillBlockerMessage([split({ settledCents: 1000 })], new Set())).toBeNull();
+  });
+
+  it('names the pending count and the command to run first', () => {
+    const message = backfillBlockerMessage([split(), split({ id: 'split-2' })], new Set());
+
+    expect(message).toContain('2 split(s)');
+    expect(message).toContain('pnpm db:backfill');
+  });
+
+  it('does not block on a split a previous backfill already covered', () => {
+    expect(backfillBlockerMessage([split()], new Set(['backfill:split-1']))).toBeNull();
   });
 });
 

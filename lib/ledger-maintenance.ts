@@ -126,6 +126,23 @@ function compareText(a: string, b: string): number {
 }
 
 /**
+ * Reconcile guard. A rebuild derives cleared amounts from payments alone, so on
+ * a legacy settled split (date set, no projection, no payment) it clears both —
+ * and the backfill can no longer find the split, because its entry query needs
+ * `settledAt` and `settledAmount = 0`. Refuse to rebuild while anything is still
+ * waiting for the backfill; the planner already knows every skip rule, so this
+ * cannot fire on a correctly backfilled database.
+ */
+export function backfillBlockerMessage(
+  splits: BackfillSplit[],
+  backfilledRequestIds: ReadonlySet<string>,
+): string | null {
+  const { candidates } = planBackfill(splits, backfilledRequestIds);
+  if (candidates.length === 0) return null;
+  return `Refusing to rebuild: ${candidates.length} split(s) still need the settlement backfill. Run \`pnpm db:backfill\` first.`;
+}
+
+/**
  * Every unordered pair the ledger has rows for — splits (any expense state,
  * because a rebuild also clears the cache of inactive ones) and payments.
  * Self-pairs are dropped: a rebuild no-ops on them.
