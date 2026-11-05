@@ -1,4 +1,5 @@
-import { Prisma } from '@/lib/generated/prisma/client';
+import type { Prisma } from '@/lib/generated/prisma/client';
+import { Prisma as PrismaValue } from '@/lib/generated/prisma/browser';
 import {
   allocateSettlements,
   type AllocationPayment,
@@ -15,9 +16,12 @@ import {
  *
  * Scope rules:
  * - One call handles one unordered pair, both directions.
- * - It only reads or writes splits and settlements that belong to that pair.
+ * - It reads and writes rows belonging to that pair; the one wider read is the
+ *   split-id lock, which reserves every split owned by either user.
  * - Money crosses the DB boundary as `Decimal(12,2)` and the engine boundary as
  *   integer minor units; the conversion happens exactly once at each edge.
+ * - Client-safe by construction: only types come from the server client and the
+ *   `Decimal` constructor comes from the browser entry.
  */
 
 export type AllocationSplitSource = {
@@ -50,15 +54,24 @@ export function settlementPairKey(a: string, b: string): string {
 }
 
 /**
+ * Unapplied payment remainder for a pair, keyed by currency.
+ *
+ * Values are integer minor units (cents), not major units: `4000` means
+ * HK$40.00. Wrap in `Decimal` (or divide by 100) before showing money.
+ */
+export type CreditByCurrency = Map<string, number>;
+
+/**
  * Decimal string / Decimal to integer minor units. `Decimal#mul` is exact, so
  * `0.10` becomes `10` without the `10.000000000000002` drift of `Number(x) * 100`.
+ * Numbers are deliberately excluded: callers must pass a Decimal or its string.
  */
-function toCents(value: Prisma.Decimal | string | number): number {
-  return Number(new Prisma.Decimal(value).mul(100).toFixed(0));
+function toCents(value: Prisma.Decimal | string): number {
+  return Number(new PrismaValue.Decimal(value).mul(100).toFixed(0));
 }
 
 function toMoney(cents: number): Prisma.Decimal {
-  return new Prisma.Decimal(cents).div(100);
+  return new PrismaValue.Decimal(cents).div(100);
 }
 
 export function toAllocationSplit(row: AllocationSplitSource): AllocationSplit {
@@ -112,6 +125,10 @@ const activeExpenseWhere = {
   OR: [{ groupId: null }, { group: { deletedAt: null } }],
 } satisfies Prisma.ExpenseWhereInput;
 
+const inactiveExpenseWhere = {
+  OR: [{ deletedAt: { not: null } }, { group: { deletedAt: { not: null } } }],
+} satisfies Prisma.ExpenseWhereInput;
+
 const pairSplitSelect = {
   id: true,
   userId: true,
@@ -148,12 +165,13 @@ type PairSettlementRow = Prisma.SettlementGetPayload<{ select: typeof pairSettle
  * whole pair back.
  *
  * Returns unapplied payment remainder per currency ("credit in your favor").
+ * The values are **integer cents**, not major units — see `CreditByCurrency`.
  */
 export async function rebuildPairAllocations(
   tx: Prisma.TransactionClient,
   userAId: string,
   userBId: string,
-): Promise<{ creditByCurrency: Map<string, number> }> {
+): Promise<{ creditByCurrency: CreditByCurrency }> {
   // A self-pair cannot hold a payment (no self-payment invariant), so there is
   // nothing to project. Guard before touching rows.
   if (userAId === userBId) return { creditByCurrency: new Map() };
@@ -216,6 +234,20 @@ export async function rebuildPairAllocations(
     });
   }
 
+  // Splits of a soft-deleted expense (or a deleted group) are excluded from the
+  // engine, but this rebuild still cleared the allocations they held. Reset their
+  // cache too, so the pair's whole split column agrees with the ledger instead of
+  // leaving `settledAmount > 0` next to zero allocations.
+  await tx.expenseSplit.updateMany({
+    where: {
+      OR: [
+        { userId: userAId, expense: { ...inactiveExpenseWhere, paidById: userBId } },
+        { userId: userBId, expense: { ...inactiveExpenseWhere, paidById: userAId } },
+      ],
+    },
+    data: { settledAmount: new PrismaValue.Decimal(0), settledAt: null },
+  });
+
   const now = new Date();
   for (const split of splitRows) {
     const amountCents = toCents(split.amount);
@@ -237,5 +269,6 @@ export async function rebuildPairAllocations(
     });
   }
 
+  // Integer cents per currency; see CreditByCurrency before rendering money.
   return { creditByCurrency: result.creditCents };
 }
