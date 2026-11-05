@@ -1,5 +1,7 @@
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { affectedPairsForExpenses } from '@/lib/settlement-pairs';
+import { rebuildPairAllocations, toCents } from '@/lib/settlements';
 
 export interface GhostIdentity {
   id: string;
@@ -68,11 +70,77 @@ export function decideRepoints(
   );
 }
 
+/** Money as integer minor units, matching the ledger's internal representation. */
+export type SplitTotals = {
+  amountCents: number;
+  settledCents: number;
+  settledAt: Date | null;
+};
+
+/**
+ * Totals for a split that absorbs another split of the same expense.
+ *
+ * The settled projection is summed rather than dropped: the absorbed share was
+ * paid too, and the rebuild that follows re-derives the real allocation from the
+ * surviving payments. `settledAt` survives only when the merged share ends fully
+ * settled, so a part-paid merge never claims to be closed.
+ */
+export function mergeSplitTotals(target: SplitTotals, absorbed: SplitTotals): SplitTotals {
+  const amountCents = target.amountCents + absorbed.amountCents;
+  const settledCents = target.settledCents + absorbed.settledCents;
+  return {
+    amountCents,
+    settledCents,
+    settledAt: settledCents >= amountCents ? (target.settledAt ?? absorbed.settledAt) : null,
+  };
+}
+
+export type GhostSettlementLike = { id: string; fromUserId: string; toUserId: string };
+
+export type SettlementMergeDecision =
+  | { kind: 'keep'; id: string }
+  | { kind: 'repoint'; id: string; fromUserId: string; toUserId: string }
+  | { kind: 'drop'; id: string };
+
+/**
+ * Payments that named the ghost now belong to the person claiming it, because
+ * they are the same human. A payment that ends up between one user and themself
+ * is not a transfer (no self-payment invariant) and is dropped.
+ */
+export function decideSettlementRepoints(
+  settlements: GhostSettlementLike[],
+  ghostId: string,
+  targetUserId: string,
+): SettlementMergeDecision[] {
+  return settlements.map((settlement) => {
+    const fromUserId = settlement.fromUserId === ghostId ? targetUserId : settlement.fromUserId;
+    const toUserId = settlement.toUserId === ghostId ? targetUserId : settlement.toUserId;
+    if (fromUserId === toUserId) return { kind: 'drop', id: settlement.id };
+    if (fromUserId === settlement.fromUserId && toUserId === settlement.toUserId) {
+      return { kind: 'keep', id: settlement.id };
+    }
+    return { kind: 'repoint', id: settlement.id, fromUserId, toUserId };
+  });
+}
+
+function fromCents(cents: number): Prisma.Decimal {
+  return new Prisma.Decimal(cents).div(100);
+}
+
 export async function mergeGhostIntoUser(
   tx: Prisma.TransactionClient,
   ghostId: string,
   targetUserId: string,
 ): Promise<void> {
+  // Every expense the ghost touches can change a pair's ledger position: its
+  // payer becomes the target, or its split moves to the target. Remember them
+  // before the merge, then rebuild their pairs once the ghost is gone.
+  const ghostPaidExpenses = await tx.expense.findMany({
+    where: { paidById: ghostId },
+    select: { id: true },
+  });
+  const affectedExpenseIds = new Set(ghostPaidExpenses.map((expense) => expense.id));
+
   await tx.expense.updateMany({
     where: { paidById: ghostId },
     data: { paidById: targetUserId },
@@ -80,32 +148,71 @@ export async function mergeGhostIntoUser(
 
   const ghostSplits = await tx.expenseSplit.findMany({
     where: { userId: ghostId },
-    select: { id: true, expenseId: true, amount: true },
+    select: {
+      id: true,
+      expenseId: true,
+      amount: true,
+      settledAmount: true,
+      settledAt: true,
+    },
   });
   if (ghostSplits.length > 0) {
+    for (const split of ghostSplits) affectedExpenseIds.add(split.expenseId);
+
     const targetSplits = await tx.expenseSplit.findMany({
       where: { userId: targetUserId, expenseId: { in: ghostSplits.map((s) => s.expenseId) } },
-      select: { id: true, expenseId: true },
+      select: {
+        id: true,
+        expenseId: true,
+        amount: true,
+        settledAmount: true,
+        settledAt: true,
+      },
     });
     const decisions = decideSplitTransfers(
       ghostSplits.map((s) => ({ id: s.id, expenseId: s.expenseId, amount: s.amount.toString() })),
       targetSplits,
     );
+    // Allocations restrict-delete their split, so the doomed splits' allocations
+    // are released before the rows go; the rebuild re-creates what survives.
+    const doomedSplitIds: string[] = [];
     for (let i = 0; i < ghostSplits.length; i++) {
       const decision = decisions[i];
       if (decision.kind === 'sum') {
         const target = targetSplits.find((t) => t.expenseId === ghostSplits[i].expenseId)!;
+        const merged = mergeSplitTotals(
+          {
+            amountCents: toCents(target.amount),
+            settledCents: toCents(target.settledAmount),
+            settledAt: target.settledAt,
+          },
+          {
+            amountCents: toCents(ghostSplits[i].amount),
+            settledCents: toCents(ghostSplits[i].settledAmount),
+            settledAt: ghostSplits[i].settledAt,
+          },
+        );
         await tx.expenseSplit.update({
           where: { id: target.id },
-          data: { amount: { increment: ghostSplits[i].amount } },
+          data: {
+            amount: fromCents(merged.amountCents),
+            settledAmount: fromCents(merged.settledCents),
+            settledAt: merged.settledAt,
+          },
         });
-        await tx.expenseSplit.delete({ where: { id: ghostSplits[i].id } });
+        doomedSplitIds.push(ghostSplits[i].id);
       } else {
         await tx.expenseSplit.update({
           where: { id: ghostSplits[i].id },
           data: { userId: targetUserId },
         });
       }
+    }
+    if (doomedSplitIds.length > 0) {
+      await tx.settlementAllocation.deleteMany({
+        where: { splitId: { in: doomedSplitIds } },
+      });
+      await tx.expenseSplit.deleteMany({ where: { id: { in: doomedSplitIds } } });
     }
   }
 
@@ -176,7 +283,40 @@ export async function mergeGhostIntoUser(
     }
   }
 
+  // Payments naming the ghost belong to the same human, so they move to the
+  // target. Both sides landing on the target would be a self-payment, which the
+  // ledger does not allow; those are soft-deleted with their allocations.
+  const ghostSettlements = await tx.settlement.findMany({
+    where: { OR: [{ fromUserId: ghostId }, { toUserId: ghostId }] },
+    select: { id: true, fromUserId: true, toUserId: true },
+  });
+  const settlementDecisions = decideSettlementRepoints(ghostSettlements, ghostId, targetUserId);
+  for (const decision of settlementDecisions) {
+    if (decision.kind === 'drop') {
+      await tx.settlementAllocation.deleteMany({ where: { settlementId: decision.id } });
+      await tx.settlement.update({
+        where: { id: decision.id },
+        data: { deletedAt: new Date() },
+      });
+    } else if (decision.kind === 'repoint') {
+      await tx.settlement.update({
+        where: { id: decision.id },
+        data: { fromUserId: decision.fromUserId, toUserId: decision.toUserId },
+      });
+    }
+  }
+
   await tx.user.delete({ where: { id: ghostId } });
+
+  // Rebuild every pair whose shape this merge changed, in the same transaction:
+  // the settled-amount projection and its allocations must never lag the merge.
+  const touchedExpenses = await tx.expense.findMany({
+    where: { id: { in: [...affectedExpenseIds] } },
+    select: { paidById: true, splits: { select: { userId: true } } },
+  });
+  for (const [userAId, userBId] of affectedPairsForExpenses(touchedExpenses)) {
+    await rebuildPairAllocations(tx, userAId, userBId);
+  }
 }
 
 export async function syncPendingClaims(userId: string): Promise<void> {
