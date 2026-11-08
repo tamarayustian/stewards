@@ -8,7 +8,10 @@
  * the surviving settlement rows.
  *
  * It never repairs beyond the rebuild itself: on an invariant violation it prints
- * the pair key and the failing invariant, then exits non-zero.
+ * the pair key and the failing invariant, then exits non-zero. Besides the split
+ * and payment bounds, it asserts the tie between the two projections — each
+ * split's `settledAmount` is exactly the sum of the active allocations pointing
+ * at it — and that no allocation crosses currencies.
  *
  * It also refuses to run at all while the backfill has pending candidates: a
  * rebuild would clear the legacy settled state that the backfill exists to
@@ -20,6 +23,7 @@ import 'dotenv/config';
 import db from '../lib/db';
 import {
   BACKFILL_NOTE,
+  allocationViolations,
   backfillBlockerMessage,
   ledgerPairs,
   settlementViolations,
@@ -54,8 +58,15 @@ async function reconcilePair(userAId: string, userBId: string): Promise<string[]
           select: {
             id: true,
             amount: true,
+            currency: true,
             deletedAt: true,
-            allocations: { select: { amount: true } },
+            allocations: {
+              select: {
+                splitId: true,
+                amount: true,
+                split: { select: { expense: { select: { currency: true } } } },
+              },
+            },
           },
         }),
       ]);
@@ -87,6 +98,24 @@ async function reconcilePair(userAId: string, userBId: string): Promise<string[]
           }),
         );
       }
+
+      // The projection tie: `settledAmount` is exactly the active allocations
+      // pointing at the split, and no allocation crosses currencies.
+      violations.push(
+        ...allocationViolations(
+          splitRows.map((split) => ({ id: split.id, settledCents: toCents(split.settledAmount) })),
+          settlementRows.flatMap((settlement) =>
+            settlement.allocations.map((allocation) => ({
+              settlementId: settlement.id,
+              splitId: allocation.splitId,
+              amountCents: toCents(allocation.amount),
+              settlementCurrency: settlement.currency,
+              splitCurrency: allocation.split.expense.currency,
+              deleted: settlement.deletedAt !== null,
+            })),
+          ),
+        ),
+      );
 
       return violations;
     },

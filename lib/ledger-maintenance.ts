@@ -236,3 +236,71 @@ export function settlementViolations(settlement: {
 
   return out;
 }
+
+export type AllocatedSplit = {
+  id: string;
+  settledCents: number;
+};
+
+export type ReconcileAllocation = {
+  settlementId: string;
+  splitId: string;
+  amountCents: number;
+  /** Currency of the payment. */
+  settlementCurrency: string;
+  /** Currency of the expense the split belongs to. */
+  splitCurrency: string;
+  /** The allocating payment is soft-deleted; already reported by `settlementViolations`. */
+  deleted: boolean;
+};
+
+/**
+ * The invariant that ties the two projections together: after a rebuild, a
+ * split's `settledAmount` is exactly the sum of the active allocations pointing
+ * at it, and an allocation never crosses currencies.
+ *
+ * Allocations of a soft-deleted payment are skipped: the rebuild releases them,
+ * `settlementViolations` already reports any that survive, and counting them
+ * here would blame the split for the payment's broken state.
+ */
+export function allocationViolations(
+  splits: readonly AllocatedSplit[],
+  allocations: readonly ReconcileAllocation[],
+): string[] {
+  const out: string[] = [];
+  const cleared = new Map<string, number>(splits.map((split) => [split.id, 0]));
+
+  for (const allocation of allocations) {
+    if (allocation.deleted) continue;
+
+    if (allocation.settlementCurrency !== allocation.splitCurrency) {
+      out.push(
+        `allocation ${allocation.settlementId} -> ${allocation.splitId}: ${allocation.settlementCurrency} payment against a ${allocation.splitCurrency} split`,
+      );
+    }
+
+    // An allocation pointing at a split outside the pair is itself a violation,
+    // and must not silently vanish from the totals.
+    if (!cleared.has(allocation.splitId)) {
+      out.push(
+        `allocation ${allocation.settlementId} -> ${allocation.splitId}: split is not part of this pair`,
+      );
+      continue;
+    }
+    cleared.set(
+      allocation.splitId,
+      (cleared.get(allocation.splitId) ?? 0) + allocation.amountCents,
+    );
+  }
+
+  for (const split of splits) {
+    const allocated = cleared.get(split.id) ?? 0;
+    if (allocated !== split.settledCents) {
+      out.push(
+        `split ${split.id}: settledAmount ${split.settledCents} does not match allocation total ${allocated}`,
+      );
+    }
+  }
+
+  return out;
+}

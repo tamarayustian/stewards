@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   BACKFILL_NOTE,
+  allocationViolations,
   backfillBlockerMessage,
   backfillRequestId,
   ledgerPairs,
@@ -265,5 +266,72 @@ describe('settlementViolations', () => {
         allocationCount: 1,
       }),
     ).toEqual(['settlement p: soft-deleted but still holds 1 allocation(s)']);
+  });
+});
+
+describe('allocationViolations', () => {
+  function allocation(overrides: Partial<Parameters<typeof allocationViolations>[1][number]> = {}) {
+    return {
+      settlementId: 'p',
+      splitId: 's',
+      amountCents: 1000,
+      settlementCurrency: 'HKD',
+      splitCurrency: 'HKD',
+      deleted: false,
+      ...overrides,
+    };
+  }
+
+  it('accepts a split whose settled amount is exactly its allocations', () => {
+    expect(allocationViolations([{ id: 's', settledCents: 1000 }], [allocation()])).toEqual([]);
+  });
+
+  it('accepts two payments summing to the settled amount', () => {
+    expect(
+      allocationViolations(
+        [{ id: 's', settledCents: 1000 }],
+        [allocation({ amountCents: 400 }), allocation({ settlementId: 'p2', amountCents: 600 })],
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts a split with no allocations when nothing is cleared', () => {
+    expect(allocationViolations([{ id: 's', settledCents: 0 }], [])).toEqual([]);
+  });
+
+  it('rejects a settled amount with no allocation behind it', () => {
+    expect(allocationViolations([{ id: 's', settledCents: 1000 }], [])).toEqual([
+      'split s: settledAmount 1000 does not match allocation total 0',
+    ]);
+  });
+
+  it('rejects allocations that do not add up to the settled amount', () => {
+    expect(
+      allocationViolations([{ id: 's', settledCents: 1000 }], [allocation({ amountCents: 900 })]),
+    ).toEqual(['split s: settledAmount 1000 does not match allocation total 900']);
+  });
+
+  it('rejects an allocation that crosses currencies', () => {
+    expect(
+      allocationViolations(
+        [{ id: 's', settledCents: 1000 }],
+        [allocation({ settlementCurrency: 'USD' })],
+      ),
+    ).toEqual(['allocation p -> s: USD payment against a HKD split']);
+  });
+
+  it('rejects an allocation pointing at a split outside the pair', () => {
+    expect(
+      allocationViolations([{ id: 's', settledCents: 0 }], [allocation({ splitId: 'other' })]),
+    ).toEqual(['allocation p -> other: split is not part of this pair']);
+  });
+
+  it('ignores allocations of a soft-deleted payment', () => {
+    expect(
+      allocationViolations(
+        [{ id: 's', settledCents: 0 }],
+        [allocation({ deleted: true, settlementCurrency: 'USD' })],
+      ),
+    ).toEqual([]);
   });
 });
