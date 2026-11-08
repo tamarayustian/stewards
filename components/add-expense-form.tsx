@@ -62,18 +62,26 @@ function formatAmount(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-// Even split over participants; any rounding remainder lands on the last person.
-function equalAmounts(participants: Participant[], amount: string): Record<string, string> {
+// Even split over the people who owe the payer. The payer's own share is always
+// 0.00 — they covered the expense — so the whole total lands on everyone else.
+// Any rounding remainder lands on the last person.
+function equalAmounts(
+  participants: Participant[],
+  amount: string,
+  payerId: string,
+): Record<string, string> {
   const total = totalCents(amount);
-  const n = participants.length;
-  if (n === 0) return {};
-
-  const base = Math.floor(total / n);
-  const remainder = total - base * n;
-
   const out: Record<string, string> = {};
-  participants.forEach((p, index) => {
-    out[p.id] = formatAmount(index === n - 1 ? base + remainder : base);
+  for (const p of participants) out[p.id] = '0.00';
+
+  const borrowers = participants.filter((p) => p.id !== payerId);
+  if (borrowers.length === 0) return out;
+
+  const base = Math.floor(total / borrowers.length);
+  const remainder = total - base * borrowers.length;
+
+  borrowers.forEach((p, index) => {
+    out[p.id] = formatAmount(index === borrowers.length - 1 ? base + remainder : base);
   });
   return out;
 }
@@ -113,7 +121,13 @@ export function AddExpenseForm({
   const [friends, setFriends] = useState<UserOption[]>(users);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [totalAmount, setTotalAmount] = useState(initialExpense?.amount ?? '');
-  const [amounts, setAmounts] = useState<Record<string, string>>(initialExpense?.splits ?? {});
+  const [amounts, setAmounts] = useState<Record<string, string>>(() => {
+    const initial = { ...(initialExpense?.splits ?? {}) };
+    // Legacy expenses may carry a non-zero payer share. The server now rejects
+    // one, so start the form from the corrected shape the user has to assign.
+    if (initialExpense) initial[initialExpense.paidById] = '0.00';
+    return initial;
+  });
   const [note, setNote] = useState(initialExpense?.note ?? '');
   const [customized, setCustomized] = useState(Boolean(initialExpense));
   const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
@@ -205,10 +219,10 @@ export function AddExpenseForm({
           id: m.id,
           name: m.id === currentUserId ? 'You' : m.name,
         }));
-        setAmounts(equalAmounts(rows, totalAmount));
+        setAmounts(equalAmounts(rows, totalAmount, payerId));
       }
     } else if (!customized) {
-      setAmounts(equalAmounts(directParticipants, totalAmount));
+      setAmounts(equalAmounts(directParticipants, totalAmount, payerId));
     }
   }
 
@@ -235,7 +249,7 @@ export function AddExpenseForm({
         return nextAmounts;
       });
     } else {
-      setAmounts(equalAmounts(rows, totalAmount));
+      setAmounts(equalAmounts(rows, totalAmount, payerId));
     }
   }
 
@@ -247,12 +261,12 @@ export function AddExpenseForm({
       name: m.id === currentUserId ? 'You' : m.name,
     }));
     resetPayerIfMissing(rows);
-    if (!customized) setAmounts(equalAmounts(rows, totalAmount));
+    if (!customized) setAmounts(equalAmounts(rows, totalAmount, payerId));
   }
 
   function handleTotalChange(value: string) {
     setTotalAmount(value);
-    if (!customized) setAmounts(equalAmounts(participantsRefresh(), value));
+    if (!customized) setAmounts(equalAmounts(participantsRefresh(), value, payerId));
   }
 
   function participantsRefresh(): Participant[] {
@@ -269,7 +283,7 @@ export function AddExpenseForm({
   }
 
   function splitEquallyNow() {
-    setAmounts(equalAmounts(participantsRefresh(), totalAmount));
+    setAmounts(equalAmounts(participantsRefresh(), totalAmount, payerId));
     setCustomized(false);
   }
 
@@ -522,7 +536,17 @@ export function AddExpenseForm({
                 id="paidBy"
                 name="paidById"
                 value={payerId}
-                onChange={(e) => setPayerId(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPayerId(next);
+                  // The payer never owes themselves: zero their row, and unless
+                  // the split was customised, redistribute across the borrowers.
+                  setAmounts((prev) =>
+                    customized
+                      ? { ...prev, [next]: '0.00' }
+                      : equalAmounts(participantsRefresh(), totalAmount, next),
+                  );
+                }}
               >
                 {payerOptions.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -607,28 +631,42 @@ export function AddExpenseForm({
                 </Button>
               </div>
               <div className="space-y-1">
-                {participants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-                    <div className="relative w-28">
-                      <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                        {CURRENCIES[currency].symbol}
+                {participants.map((p) =>
+                  p.id === payerId ? (
+                    // The payer's own share is not a debt: it must stay 0.00, so
+                    // it is shown rather than edited (and never submitted).
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        Paid · {CURRENCIES[currency].symbol}0.00
                       </span>
-                      <Input
-                        name={`amount_${p.id}`}
-                        type="text"
-                        inputMode="decimal"
-                        value={amounts[p.id] ?? ''}
-                        onChange={(e) => handleAmountChange(p.id, e.target.value)}
-                        placeholder="0.00"
-                        className="h-8 pl-6 text-right"
-                      />
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
+                      <div className="relative w-28">
+                        <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
+                          {CURRENCIES[currency].symbol}
+                        </span>
+                        <Input
+                          name={`amount_${p.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          value={amounts[p.id] ?? ''}
+                          onChange={(e) => handleAmountChange(p.id, e.target.value)}
+                          placeholder="0.00"
+                          className="h-8 pl-6 text-right"
+                        />
+                      </div>
+                    </div>
+                  ),
+                )}
               </div>
               {balancePreview && (
                 <p

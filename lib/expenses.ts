@@ -229,6 +229,31 @@ export type GroupSummary = {
   members: { id: string; name: string }[];
 };
 
+/**
+ * Whether an expense still has a borrower on the hook. Callers pass only open,
+ * non-zero splits: the payer's own split is never a debt, even when legacy data
+ * gave it an amount, and the rebuild can never settle it. Counting it would make
+ * `deleteGroup` refuse a group the user cannot fix.
+ */
+function hasUnsettledBorrower(expense: {
+  paidById: string;
+  splits: { userId: string }[];
+}): boolean {
+  return expense.splits.some((split) => split.userId !== expense.paidById);
+}
+
+// Open, non-zero shares only; `hasUnsettledBorrower` then drops self-splits.
+const openShareSelect = {
+  where: { settledAt: null, amount: { gt: 0 } },
+  select: { userId: true },
+} satisfies Prisma.ExpenseSplitFindManyArgs;
+
+/** Unsettled expenses per group, computed in memory because Prisma cannot compare
+ * `split.userId` with the parent `expense.paidById`. */
+function unsettledCount(expenses: { paidById: string; splits: { userId: string }[] }[]): number {
+  return expenses.filter(hasUnsettledBorrower).length;
+}
+
 export async function listGroups(userId: string): Promise<GroupSummary[]> {
   const memberships = await db.groupMember.findMany({
     where: { userId, group: { deletedAt: null } },
@@ -236,18 +261,9 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
       group: {
         include: {
           members: { include: { user: { select: { id: true, name: true } } } },
-          _count: {
-            select: {
-              // Counted in SQL instead of shipping every matching expense id.
-              // `amount: { gt: 0 }` skips the payer's own 0.00 share, which no
-              // rebuild ever closes; a part-paid debtor share still counts.
-              expenses: {
-                where: {
-                  deletedAt: null,
-                  splits: { some: { settledAt: null, amount: { gt: 0 } } },
-                },
-              },
-            },
+          expenses: {
+            where: { deletedAt: null },
+            select: { paidById: true, splits: openShareSelect },
           },
         },
       },
@@ -259,7 +275,7 @@ export async function listGroups(userId: string): Promise<GroupSummary[]> {
     id: m.group.id,
     name: m.group.name,
     memberCount: m.group.members.length,
-    unsettledCount: m.group._count.expenses,
+    unsettledCount: unsettledCount(m.group.expenses),
     members: m.group.members.map((member) => ({
       id: member.user.id,
       name: member.user.name,
@@ -290,16 +306,9 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
     include: {
       members: { include: { user: { select: { id: true, name: true } } } },
       invites: { include: { inviter: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
-      _count: {
-        select: {
-          expenses: {
-            // Same guard as `listGroups`: the payer's 0.00 split is not a debt.
-            where: {
-              deletedAt: null,
-              splits: { some: { settledAt: null, amount: { gt: 0 } } },
-            },
-          },
-        },
+      expenses: {
+        where: { deletedAt: null },
+        select: { paidById: true, splits: openShareSelect },
       },
     },
   });
@@ -317,7 +326,7 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
       inviterName: i.inviter.name,
       createdAt: i.createdAt,
     })),
-    unsettledCount: group._count.expenses,
+    unsettledCount: unsettledCount(group.expenses),
   };
 }
 
