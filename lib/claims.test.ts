@@ -34,7 +34,9 @@ describe('matchesIdentity', () => {
   });
 
   it('matches on case-insensitive trimmed name', () => {
-    expect(matchesIdentity({ ...sarah, email: null, phone: null }, ghost({ name: '  sarah lee ' }))).toBe(true);
+    expect(
+      matchesIdentity({ ...sarah, email: null, phone: null }, ghost({ name: '  sarah lee ' })),
+    ).toBe(true);
   });
 
   it('matches on identical phone', () => {
@@ -42,7 +44,9 @@ describe('matchesIdentity', () => {
   });
 
   it('does not match a ghost with no email/name/phone overlap', () => {
-    expect(matchesIdentity(sarah, ghost({ email: 'other@example.com', name: 'Lisa Wong' }))).toBe(false);
+    expect(matchesIdentity(sarah, ghost({ email: 'other@example.com', name: 'Lisa Wong' }))).toBe(
+      false,
+    );
   });
 
   it('does not match on email when either side is null', () => {
@@ -72,10 +76,7 @@ describe('decideSplitTransfers', () => {
   });
 
   it('repoints a split when the target has none on that expense', () => {
-    const decisions = decideSplitTransfers(
-      [{ id: 'gs1', expenseId: 'e1', amount: '80.00' }],
-      [],
-    );
+    const decisions = decideSplitTransfers([{ id: 'gs1', expenseId: 'e1', amount: '80.00' }], []);
     expect(decisions).toEqual([{ kind: 'repoint', splitId: 'gs1' }]);
   });
 });

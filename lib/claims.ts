@@ -360,7 +360,9 @@ export async function syncPendingClaims(userId: string): Promise<void> {
   const existingPairs = new Set(existing.map((e) => e.ghostId));
 
   const matches = filterUnclaimed(
-    ghostRows.filter((g) => matchesIdentity({ email: user.email, name: user.name, phone: user.phone }, g)),
+    ghostRows.filter((g) =>
+      matchesIdentity({ email: user.email, name: user.name, phone: user.phone }, g),
+    ),
     existingPairs,
   );
 
@@ -412,7 +414,8 @@ export async function listPendingClaims(userId: string): Promise<PendingClaimRow
 
   const adderByGhost = new Map<string, string>();
   for (const contact of adders) {
-    if (!adderByGhost.has(contact.contactId)) adderByGhost.set(contact.contactId, contact.owner.name);
+    if (!adderByGhost.has(contact.contactId))
+      adderByGhost.set(contact.contactId, contact.owner.name);
   }
   const paidByGhost = new Map(paidCounts.map((row) => [row.paidById, row._count._all]));
   const splitByGhost = new Map(splitCounts.map((row) => [row.userId, row._count._all]));
