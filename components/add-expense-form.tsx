@@ -17,6 +17,7 @@ import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 import { fetchExchangeRate } from '@/lib/rates';
+import { equalAmounts, formatAmount, totalCents } from '@/lib/splits';
 
 type Mode = 'group' | 'direct';
 
@@ -51,39 +52,6 @@ export type InitialExpense = {
 interface Participant {
   id: string;
   name: string;
-}
-
-function totalCents(value: string): number {
-  const n = Math.round(parseFloat(value || '0') * 100);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatAmount(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-// Even split over the people who owe the payer. The payer's own share is always
-// 0.00 — they covered the expense — so the whole total lands on everyone else.
-// Any rounding remainder lands on the last person.
-function equalAmounts(
-  participants: Participant[],
-  amount: string,
-  payerId: string,
-): Record<string, string> {
-  const total = totalCents(amount);
-  const out: Record<string, string> = {};
-  for (const p of participants) out[p.id] = '0.00';
-
-  const borrowers = participants.filter((p) => p.id !== payerId);
-  if (borrowers.length === 0) return out;
-
-  const base = Math.floor(total / borrowers.length);
-  const remainder = total - base * borrowers.length;
-
-  borrowers.forEach((p, index) => {
-    out[p.id] = formatAmount(index === borrowers.length - 1 ? base + remainder : base);
-  });
-  return out;
 }
 
 export function AddExpenseForm({
@@ -203,10 +171,17 @@ export function AddExpenseForm({
     ...participants.filter((p) => p.id !== currentUserId),
   ];
 
-  function resetPayerIfMissing(nextParticipants: Participant[]) {
+  // The payer must be one of the people in the split. Returns the payer id that
+  // will be in effect after this change, so the equal split can be spread with
+  // it in the same tick: `setPayerId` alone would leave the caller computing the
+  // split against the stale id and hand a share to the viewer's read-only row,
+  // which is never submitted.
+  function resolvePayer(nextParticipants: Participant[]): string {
     if (payerId !== currentUserId && !nextParticipants.some((p) => p.id === payerId)) {
       setPayerId(currentUserId);
+      return currentUserId;
     }
+    return payerId;
   }
 
   function chooseMode(next: Mode) {
@@ -214,15 +189,19 @@ export function AddExpenseForm({
     if (next === 'group') {
       const first = groups[0];
       setSelectedGroupId(first?.id ?? '');
+      const rows = (first?.members ?? []).map((m) => ({
+        id: m.id,
+        name: m.id === currentUserId ? 'You' : m.name,
+      }));
+      const payer = resolvePayer(rows);
       if (first && !customized) {
-        const rows = (first.members ?? []).map((m) => ({
-          id: m.id,
-          name: m.id === currentUserId ? 'You' : m.name,
-        }));
-        setAmounts(equalAmounts(rows, totalAmount, payerId));
+        setAmounts(equalAmounts(rows, totalAmount, payer));
       }
-    } else if (!customized) {
-      setAmounts(equalAmounts(directParticipants, totalAmount, payerId));
+    } else {
+      const payer = resolvePayer(directParticipants);
+      if (!customized) {
+        setAmounts(equalAmounts(directParticipants, totalAmount, payer));
+      }
     }
   }
 
@@ -238,7 +217,7 @@ export function AddExpenseForm({
       ...next.map((u) => ({ id: u, name: friends.find((f) => f.id === u)?.name ?? 'Friend' })),
     ];
 
-    resetPayerIfMissing(rows);
+    const payer = resolvePayer(rows);
 
     if (customized) {
       setAmounts((prev) => {
@@ -249,7 +228,7 @@ export function AddExpenseForm({
         return nextAmounts;
       });
     } else {
-      setAmounts(equalAmounts(rows, totalAmount, payerId));
+      setAmounts(equalAmounts(rows, totalAmount, payer));
     }
   }
 
@@ -260,8 +239,8 @@ export function AddExpenseForm({
       id: m.id,
       name: m.id === currentUserId ? 'You' : m.name,
     }));
-    resetPayerIfMissing(rows);
-    if (!customized) setAmounts(equalAmounts(rows, totalAmount, payerId));
+    const payer = resolvePayer(rows);
+    if (!customized) setAmounts(equalAmounts(rows, totalAmount, payer));
   }
 
   function handleTotalChange(value: string) {
@@ -368,6 +347,9 @@ export function AddExpenseForm({
   const splitSumCents = participants.reduce((sum, p) => sum + totalCents(amounts[p.id] ?? ''), 0);
   const totalCentsValue = totalCents(totalAmount);
   const diff = totalCentsValue - splitSumCents;
+  // A payer-only participant set has nothing to assign: the server rejects the
+  // resulting 0.00 sum, so say why instead of surfacing that error.
+  const noBorrowers = !participants.some((p) => p.id !== payerId);
 
   const payerName = participants.find((p) => p.id === payerId)?.name ?? 'You';
   const myShareCents = totalCents(amounts[currentUserId] ?? '');
@@ -693,7 +675,11 @@ export function AddExpenseForm({
               />
             </div>
 
-            {diff !== 0 && (
+            {noBorrowers ? (
+              <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground ring-1 ring-border">
+                There&apos;s nobody to share this with yet — add or invite someone first.
+              </p>
+            ) : diff !== 0 ? (
               <p className={`text-xs ${diff > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
                 {diff > 0
                   ? `${formatAmount(diff)} left to assign — splits total ${formatAmount(
@@ -703,7 +689,7 @@ export function AddExpenseForm({
                       Math.abs(diff),
                     )} over the amount.`}
               </p>
-            )}
+            ) : null}
 
             <FormError message={state?.error} />
 
@@ -714,7 +700,7 @@ export function AddExpenseForm({
               </>
             )}
 
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button type="submit" disabled={pending || noBorrowers} className="w-full">
               {initialExpense
                 ? pending
                   ? 'Saving changes...'
