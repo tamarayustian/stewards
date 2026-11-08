@@ -368,26 +368,51 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   }
 
   // Outstanding is projected from the ledger, never re-derived from `settledAt`.
+  // This read is a fast path only: the authoritative one happens after the lock
+  // below, because two overlapping taps would both see the pre-rebuild value.
   const outstanding = split.amount.minus(split.settledAmount);
   if (outstanding.lte(0)) {
     return { error: 'Nothing to settle on this expense.' };
   }
 
-  await db.$transaction(async (tx) => {
-    await writeSettlement(tx, {
-      fromUserId: splitUserId,
-      toUserId: expense.paidById,
-      amountCents: toCents(outstanding),
-      currency: expense.currency,
-      occurredAt: new Date(),
-      note: null,
-      // Pin the payment so it clears the tapped share, not the oldest one.
-      pinnedSplitId: split.id,
-      groupId: expense.groupId,
-      requestId: null,
-      actorId: user.id,
-    });
-  });
+  await db.$transaction(
+    async (tx) => {
+      // Same rows and order as `rebuildPairAllocations`' lock, so the rebuild
+      // below re-enters them in the same order instead of creating a cycle. A
+      // second tap queues here, then reads the projection the first one committed
+      // and finds nothing left to pay.
+      await tx.$queryRaw`
+        SELECT id FROM "ExpenseSplit"
+        WHERE "userId" IN (${splitUserId}, ${expense.paidById})
+        ORDER BY id
+        FOR UPDATE
+      `;
+
+      const fresh = await tx.expenseSplit.findUnique({
+        where: { id: split.id },
+        select: { amount: true, settledAmount: true },
+      });
+      if (!fresh) return;
+
+      const stillOwed = fresh.amount.minus(fresh.settledAmount);
+      if (stillOwed.lte(0)) return;
+
+      await writeSettlement(tx, {
+        fromUserId: splitUserId,
+        toUserId: expense.paidById,
+        amountCents: toCents(stillOwed),
+        currency: expense.currency,
+        occurredAt: new Date(),
+        note: null,
+        // Pin the payment so it clears the tapped share, not the oldest one.
+        pinnedSplitId: split.id,
+        groupId: expense.groupId,
+        requestId: null,
+        actorId: user.id,
+      });
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
@@ -587,61 +612,107 @@ export async function settleAll() {
     redirect('/login');
   }
 
-  const splits = await db.expenseSplit.findMany({
-    where: {
-      userId: user.id,
-      amount: { gt: 0 },
-      expense: {
-        deletedAt: null,
-        paidById: { not: user.id },
-        OR: [{ groupId: null }, { group: { deletedAt: null } }],
-      },
-    },
-    select: {
-      id: true,
-      amount: true,
-      settledAmount: true,
-      expense: { select: { paidById: true, currency: true, createdAt: true } },
-    },
-  });
-
-  const targets: SettleTarget[] = [];
-  for (const split of splits) {
-    const amountCents = toCents(split.amount.minus(split.settledAmount));
-    if (amountCents <= 0) continue;
-    targets.push({
-      creditorId: split.expense.paidById,
-      currency: split.expense.currency,
-      splitId: split.id,
-      amountCents,
-      // Splits carry no date of their own; the expense is the ledger date.
-      occurredAt: split.expense.createdAt,
-      createdAt: split.expense.createdAt,
-    });
-  }
-
-  const groups = groupSettleAllTargets(targets);
   const occurredAt = new Date();
 
-  await db.$transaction(async (tx) => {
-    for (const group of groups) {
-      await writeSettlement(tx, {
-        fromUserId: user.id,
-        toUserId: group.creditorId,
-        amountCents: group.amountCents,
-        currency: group.currency,
-        occurredAt,
-        note: null,
-        // No pin: the whole group allocates oldest-first across the pair.
-        pinnedSplitId: null,
-        // A group can span several groups and direct expenses, so it is not
-        // attributable to a single group.
-        groupId: null,
-        requestId: null,
-        actorId: user.id,
+  await db.$transaction(
+    async (tx) => {
+      // Lock the viewer's splits before re-reading them. Two taps overlap
+      // otherwise: both read the pre-rebuild outstanding amount and both write,
+      // and the second payment allocates to nothing and becomes invisible credit.
+      // The second request queues here, then reads the first one's projections
+      // and finds nothing left to do.
+      await tx.$queryRaw`
+        SELECT id FROM "ExpenseSplit"
+        WHERE "userId" = ${user.id}
+        ORDER BY id
+        FOR UPDATE
+      `;
+
+      const splits = await tx.expenseSplit.findMany({
+        where: {
+          userId: user.id,
+          amount: { gt: 0 },
+          expense: {
+            deletedAt: null,
+            paidById: { not: user.id },
+            OR: [{ groupId: null }, { group: { deletedAt: null } }],
+          },
+        },
+        select: {
+          id: true,
+          amount: true,
+          settledAmount: true,
+          expense: { select: { paidById: true, currency: true, createdAt: true } },
+        },
       });
-    }
-  });
+
+      const targets: SettleTarget[] = [];
+      for (const split of splits) {
+        const amountCents = toCents(split.amount.minus(split.settledAmount));
+        if (amountCents <= 0) continue;
+        targets.push({
+          creditorId: split.expense.paidById,
+          currency: split.expense.currency,
+          splitId: split.id,
+          amountCents,
+          // Splits carry no date of their own; the expense is the ledger date.
+          occurredAt: split.expense.createdAt,
+          createdAt: split.expense.createdAt,
+        });
+      }
+
+      // Money already handed over that no split is waiting for, per creditor and
+      // currency. Sizing a payment from `amount - settledAmount` alone would record
+      // a transfer the user never had to make and immediately re-create credit.
+      const creditRows = await tx.settlement.findMany({
+        where: { deletedAt: null, fromUserId: user.id },
+        select: {
+          fromUserId: true,
+          toUserId: true,
+          currency: true,
+          amount: true,
+          allocations: { select: { amount: true } },
+        },
+      });
+      const creditCents = new Map(
+        summarizePairCredits(user.id, creditRows)
+          .filter((credit) => credit.inViewersFavor)
+          .map((credit) => [
+            // Ids are UUIDs, so a NUL separator cannot collide with a real key.
+            `${credit.counterpartyId}\u0000${credit.currency}`,
+            toCents(credit.amount),
+          ]),
+      );
+
+      for (const group of groupSettleAllTargets(targets)) {
+        const credit = creditCents.get(`${group.creditorId}\u0000${group.currency}`) ?? 0;
+        const amountCents = Math.max(group.amountCents - credit, 0);
+        if (amountCents === 0) {
+          // Existing credit already covers this pair: let the rebuild apply it to
+          // the open splits instead of recording a payment nobody had to make.
+          await rebuildPairAllocations(tx, user.id, group.creditorId);
+          continue;
+        }
+
+        await writeSettlement(tx, {
+          fromUserId: user.id,
+          toUserId: group.creditorId,
+          amountCents,
+          currency: group.currency,
+          occurredAt,
+          note: null,
+          // No pin: the whole group allocates oldest-first across the pair.
+          pinnedSplitId: null,
+          // A group can span several groups and direct expenses, so it is not
+          // attributable to a single group.
+          groupId: null,
+          requestId: null,
+          actorId: user.id,
+        });
+      }
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
