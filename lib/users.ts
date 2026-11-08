@@ -42,15 +42,25 @@ export async function ensureUserRow(user: AuthUser) {
     const contact = await db.user.findUnique({ where: { email } });
 
     if (contact && contact.id !== id) {
-      await db.$transaction(async (tx) => {
-        await tx.user.upsert({
-          where: { id },
-          create: { id, name, phone, currency: currency ?? 'HKD', isRegistered: true, email: null },
-          update: {},
-        });
-        await mergeGhostIntoUser(tx, contact.id, id);
-        await tx.user.update({ where: { id }, data: { email } });
-      });
+      await db.$transaction(
+        async (tx) => {
+          await tx.user.upsert({
+            where: { id },
+            create: {
+              id,
+              name,
+              phone,
+              currency: currency ?? 'HKD',
+              isRegistered: true,
+              email: null,
+            },
+            update: {},
+          });
+          await mergeGhostIntoUser(tx, contact.id, id);
+          await tx.user.update({ where: { id }, data: { email } });
+        },
+        { timeout: 20_000 },
+      );
       return { merged: true as const, email };
     }
   }

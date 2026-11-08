@@ -344,7 +344,12 @@ export function AddExpenseForm({
     </div>
   );
 
-  const splitSumCents = participants.reduce((sum, p) => sum + totalCents(amounts[p.id] ?? ''), 0);
+  // The payer's row is rendered read-only and never submitted, so its amount is
+  // not part of the split the server will validate.
+  const splitSumCents = participants.reduce(
+    (sum, p) => (p.id === payerId ? sum : sum + totalCents(amounts[p.id] ?? '')),
+    0,
+  );
   const totalCentsValue = totalCents(totalAmount);
   const diff = totalCentsValue - splitSumCents;
   // A payer-only participant set has nothing to assign: the server rejects the
