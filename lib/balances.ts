@@ -9,12 +9,7 @@ import {
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import {
-  hasOutstandingShare,
-  outstandingDecimal,
-  summarizePairCredits,
-  type PairCredit,
-} from '@/lib/outstanding';
+import { hasOutstandingShare, outstandingDecimal, type PairCredit } from '@/lib/outstanding';
 
 export type { PairCredit };
 
@@ -182,7 +177,12 @@ const pairCreditSelect = {
 // Credit is `payment.amount - SUM(allocations)`: money already handed over that
 // no split is waiting for. It is shown beside a pair, never netted into a
 // balance and never stored in its own table.
-function loadPairCredits(userId: string) {
+//
+// Exported for the upcoming Split Ledger UI, which renders it per pair. Nothing
+// calls it on a page render yet: `getPairOverview` used to load every settlement
+// the viewer is party to (with allocations) on each `/expenses` render and then
+// discard the result. Pair it with `summarizePairCredits` from `lib/outstanding`.
+export function loadPairCredits(userId: string) {
   return db.settlement.findMany({
     where: {
       deletedAt: null,
@@ -225,20 +225,20 @@ export interface PairOverview {
   pairs: PairSummary[];
   details: Map<string, PairDetail>;
   reminders: ReminderRow[];
-  /** Unapplied payment remainders, per counterparty, currency, and direction. */
-  credits: PairCredit[];
   viewerCurrency: Currency;
 }
 
 // Everything the "By Person" list needs: balances, per-pair detail for the
-// WhatsApp draft, reminders, and pair credit — five queries in a single round
-// trip. Pair detail comes from the rows already loaded, so there is no per-person
-// N+1.
+// WhatsApp draft, and reminders — three queries in a single round trip. Pair
+// detail comes from the rows already loaded, so there is no per-person N+1.
+//
+// Pair credit is deliberately not loaded here (see `loadPairCredits`). It used
+// to be, and every `/expenses` render paid for a full settlement+allocation read
+// whose result no caller read.
 export async function getPairOverview(userId: string): Promise<PairOverview> {
-  const [{ viewerCurrency, owedToMeRows, iOweRows }, reminderRows, creditRows] = await Promise.all([
+  const [{ viewerCurrency, owedToMeRows, iOweRows }, reminderRows] = await Promise.all([
     loadPairRows(userId),
     remindersFor(userId),
-    loadPairCredits(userId),
   ]);
 
   const pairs = summarize(owedToMeRows, iOweRows);
@@ -262,7 +262,6 @@ export async function getPairOverview(userId: string): Promise<PairOverview> {
     pairs,
     details,
     reminders: buildReminderRows(reminderRows, pairs),
-    credits: summarizePairCredits(userId, creditRows),
     viewerCurrency,
   };
 }
