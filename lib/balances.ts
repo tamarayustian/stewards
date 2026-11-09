@@ -9,6 +9,9 @@ import {
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { hasOutstandingShare, outstandingDecimal, type PairCredit } from '@/lib/outstanding';
+
+export type { PairCredit };
 
 const activeExpenseWhere = {
   deletedAt: null,
@@ -18,6 +21,7 @@ const activeExpenseWhere = {
 const owedToMeSelect = {
   id: true,
   amount: true,
+  settledAmount: true,
   userId: true,
   expense: {
     select: {
@@ -35,6 +39,7 @@ const owedToMeSelect = {
 const iOweSelect = {
   id: true,
   amount: true,
+  settledAmount: true,
   expense: {
     select: {
       id: true,
@@ -57,6 +62,9 @@ type ReminderWithSender = Prisma.ReminderGetPayload<{
 
 function toOwedToMeRow(split: OwedToMeSplit, viewerCurrency: Currency): ShareRow {
   const rate = split.expense.currency === viewerCurrency ? 1 : Number(split.expense.rate ?? '1');
+  // A share's money is what is still owed on it, not the original split: a
+  // part-paid share keeps showing, with the reduced amount.
+  const outstanding = outstandingDecimal(split.amount, split.settledAmount);
   return {
     splitId: split.id,
     expenseId: split.expense.id,
@@ -64,8 +72,8 @@ function toOwedToMeRow(split: OwedToMeSplit, viewerCurrency: Currency): ShareRow
     note: split.expense.note,
     amount: split.expense.amount,
     currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount.mul(rate),
+    splitAmount: outstanding,
+    convertedAmount: outstanding.mul(rate),
     party: {
       id: split.userId,
       name: split.user.name,
@@ -77,6 +85,7 @@ function toOwedToMeRow(split: OwedToMeSplit, viewerCurrency: Currency): ShareRow
 
 function toIOweRow(split: IOweSplit, viewerCurrency: Currency): ShareRow {
   const rate = split.expense.currency === viewerCurrency ? 1 : Number(split.expense.rate ?? '1');
+  const outstanding = outstandingDecimal(split.amount, split.settledAmount);
   return {
     splitId: split.id,
     expenseId: split.expense.id,
@@ -84,8 +93,8 @@ function toIOweRow(split: IOweSplit, viewerCurrency: Currency): ShareRow {
     note: split.expense.note,
     amount: split.expense.amount,
     currency: split.expense.currency,
-    splitAmount: split.amount,
-    convertedAmount: split.amount.mul(rate),
+    splitAmount: outstanding,
+    convertedAmount: outstanding.mul(rate),
     party: {
       id: split.expense.paidById,
       name: split.expense.paidBy.name,
@@ -127,8 +136,14 @@ async function loadPairRows(userId: string): Promise<PairRows> {
   const viewerCurrency = (viewer?.currency ?? 'HKD') as Currency;
   return {
     viewerCurrency,
-    owedToMeRows: owedToMe.map((split) => toOwedToMeRow(split, viewerCurrency)),
-    iOweRows: iOwe.map((split) => toIOweRow(split, viewerCurrency)),
+    // A zero-outstanding row is not a balance: the share is closed even if a
+    // later rebuild has not cleared its `settledAt` yet.
+    owedToMeRows: owedToMe
+      .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+      .map((split) => toOwedToMeRow(split, viewerCurrency)),
+    iOweRows: iOwe
+      .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+      .map((split) => toIOweRow(split, viewerCurrency)),
   };
 }
 
@@ -148,6 +163,32 @@ function remindersFor(userId: string) {
     where: { toId: userId },
     orderBy: { createdAt: 'desc' },
     include: { from: { select: { name: true } } },
+  });
+}
+
+const pairCreditSelect = {
+  fromUserId: true,
+  toUserId: true,
+  currency: true,
+  amount: true,
+  allocations: { select: { amount: true } },
+} satisfies Prisma.SettlementSelect;
+
+// Credit is `payment.amount - SUM(allocations)`: money already handed over that
+// no split is waiting for. It is shown beside a pair, never netted into a
+// balance and never stored in its own table.
+//
+// Exported for the upcoming Split Ledger UI, which renders it per pair. Nothing
+// calls it on a page render yet: `getPairOverview` used to load every settlement
+// the viewer is party to (with allocations) on each `/expenses` render and then
+// discard the result. Pair it with `summarizePairCredits` from `lib/outstanding`.
+export function loadPairCredits(userId: string) {
+  return db.settlement.findMany({
+    where: {
+      deletedAt: null,
+      OR: [{ fromUserId: userId }, { toUserId: userId }],
+    },
+    select: pairCreditSelect,
   });
 }
 
@@ -188,8 +229,12 @@ export interface PairOverview {
 }
 
 // Everything the "By Person" list needs: balances, per-pair detail for the
-// WhatsApp draft, and reminders — four queries in a single round trip.
-// Pair detail comes from the rows already loaded, so there is no per-person N+1.
+// WhatsApp draft, and reminders — three queries in a single round trip. Pair
+// detail comes from the rows already loaded, so there is no per-person N+1.
+//
+// Pair credit is deliberately not loaded here (see `loadPairCredits`). It used
+// to be, and every `/expenses` render paid for a full settlement+allocation read
+// whose result no caller read.
 export async function getPairOverview(userId: string): Promise<PairOverview> {
   const [{ viewerCurrency, owedToMeRows, iOweRows }, reminderRows] = await Promise.all([
     loadPairRows(userId),
@@ -238,6 +283,7 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
+        settledAmount: true,
         expense: {
           select: {
             id: true,
@@ -259,6 +305,7 @@ export async function getPairDetail(
       select: {
         id: true,
         amount: true,
+        settledAmount: true,
         expense: {
           select: {
             id: true,
@@ -284,37 +331,46 @@ export async function getPairDetail(
 
   const counterparty: Counterparty = { id: otherUserId, ...counterpartyRow };
 
-  const owedToMeRows: ShareRow[] = owedToMe.map((split) => {
-    const sameCurrency = split.expense.currency === viewerCurrency;
-    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
-    return {
-      splitId: split.id,
-      expenseId: split.expense.id,
-      date: split.expense.createdAt,
-      note: split.expense.note,
-      amount: split.expense.amount,
-      currency: split.expense.currency,
-      splitAmount: split.amount,
-      convertedAmount: split.amount.mul(rate),
-      party: counterparty,
-    };
-  });
+  const owedToMeRows: ShareRow[] = owedToMe
+    .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+    .map((split) => {
+      const sameCurrency = split.expense.currency === viewerCurrency;
+      const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+      const outstanding = outstandingDecimal(split.amount, split.settledAmount);
+      return {
+        splitId: split.id,
+        expenseId: split.expense.id,
+        date: split.expense.createdAt,
+        note: split.expense.note,
+        amount: split.expense.amount,
+        currency: split.expense.currency,
+        splitAmount: outstanding,
+        convertedAmount: outstanding.mul(rate),
+        party: counterparty,
+      };
+    });
 
-  const iOweRows: ShareRow[] = iOwe.map((split) => {
-    const sameCurrency = split.expense.currency === viewerCurrency;
-    const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
-    return {
-      splitId: split.id,
-      expenseId: split.expense.id,
-      date: split.expense.createdAt,
-      note: split.expense.note,
-      amount: split.expense.amount,
-      currency: split.expense.currency,
-      splitAmount: split.amount,
-      convertedAmount: split.amount.mul(rate),
-      party: counterparty,
-    };
-  });
+  const iOweRows: ShareRow[] = iOwe
+    .filter((split) => hasOutstandingShare(split.amount, split.settledAmount))
+    .map((split) => {
+      const sameCurrency = split.expense.currency === viewerCurrency;
+      const rate = sameCurrency ? 1 : Number(split.expense.rate ?? '1');
+      const outstanding = outstandingDecimal(split.amount, split.settledAmount);
+      return {
+        splitId: split.id,
+        expenseId: split.expense.id,
+        date: split.expense.createdAt,
+        note: split.expense.note,
+        amount: split.expense.amount,
+        currency: split.expense.currency,
+        splitAmount: outstanding,
+        convertedAmount: outstanding.mul(rate),
+        party: counterparty,
+      };
+    });
+
+  // Every share closed at zero leaves this pair with nothing to show.
+  if (owedToMeRows.length === 0 && iOweRows.length === 0) return null;
 
   return buildPairDetail(counterparty, owedToMeRows, iOweRows);
 }

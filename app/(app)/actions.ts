@@ -21,6 +21,26 @@ import { fetchExchangeRate } from '@/lib/rates';
 import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
 import { EMAIL_RE } from '@/lib/auth-validation';
+import { validateSettlementEditInput, validateSettlementInput } from '@/lib/settlement-input';
+import { affectedPairsForExpense, affectedPairsForExpenses } from '@/lib/settlement-pairs';
+import { groupSettleAllTargets, type SettleTarget } from '@/lib/settlement-targets';
+import { planSettlementUnwind } from '@/lib/settlement-unwind';
+import { summarizePairCredits } from '@/lib/outstanding';
+import { rebuildPairAllocations, toCents } from '@/lib/settlements';
+
+/**
+ * The payer's own share is never a debt: the rebuild reads splits pair-scoped,
+ * and a split whose debtor is the payer matches neither direction, so money
+ * parked there can never be settled or counted. Reject it on write so no new
+ * expense can create such a share. (Legacy rows survive; `deleteGroup` and the
+ * group counts ignore them so no group is wedged.)
+ */
+function payerShare(
+  splits: { userId: string; amount: Prisma.Decimal }[],
+  payerId: string,
+): Prisma.Decimal {
+  return splits.find((split) => split.userId === payerId)?.amount ?? new Prisma.Decimal(0);
+}
 
 export async function createExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
@@ -98,6 +118,10 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     };
   }
 
+  if (payerShare(splits, payerId).gt(0)) {
+    return { error: "The payer's own share must be 0.00 — they covered the expense." };
+  }
+
   const viewer = await db.user.findUnique({
     where: { id: user.id },
     select: { currency: true },
@@ -121,18 +145,32 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     }
   }
 
-  await db.expense.create({
-    data: {
-      groupId,
-      paidById: payerId,
-      amount,
-      currency: currencyCode,
-      rate,
-      rateCurrency,
-      note,
-      splits: { create: splits },
+  // The insert and the rebuild commit together: a new split can absorb credit
+  // from an existing payment, so the projection is rebuilt in the same
+  // transaction that created it. A ten-member group rebuilds ten pairs against
+  // a remote pooled database, so the default 5s budget is not enough.
+  await db.$transaction(
+    async (tx) => {
+      const expense = await tx.expense.create({
+        data: {
+          groupId,
+          paidById: payerId,
+          amount,
+          currency: currencyCode,
+          rate,
+          rateCurrency,
+          note,
+          splits: { create: splits },
+        },
+        include: { splits: { select: { userId: true } } },
+      });
+
+      for (const [userAId, userBId] of affectedPairsForExpense(expense)) {
+        await rebuildPairAllocations(tx, userAId, userBId);
+      }
     },
-  });
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
@@ -188,9 +226,17 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
   const group = await db.group.findFirst({
     where: { id: groupId, deletedAt: null, members: { some: { userId: user.id } } },
     include: {
+      // Every active expense, not only the unsettled ones the guard needs:
+      // deleting the group makes all of them inactive, which reshapes every pair
+      // they imply, so all of them have to be rebuilt.
       expenses: {
-        where: { deletedAt: null, splits: { some: { settledAt: null } } },
-        select: { id: true },
+        where: { deletedAt: null },
+        select: {
+          paidById: true,
+          // `amount`/`settledAt` are only for the guard: the payer's own split
+          // carries `settledAt: null` forever and is not a debt.
+          splits: { select: { userId: true, settledAt: true, amount: true } },
+        },
       },
     },
   });
@@ -199,14 +245,36 @@ export async function deleteGroup(_prev: unknown, formData: FormData) {
     return { error: 'Group not found.' };
   }
 
-  if (group.expenses.length > 0) {
+  // Same meaning as `GroupSummary.unsettledCount` in `listGroups`: an expense is
+  // unsettled when someone other than the payer still owes an open, non-zero
+  // share. A legacy non-zero self-split is ignored rather than wedging deletion.
+  const hasUnsettled = group.expenses.some((expense) =>
+    expense.splits.some(
+      (split) =>
+        split.userId !== expense.paidById && split.settledAt === null && split.amount.gt(0),
+    ),
+  );
+  if (hasUnsettled) {
     return { error: 'Settle all expenses before deleting this group.' };
   }
 
-  await db.group.update({
-    where: { id: groupId },
-    data: { deletedAt: new Date() },
-  });
+  const pairs = affectedPairsForExpenses(group.expenses);
+
+  await db.$transaction(
+    async (tx) => {
+      await tx.group.update({
+        where: { id: groupId },
+        data: { deletedAt: new Date() },
+      });
+
+      // The rebuild writes the projection the group delete just invalidated:
+      // inactive splits release their allocations and their settled cache.
+      for (const [userAId, userBId] of pairs) {
+        await rebuildPairAllocations(tx, userAId, userBId);
+      }
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/people');
   revalidatePath('/dashboard');
@@ -226,17 +294,35 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
       deletedAt: null,
       OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
     },
-    select: { groupId: true },
+    select: {
+      groupId: true,
+      paidById: true,
+      splits: { select: { userId: true } },
+    },
   });
 
   if (!expense) {
     return { error: 'Expense not found.' };
   }
 
-  await db.expense.update({
-    where: { id: expenseId },
-    data: { deletedAt: new Date() },
-  });
+  // Pairs first, mutation second: the rebuild must see the expense as deleted.
+  const pairs = affectedPairsForExpense(expense);
+
+  await db.$transaction(
+    async (tx) => {
+      // Soft delete only: the ledger can be corrected later, and the splits stay
+      // behind so the rebuild can release what this pair was holding.
+      await tx.expense.update({
+        where: { id: expenseId },
+        data: { deletedAt: new Date() },
+      });
+
+      for (const [userAId, userBId] of pairs) {
+        await rebuildPairAllocations(tx, userAId, userBId);
+      }
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
@@ -245,8 +331,9 @@ export async function deleteExpense(_prev: unknown, formData: FormData) {
   }
 }
 
-// Marks the current user's share of an expense as repaid.
-// Only the borrower (non-payer with an unsettled, non-zero split) can settle their own debt.
+// Marks one share of an expense as repaid by recording a settlement pinned to
+// that split. The borrower settles their own share; the payer can record that a
+// borrower paid them by naming that borrower's split.
 export async function settleExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
@@ -259,35 +346,79 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      OR: [
-        // Borrower can settle their own split (they paid the payer)
-        {
-          paidById: { not: user.id },
-          splits: { some: { userId: user.id, settledAt: null, amount: { gt: 0 } } },
-        },
-        // Payer can settle a borrower's split (they received payment)
-        {
-          paidById: user.id,
-          splits: { some: { userId: { not: user.id }, settledAt: null, amount: { gt: 0 } } },
-        },
-      ],
+      // The payer or a participant may act on this expense.
+      OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true, paidById: true },
+    select: {
+      groupId: true,
+      paidById: true,
+      currency: true,
+      splits: { select: { id: true, userId: true, amount: true, settledAmount: true } },
+    },
   });
 
   if (!expense) {
     return { error: 'Nothing to settle on this expense.' };
   }
 
-  // Determine which split to settle: borrower settles their own, payer settles the other's
+  // Determine which split to settle: borrower settles their own, payer settles
+  // the borrower's (named by `splitUserId`).
   const splitUserId =
     expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
-  await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: splitUserId } },
-    data: { settledAt: new Date() },
-  });
+  const split = expense.splits.find((row) => row.userId === splitUserId);
+  // Paying yourself is not a payment, so the payer's own share is never a target.
+  if (!split || splitUserId === expense.paidById) {
+    return { error: 'Nothing to settle on this expense.' };
+  }
+
+  // Outstanding is projected from the ledger, never re-derived from `settledAt`.
+  // This read is a fast path only: the authoritative one happens after the lock
+  // below, because two overlapping taps would both see the pre-rebuild value.
+  const outstanding = split.amount.minus(split.settledAmount);
+  if (outstanding.lte(0)) {
+    return { error: 'Nothing to settle on this expense.' };
+  }
+
+  await db.$transaction(
+    async (tx) => {
+      // Same rows and order as `rebuildPairAllocations`' lock, so the rebuild
+      // below re-enters them in the same order instead of creating a cycle. A
+      // second tap queues here, then reads the projection the first one committed
+      // and finds nothing left to pay.
+      await tx.$queryRaw`
+        SELECT id FROM "ExpenseSplit"
+        WHERE "userId" IN (${splitUserId}, ${expense.paidById})
+        ORDER BY id
+        FOR UPDATE
+      `;
+
+      const fresh = await tx.expenseSplit.findUnique({
+        where: { id: split.id },
+        select: { amount: true, settledAmount: true },
+      });
+      if (!fresh) return;
+
+      const stillOwed = fresh.amount.minus(fresh.settledAmount);
+      if (stillOwed.lte(0)) return;
+
+      await writeSettlement(tx, {
+        fromUserId: splitUserId,
+        toUserId: expense.paidById,
+        amountCents: toCents(stillOwed),
+        currency: expense.currency,
+        occurredAt: new Date(),
+        note: null,
+        // Pin the payment so it clears the tapped share, not the oldest one.
+        pinnedSplitId: split.id,
+        groupId: expense.groupId,
+        requestId: null,
+        actorId: user.id,
+      });
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
@@ -297,7 +428,9 @@ export async function settleExpense(_prev: unknown, formData: FormData) {
   }
 }
 
-// Reverts a mistaken 'Mark paid': clears settledAt on the current user's split.
+// Reverts a mistaken 'Mark paid' by removing the payments that funded the share.
+// A payment may have covered several shares, so this reopens all of them and
+// reports that scope back to the caller.
 export async function unsettleExpense(_prev: unknown, formData: FormData) {
   const user = await getCurrentUser();
   if (!user) {
@@ -308,68 +441,620 @@ export async function unsettleExpense(_prev: unknown, formData: FormData) {
     where: {
       id: expenseId,
       deletedAt: null,
-      OR: [
-        // Borrower can un-settle their own split
-        {
-          paidById: { not: user.id },
-          splits: { some: { userId: user.id, settledAt: { not: null }, amount: { gt: 0 } } },
-        },
-        // Payer can un-settle a borrower's split
-        {
-          paidById: user.id,
-          splits: {
-            some: { userId: { not: user.id }, settledAt: { not: null }, amount: { gt: 0 } },
-          },
-        },
-      ],
+      OR: [{ paidById: user.id }, { splits: { some: { userId: user.id } } }],
       AND: [{ OR: [{ groupId: null }, { group: { deletedAt: null } }] }],
     },
-    select: { groupId: true, paidById: true },
+    select: {
+      paidById: true,
+      splits: { select: { id: true, userId: true } },
+    },
   });
   if (!expense) {
     return { error: 'Nothing to un-settle on this expense.' };
   }
 
-  // Determine which split to un-settle: borrower un-settles their own, payer un-settles the other's
+  // Determine which split to un-settle: borrower own, payer the borrower's.
   const splitUserId =
     expense.paidById === user.id ? (formData.get('splitUserId') as string) || user.id : user.id;
 
-  await db.expenseSplit.update({
-    where: { expenseId_userId: { expenseId, userId: splitUserId } },
-    data: { settledAt: null },
-  });
+  const split = expense.splits.find((row) => row.userId === splitUserId);
+  if (!split) {
+    return { error: 'Nothing to un-settle on this expense.' };
+  }
+
+  const result = await db.$transaction(
+    async (tx) => {
+      const before = await tx.expenseSplit.findUnique({
+        where: { id: split.id },
+        select: { amount: true, settledAmount: true },
+      });
+      if (!before) {
+        return null;
+      }
+
+      // The active payments that funded this share.
+      const links = await tx.settlementAllocation.findMany({
+        where: { splitId: split.id, settlement: { deletedAt: null } },
+        select: { settlementId: true },
+      });
+      const fundingIds = [...new Set(links.map((row) => row.settlementId))];
+      if (fundingIds.length === 0) {
+        return null;
+      }
+
+      const settlements = await tx.settlement.findMany({
+        where: { id: { in: fundingIds }, deletedAt: null },
+        select: {
+          id: true,
+          amount: true,
+          currency: true,
+          occurredAt: true,
+          note: true,
+          fromUserId: true,
+          toUserId: true,
+          pinnedSplitId: true,
+          deletedAt: true,
+        },
+      });
+      if (settlements.length === 0) {
+        return null;
+      }
+
+      // Everything those payments cover, so the reversal's scope is reported
+      // instead of guessed.
+      const allocations = await tx.settlementAllocation.findMany({
+        where: { settlementId: { in: settlements.map((settlement) => settlement.id) } },
+        select: { settlementId: true, splitId: true },
+      });
+
+      const plan = planSettlementUnwind({
+        splitId: split.id,
+        allocations,
+        settlements: settlements.map((settlement) => ({
+          id: settlement.id,
+          amountCents: toCents(settlement.amount),
+        })),
+      });
+      if (plan.settlementsClosed === 0) {
+        return null;
+      }
+
+      const closing = new Set(plan.settlementIds);
+      const toClose = settlements.filter((settlement) => closing.has(settlement.id));
+
+      const deletedAt = new Date();
+      for (const settlement of toClose) {
+        const deleted = await tx.settlement.update({
+          where: { id: settlement.id },
+          data: { deletedAt },
+        });
+
+        await tx.ledgerEvent.create({
+          data: {
+            actorId: user.id,
+            action: 'settlement.deleted',
+            entity: 'Settlement',
+            entityId: settlement.id,
+            before: settlementSnapshot(settlement),
+            after: settlementSnapshot(deleted),
+          },
+        });
+      }
+
+      await rebuildPairAllocations(tx, expense.paidById, splitUserId);
+
+      // The rebuild re-applies the remaining payments and any pair credit, so the
+      // share is only open again if its projection actually moved. Never report
+      // success from the pre-rebuild state.
+      const after = await tx.expenseSplit.findUnique({
+        where: { id: split.id },
+        select: { amount: true, settledAmount: true },
+      });
+      const reopened =
+        after !== null &&
+        after.settledAmount.lt(before.settledAmount) &&
+        after.amount.minus(after.settledAmount).gt(0);
+
+      // Both sides of every closed payment: each may own a split that reopened.
+      const parties = new Set<string>();
+      for (const settlement of toClose) {
+        parties.add(settlement.fromUserId);
+        parties.add(settlement.toUserId);
+      }
+
+      // Every expense whose share was released, so its group page is refreshed
+      // too. This includes the tapped expense, which always has a closed
+      // allocation.
+      const releasedSplitIds = [
+        ...new Set(
+          allocations
+            .filter((allocation) => closing.has(allocation.settlementId))
+            .map((allocation) => allocation.splitId),
+        ),
+      ];
+      const releasedSplits = await tx.expenseSplit.findMany({
+        where: { id: { in: releasedSplitIds } },
+        select: { expense: { select: { groupId: true } } },
+      });
+      const groupIds = [
+        ...new Set(
+          releasedSplits
+            .map((row) => row.expense.groupId)
+            .filter((groupId): groupId is string => groupId !== null),
+        ),
+      ];
+
+      return { plan, reopened, parties: [...parties], groupIds };
+    },
+    { timeout: 20_000 },
+  );
+
+  if (!result) {
+    return { error: 'Nothing to un-settle on this expense.' };
+  }
+
   revalidatePath('/dashboard');
   revalidatePath('/people');
   revalidatePath('/expenses');
-  if (expense.groupId) {
-    revalidatePath(`/people/${expense.groupId}`);
+  for (const groupId of result.groupIds) {
+    revalidatePath(`/people/${groupId}`);
   }
+  for (const partyId of result.parties) {
+    revalidatePath(`/people/${partyId}`);
+  }
+
+  return {
+    ok: true,
+    reopened: result.reopened,
+    allocationsReleased: result.plan.allocationsReleased,
+    settlementsClosed: result.plan.settlementsClosed,
+    amountReversedCents: result.plan.amountReversedCents,
+    otherSplitsReleased: result.plan.otherSplitsReleased,
+  };
 }
 
-// Marks every one of the current user's unsettled debts as repaid in one go.
+// Marks every one of the current user's outstanding debts as repaid in one go:
+// one settlement per creditor and currency, allocated oldest-first.
 export async function settleAll() {
   const user = await getCurrentUser();
   if (!user) {
     redirect('/login');
   }
 
-  await db.expenseSplit.updateMany({
-    where: {
-      userId: user.id,
-      settledAt: null,
-      amount: { gt: 0 },
-      expense: {
-        deletedAt: null,
-        paidById: { not: user.id },
-        OR: [{ groupId: null }, { group: { deletedAt: null } }],
-      },
+  const occurredAt = new Date();
+
+  await db.$transaction(
+    async (tx) => {
+      // Lock the viewer's splits before re-reading them. Two taps overlap
+      // otherwise: both read the pre-rebuild outstanding amount and both write,
+      // and the second payment allocates to nothing and becomes invisible credit.
+      // The second request queues here, then reads the first one's projections
+      // and finds nothing left to do.
+      await tx.$queryRaw`
+        SELECT id FROM "ExpenseSplit"
+        WHERE "userId" = ${user.id}
+        ORDER BY id
+        FOR UPDATE
+      `;
+
+      const splits = await tx.expenseSplit.findMany({
+        where: {
+          userId: user.id,
+          amount: { gt: 0 },
+          expense: {
+            deletedAt: null,
+            paidById: { not: user.id },
+            OR: [{ groupId: null }, { group: { deletedAt: null } }],
+          },
+        },
+        select: {
+          id: true,
+          amount: true,
+          settledAmount: true,
+          expense: { select: { paidById: true, currency: true, createdAt: true } },
+        },
+      });
+
+      const targets: SettleTarget[] = [];
+      for (const split of splits) {
+        const amountCents = toCents(split.amount.minus(split.settledAmount));
+        if (amountCents <= 0) continue;
+        targets.push({
+          creditorId: split.expense.paidById,
+          currency: split.expense.currency,
+          splitId: split.id,
+          amountCents,
+          // Splits carry no date of their own; the expense is the ledger date.
+          occurredAt: split.expense.createdAt,
+          createdAt: split.expense.createdAt,
+        });
+      }
+
+      // Money already handed over that no split is waiting for, per creditor and
+      // currency. Sizing a payment from `amount - settledAmount` alone would record
+      // a transfer the user never had to make and immediately re-create credit.
+      const creditRows = await tx.settlement.findMany({
+        where: { deletedAt: null, fromUserId: user.id },
+        select: {
+          fromUserId: true,
+          toUserId: true,
+          currency: true,
+          amount: true,
+          allocations: { select: { amount: true } },
+        },
+      });
+      const creditCents = new Map(
+        summarizePairCredits(user.id, creditRows)
+          .filter((credit) => credit.inViewersFavor)
+          .map((credit) => [
+            // Ids are UUIDs, so a NUL separator cannot collide with a real key.
+            `${credit.counterpartyId}\u0000${credit.currency}`,
+            toCents(credit.amount),
+          ]),
+      );
+
+      for (const group of groupSettleAllTargets(targets)) {
+        const credit = creditCents.get(`${group.creditorId}\u0000${group.currency}`) ?? 0;
+        const amountCents = Math.max(group.amountCents - credit, 0);
+        if (amountCents === 0) {
+          // Existing credit already covers this pair: let the rebuild apply it to
+          // the open splits instead of recording a payment nobody had to make.
+          await rebuildPairAllocations(tx, user.id, group.creditorId);
+          continue;
+        }
+
+        await writeSettlement(tx, {
+          fromUserId: user.id,
+          toUserId: group.creditorId,
+          amountCents,
+          currency: group.currency,
+          occurredAt,
+          note: null,
+          // No pin: the whole group allocates oldest-first across the pair.
+          pinnedSplitId: null,
+          // A group can span several groups and direct expenses, so it is not
+          // attributable to a single group.
+          groupId: null,
+          requestId: null,
+          actorId: user.id,
+        });
+      }
     },
-    data: { settledAt: new Date() },
-  });
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
   revalidatePath('/expenses');
+}
+
+// --- Settlement ledger -------------------------------------------------------
+// A settlement is a payment between two people. Allocations and
+// `ExpenseSplit.settledAmount` are projections: every mutation below rebuilds
+// the affected pair inside its own transaction, then appends a `LedgerEvent`.
+// `LedgerEvent` is audit-only and never participates in balance math.
+
+type SettlementSnapshotRow = {
+  amount: Prisma.Decimal;
+  currency: string;
+  occurredAt: Date;
+  note: string | null;
+  fromUserId: string;
+  toUserId: string;
+  pinnedSplitId: string | null;
+  deletedAt: Date | null;
+};
+
+/** JSON-safe audit snapshot; dates are ISO strings and money is exact text. */
+function settlementSnapshot(row: SettlementSnapshotRow): Prisma.InputJsonObject {
+  return {
+    amount: row.amount.toFixed(2),
+    currency: row.currency,
+    occurredAt: row.occurredAt.toISOString(),
+    note: row.note,
+    fromUserId: row.fromUserId,
+    toUserId: row.toUserId,
+    pinnedSplitId: row.pinnedSplitId,
+    deletedAt: row.deletedAt?.toISOString() ?? null,
+  };
+}
+
+/**
+ * Refreshes both parties' pair pages (the path is viewer-scoped, so each side
+ * has its own) plus the group page when the settlement belongs to one.
+ */
+function revalidateSettlementPaths(userIds: string[], groupId: string | null) {
+  revalidatePath('/dashboard');
+  revalidatePath('/expenses');
+  revalidatePath('/people');
+  for (const userId of new Set(userIds)) {
+    revalidatePath(`/people/${userId}`);
+  }
+  if (groupId) {
+    revalidatePath(`/people/${groupId}`);
+  }
+}
+
+/** Prisma's unique-constraint code; used for idempotent `requestId` retries. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'P2002'
+  );
+}
+
+type WriteSettlementInput = {
+  fromUserId: string;
+  toUserId: string;
+  amountCents: number;
+  currency: string;
+  occurredAt: Date;
+  note: string | null;
+  /** Split this payment clears first, when still eligible. */
+  pinnedSplitId: string | null;
+  groupId: string | null;
+  requestId: string | null;
+  actorId: string;
+};
+
+/**
+ * The single write path for a payment: insert, rebuild the pair, audit.
+ *
+ * `amountCents` is the minor-unit boundary; `Decimal(12,2)` is built exactly
+ * once here. The caller owns the transaction, so the insert, the rebuilt
+ * projection and the audit row commit or roll back together.
+ */
+async function writeSettlement(tx: Prisma.TransactionClient, input: WriteSettlementInput) {
+  const settlement = await tx.settlement.create({
+    data: {
+      fromUserId: input.fromUserId,
+      toUserId: input.toUserId,
+      amount: new Prisma.Decimal(input.amountCents).div(100),
+      currency: input.currency,
+      occurredAt: input.occurredAt,
+      note: input.note,
+      requestId: input.requestId,
+      pinnedSplitId: input.pinnedSplitId,
+      groupId: input.groupId,
+      createdById: input.actorId,
+    },
+  });
+
+  await rebuildPairAllocations(tx, input.fromUserId, input.toUserId);
+
+  await tx.ledgerEvent.create({
+    data: {
+      actorId: input.actorId,
+      action: 'settlement.created',
+      entity: 'Settlement',
+      entityId: settlement.id,
+      after: settlementSnapshot(settlement),
+    },
+  });
+
+  return settlement;
+}
+
+/**
+ * Records a payment the current user made to someone else.
+ *
+ * `amountCents` is the validated minor-unit boundary; `Decimal(12,2)` is built
+ * exactly once by `writeSettlement`. A repeated `requestId` is a successful
+ * no-op, so a double-submitted form cannot create a second payment.
+ */
+export async function recordSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const input = validateSettlementInput(formData, user.id);
+  if ('error' in input) {
+    return input;
+  }
+
+  if (input.requestId) {
+    const existing = await db.settlement.findUnique({
+      where: { requestId: input.requestId },
+      select: { id: true },
+    });
+    if (existing) {
+      return { ok: true };
+    }
+  }
+
+  const recipient = await db.user.findFirst({
+    where: { id: input.toId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!recipient) {
+    return { error: 'Person not found.' };
+  }
+
+  // The pin targets one split so "mark this expense paid" clears it first; the
+  // engine falls back to oldest-first when the pin is no longer eligible.
+  if (input.splitId) {
+    const split = await db.expenseSplit.findFirst({
+      where: {
+        id: input.splitId,
+        userId: user.id,
+        expense: {
+          paidById: input.toId,
+          currency: input.currency,
+          deletedAt: null,
+          OR: [{ groupId: null }, { group: { deletedAt: null } }],
+        },
+      },
+      select: { id: true },
+    });
+    if (!split) {
+      return { error: 'Expense not found.' };
+    }
+  }
+
+  try {
+    await db.$transaction(
+      async (tx) => {
+        await writeSettlement(tx, {
+          fromUserId: user.id,
+          toUserId: input.toId,
+          amountCents: input.amountCents,
+          currency: input.currency,
+          occurredAt: input.occurredAt,
+          note: input.note,
+          pinnedSplitId: input.splitId,
+          groupId: null,
+          requestId: input.requestId,
+          actorId: user.id,
+        });
+      },
+      { timeout: 20_000 },
+    );
+  } catch (error) {
+    // A concurrent retry may have won the `requestId` race. Only treat that as
+    // success when the requested settlement really exists: any other unique
+    // violation rolled the payment back and must surface as an error.
+    if (input.requestId && isUniqueViolation(error)) {
+      const existing = await db.settlement.findUnique({
+        where: { requestId: input.requestId },
+        select: { id: true },
+      });
+      if (existing) {
+        return { ok: true };
+      }
+    }
+    throw error;
+  }
+
+  revalidateSettlementPaths([user.id, input.toId], null);
+  return { ok: true };
+}
+
+/**
+ * Edits `amount`, `occurredAt`, and `note`. The parties and currency are fixed
+ * for the life of a settlement: attempts to change them are rejected rather
+ * than silently ignored.
+ */
+export async function editSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const settlementId = (formData.get('settlementId') as string) || '';
+  if (!settlementId) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const settlement = await db.settlement.findFirst({
+    where: {
+      id: settlementId,
+      deletedAt: null,
+      OR: [{ fromUserId: user.id }, { toUserId: user.id }],
+    },
+  });
+  if (!settlement) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const fromUserId = ((formData.get('fromUserId') as string) || '').trim();
+  const toUserId = ((formData.get('toUserId') as string) || '').trim();
+  const currency = ((formData.get('currency') as string) || '').trim();
+
+  if (fromUserId && fromUserId !== settlement.fromUserId) {
+    return { error: "You can't change who paid this settlement." };
+  }
+  if (toUserId && toUserId !== settlement.toUserId) {
+    return { error: "You can't change who received this settlement." };
+  }
+  if (currency && currency.toUpperCase() !== settlement.currency) {
+    return { error: "You can't change the currency of this settlement." };
+  }
+
+  const input = validateSettlementEditInput(formData);
+  if ('error' in input) {
+    return input;
+  }
+
+  const amount = new Prisma.Decimal(input.amountCents).div(100);
+
+  await db.$transaction(
+    async (tx) => {
+      const updated = await tx.settlement.update({
+        where: { id: settlement.id },
+        data: { amount, occurredAt: input.occurredAt, note: input.note },
+      });
+
+      await rebuildPairAllocations(tx, settlement.fromUserId, settlement.toUserId);
+
+      await tx.ledgerEvent.create({
+        data: {
+          actorId: user.id,
+          action: 'settlement.updated',
+          entity: 'Settlement',
+          entityId: settlement.id,
+          before: settlementSnapshot(settlement),
+          after: settlementSnapshot(updated),
+        },
+      });
+    },
+    { timeout: 20_000 },
+  );
+
+  revalidateSettlementPaths([settlement.fromUserId, settlement.toUserId], settlement.groupId);
+  return { ok: true };
+}
+
+/** Soft-deletes a settlement, which reopens exactly the shares it covered. */
+export async function deleteSettlement(_prev: unknown, formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const settlementId = (formData.get('settlementId') as string) || '';
+  if (!settlementId) {
+    return { error: 'Settlement not found.' };
+  }
+
+  const settlement = await db.settlement.findFirst({
+    where: {
+      id: settlementId,
+      deletedAt: null,
+      OR: [{ fromUserId: user.id }, { toUserId: user.id }],
+    },
+  });
+  if (!settlement) {
+    return { error: 'Settlement not found.' };
+  }
+
+  await db.$transaction(
+    async (tx) => {
+      const deleted = await tx.settlement.update({
+        where: { id: settlement.id },
+        data: { deletedAt: new Date() },
+      });
+
+      await rebuildPairAllocations(tx, settlement.fromUserId, settlement.toUserId);
+
+      await tx.ledgerEvent.create({
+        data: {
+          actorId: user.id,
+          action: 'settlement.deleted',
+          entity: 'Settlement',
+          entityId: settlement.id,
+          before: settlementSnapshot(settlement),
+          after: settlementSnapshot(deleted),
+        },
+      });
+    },
+    { timeout: 20_000 },
+  );
+
+  revalidateSettlementPaths([settlement.fromUserId, settlement.toUserId], settlement.groupId);
+  return { ok: true };
 }
 
 export async function editExpense(_prev: unknown, formData: FormData) {
@@ -433,23 +1118,51 @@ export async function editExpense(_prev: unknown, formData: FormData) {
     };
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.expense.update({
-      where: { id: expenseId },
-      data: { paidById: payerId, amount, note },
-    });
-    for (const split of splits) {
-      await tx.expenseSplit.upsert({
-        where: { expenseId_userId: { expenseId, userId: split.userId } },
-        create: { expenseId, userId: split.userId, amount: split.amount },
-        update: { amount: split.amount },
+  if (payerShare(splits, payerId).gt(0)) {
+    return { error: "The payer's own share must be 0.00 — they covered the expense." };
+  }
+
+  // A payer change moves the creditor, so both the old pairs and the new ones
+  // must be rebuilt; otherwise the old creditor's pair keeps a phantom debt.
+  const pairs = affectedPairsForExpenses([
+    expense,
+    { paidById: payerId, splits: finalParticipantIds.map((userId) => ({ userId })) },
+  ]);
+
+  // One rebuild per pair, same remote-pooled-database budget as `createExpense`.
+  await db.$transaction(
+    async (tx) => {
+      await tx.expense.update({
+        where: { id: expenseId },
+        data: { paidById: payerId, amount, note },
       });
-    }
-    // Defensive: participants are locked above, so this is normally a no-op.
-    await tx.expenseSplit.deleteMany({
-      where: { expenseId, userId: { notIn: finalParticipantIds } },
-    });
-  });
+      for (const split of splits) {
+        await tx.expenseSplit.upsert({
+          where: { expenseId_userId: { expenseId, userId: split.userId } },
+          create: { expenseId, userId: split.userId, amount: split.amount },
+          update: { amount: split.amount },
+        });
+      }
+      // Defensive: participants are locked above, so this is normally a no-op.
+      // Allocations restrict-delete their split, so they go first even here.
+      const doomedSplits = await tx.expenseSplit.findMany({
+        where: { expenseId, userId: { notIn: finalParticipantIds } },
+        select: { id: true },
+      });
+      if (doomedSplits.length > 0) {
+        const doomedIds = doomedSplits.map((split) => split.id);
+        await tx.settlementAllocation.deleteMany({ where: { splitId: { in: doomedIds } } });
+        await tx.expenseSplit.deleteMany({ where: { id: { in: doomedIds } } });
+      }
+
+      // The rebuild owns the settled-amount projection: new amounts re-open or
+      // re-close each share from the surviving payments.
+      for (const [userAId, userBId] of pairs) {
+        await rebuildPairAllocations(tx, userAId, userBId);
+      }
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/dashboard');
   revalidatePath('/people');
@@ -885,27 +1598,30 @@ export async function claimGhost(_prevState: unknown, formData: FormData) {
     select: { name: true },
   });
 
-  await db.$transaction(async (tx) => {
-    const adders = await tx.contact.findMany({
-      where: { contactId: claim.ghostId },
-      select: { ownerId: true },
-    });
-    await tx.userClaim.update({
-      where: { id: claim.id },
-      data: { status: 'claimed', resolvedAt: new Date() },
-    });
-    await mergeGhostIntoUser(tx, claim.ghostId, user.id);
-    if (adders.length > 0) {
-      await tx.notice.createMany({
-        data: adders.map((adder) => ({
-          userId: adder.ownerId,
-          type: 'friend_joined',
-          friendName: me?.name ?? 'Someone',
-          friendId: user.id,
-        })),
+  await db.$transaction(
+    async (tx) => {
+      const adders = await tx.contact.findMany({
+        where: { contactId: claim.ghostId },
+        select: { ownerId: true },
       });
-    }
-  });
+      await tx.userClaim.update({
+        where: { id: claim.id },
+        data: { status: 'claimed', resolvedAt: new Date() },
+      });
+      await mergeGhostIntoUser(tx, claim.ghostId, user.id);
+      if (adders.length > 0) {
+        await tx.notice.createMany({
+          data: adders.map((adder) => ({
+            userId: adder.ownerId,
+            type: 'friend_joined',
+            friendName: me?.name ?? 'Someone',
+            friendId: user.id,
+          })),
+        });
+      }
+    },
+    { timeout: 20_000 },
+  );
 
   revalidatePath('/auth/claim');
   revalidatePath('/dashboard');

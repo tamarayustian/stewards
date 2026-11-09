@@ -10,6 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:studio": "prisma studio",
+    "db:backfill": "tsx scripts/backfill-settlements.ts",
+    "db:reconcile": "tsx scripts/reconcile-settlements.ts",
     "lint": "eslint",
     "test": "vitest run",
     "format": "prettier --write .",
@@ -45,6 +47,7 @@
     "eslint-config-next": "16.2.9",
     "prettier": "^3.8.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^4.1.10"
   }

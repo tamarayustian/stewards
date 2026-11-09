@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import {
   decideRepoints,
+  decideSettlementRepoints,
   decideSplitTransfers,
   filterUnclaimed,
   matchesIdentity,
+  mergeSplitTotals,
   normalizeName,
+  settlementRepointPairs,
   type GhostIdentity,
 } from './claims';
 
@@ -31,7 +34,9 @@ describe('matchesIdentity', () => {
   });
 
   it('matches on case-insensitive trimmed name', () => {
-    expect(matchesIdentity({ ...sarah, email: null, phone: null }, ghost({ name: '  sarah lee ' }))).toBe(true);
+    expect(
+      matchesIdentity({ ...sarah, email: null, phone: null }, ghost({ name: '  sarah lee ' })),
+    ).toBe(true);
   });
 
   it('matches on identical phone', () => {
@@ -39,7 +44,9 @@ describe('matchesIdentity', () => {
   });
 
   it('does not match a ghost with no email/name/phone overlap', () => {
-    expect(matchesIdentity(sarah, ghost({ email: 'other@example.com', name: 'Lisa Wong' }))).toBe(false);
+    expect(matchesIdentity(sarah, ghost({ email: 'other@example.com', name: 'Lisa Wong' }))).toBe(
+      false,
+    );
   });
 
   it('does not match on email when either side is null', () => {
@@ -69,10 +76,7 @@ describe('decideSplitTransfers', () => {
   });
 
   it('repoints a split when the target has none on that expense', () => {
-    const decisions = decideSplitTransfers(
-      [{ id: 'gs1', expenseId: 'e1', amount: '80.00' }],
-      [],
-    );
+    const decisions = decideSplitTransfers([{ id: 'gs1', expenseId: 'e1', amount: '80.00' }], []);
     expect(decisions).toEqual([{ kind: 'repoint', splitId: 'gs1' }]);
   });
 });
@@ -88,5 +92,104 @@ describe('decideRepoints', () => {
     expect(decideRepoints([{ id: 'm1', key: 'grp1' }], new Set())).toEqual([
       { kind: 'repoint', id: 'm1' },
     ]);
+  });
+});
+
+describe('mergeSplitTotals', () => {
+  it('sums amount and settled amount across the merged shares', () => {
+    const merged = mergeSplitTotals(
+      { amountCents: 6000, settledCents: 2000, settledAt: null },
+      { amountCents: 4000, settledCents: 4000, settledAt: new Date(2026, 0, 2) },
+    );
+
+    expect(merged).toEqual({
+      amountCents: 10000,
+      settledCents: 6000,
+      settledAt: null,
+    });
+  });
+
+  it('carries settledAt forward when the merged share ends fully settled', () => {
+    const paid = new Date(2026, 0, 2);
+    const merged = mergeSplitTotals(
+      { amountCents: 6000, settledCents: 2000, settledAt: null },
+      { amountCents: 4000, settledCents: 4000, settledAt: paid },
+    );
+
+    expect(merged.settledCents).toBe(6000);
+    // The target's own settledAt wins when both are present.
+    expect(
+      mergeSplitTotals(
+        { amountCents: 6000, settledCents: 6000, settledAt: new Date(2026, 0, 1) },
+        { amountCents: 4000, settledCents: 4000, settledAt: paid },
+      ).settledAt,
+    ).toEqual(new Date(2026, 0, 1));
+  });
+
+  it('clears settledAt when the merged share is only part-paid', () => {
+    const merged = mergeSplitTotals(
+      { amountCents: 6000, settledCents: 0, settledAt: null },
+      { amountCents: 4000, settledCents: 1000, settledAt: new Date(2026, 0, 2) },
+    );
+
+    expect(merged.settledAt).toBeNull();
+  });
+});
+
+describe('decideSettlementRepoints', () => {
+  it('moves a payment from the ghost to the target on either side', () => {
+    expect(
+      decideSettlementRepoints(
+        [
+          { id: 's1', fromUserId: 'ghost', toUserId: 'tam' },
+          { id: 's2', fromUserId: 'tam', toUserId: 'ghost' },
+        ],
+        'ghost',
+        'target',
+      ),
+    ).toEqual([
+      { kind: 'repoint', id: 's1', fromUserId: 'target', toUserId: 'tam' },
+      { kind: 'repoint', id: 's2', fromUserId: 'tam', toUserId: 'target' },
+    ]);
+  });
+
+  it('keeps a payment that never named the ghost', () => {
+    expect(
+      decideSettlementRepoints(
+        [{ id: 's1', fromUserId: 'tam', toUserId: 'sam' }],
+        'ghost',
+        'target',
+      ),
+    ).toEqual([{ kind: 'keep', id: 's1' }]);
+  });
+
+  it('drops a payment that would end up between the target and themself', () => {
+    expect(
+      decideSettlementRepoints(
+        [{ id: 's1', fromUserId: 'ghost', toUserId: 'target' }],
+        'ghost',
+        'target',
+      ),
+    ).toEqual([{ kind: 'drop', id: 's1' }]);
+  });
+});
+
+describe('settlementRepointPairs', () => {
+  it('collects the pair each repointed payment lands on, ignoring kept and dropped ones', () => {
+    const pairs = settlementRepointPairs([
+      { kind: 'repoint', id: 's1', fromUserId: 'target', toUserId: 'tam' },
+      { kind: 'keep', id: 's2' },
+      { kind: 'drop', id: 's3' },
+      { kind: 'repoint', id: 's4', fromUserId: 'sam', toUserId: 'target' },
+    ]);
+
+    expect(pairs).toEqual([
+      ['target', 'tam'],
+      ['sam', 'target'],
+    ]);
+  });
+
+  it('returns nothing when no payment was repointed', () => {
+    expect(settlementRepointPairs([{ kind: 'keep', id: 's1' }])).toEqual([]);
   });
 });

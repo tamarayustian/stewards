@@ -17,6 +17,7 @@ import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 import { fetchExchangeRate } from '@/lib/rates';
+import { equalAmounts, formatAmount, totalCents } from '@/lib/splits';
 
 type Mode = 'group' | 'direct';
 
@@ -51,31 +52,6 @@ export type InitialExpense = {
 interface Participant {
   id: string;
   name: string;
-}
-
-function totalCents(value: string): number {
-  const n = Math.round(parseFloat(value || '0') * 100);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function formatAmount(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-// Even split over participants; any rounding remainder lands on the last person.
-function equalAmounts(participants: Participant[], amount: string): Record<string, string> {
-  const total = totalCents(amount);
-  const n = participants.length;
-  if (n === 0) return {};
-
-  const base = Math.floor(total / n);
-  const remainder = total - base * n;
-
-  const out: Record<string, string> = {};
-  participants.forEach((p, index) => {
-    out[p.id] = formatAmount(index === n - 1 ? base + remainder : base);
-  });
-  return out;
 }
 
 export function AddExpenseForm({
@@ -113,7 +89,13 @@ export function AddExpenseForm({
   const [friends, setFriends] = useState<UserOption[]>(users);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [totalAmount, setTotalAmount] = useState(initialExpense?.amount ?? '');
-  const [amounts, setAmounts] = useState<Record<string, string>>(initialExpense?.splits ?? {});
+  const [amounts, setAmounts] = useState<Record<string, string>>(() => {
+    const initial = { ...(initialExpense?.splits ?? {}) };
+    // Legacy expenses may carry a non-zero payer share. The server now rejects
+    // one, so start the form from the corrected shape the user has to assign.
+    if (initialExpense) initial[initialExpense.paidById] = '0.00';
+    return initial;
+  });
   const [note, setNote] = useState(initialExpense?.note ?? '');
   const [customized, setCustomized] = useState(Boolean(initialExpense));
   const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
@@ -189,10 +171,17 @@ export function AddExpenseForm({
     ...participants.filter((p) => p.id !== currentUserId),
   ];
 
-  function resetPayerIfMissing(nextParticipants: Participant[]) {
+  // The payer must be one of the people in the split. Returns the payer id that
+  // will be in effect after this change, so the equal split can be spread with
+  // it in the same tick: `setPayerId` alone would leave the caller computing the
+  // split against the stale id and hand a share to the viewer's read-only row,
+  // which is never submitted.
+  function resolvePayer(nextParticipants: Participant[]): string {
     if (payerId !== currentUserId && !nextParticipants.some((p) => p.id === payerId)) {
       setPayerId(currentUserId);
+      return currentUserId;
     }
+    return payerId;
   }
 
   function chooseMode(next: Mode) {
@@ -200,15 +189,19 @@ export function AddExpenseForm({
     if (next === 'group') {
       const first = groups[0];
       setSelectedGroupId(first?.id ?? '');
+      const rows = (first?.members ?? []).map((m) => ({
+        id: m.id,
+        name: m.id === currentUserId ? 'You' : m.name,
+      }));
+      const payer = resolvePayer(rows);
       if (first && !customized) {
-        const rows = (first.members ?? []).map((m) => ({
-          id: m.id,
-          name: m.id === currentUserId ? 'You' : m.name,
-        }));
-        setAmounts(equalAmounts(rows, totalAmount));
+        setAmounts(equalAmounts(rows, totalAmount, payer));
       }
-    } else if (!customized) {
-      setAmounts(equalAmounts(directParticipants, totalAmount));
+    } else {
+      const payer = resolvePayer(directParticipants);
+      if (!customized) {
+        setAmounts(equalAmounts(directParticipants, totalAmount, payer));
+      }
     }
   }
 
@@ -224,7 +217,7 @@ export function AddExpenseForm({
       ...next.map((u) => ({ id: u, name: friends.find((f) => f.id === u)?.name ?? 'Friend' })),
     ];
 
-    resetPayerIfMissing(rows);
+    const payer = resolvePayer(rows);
 
     if (customized) {
       setAmounts((prev) => {
@@ -235,7 +228,7 @@ export function AddExpenseForm({
         return nextAmounts;
       });
     } else {
-      setAmounts(equalAmounts(rows, totalAmount));
+      setAmounts(equalAmounts(rows, totalAmount, payer));
     }
   }
 
@@ -246,13 +239,13 @@ export function AddExpenseForm({
       id: m.id,
       name: m.id === currentUserId ? 'You' : m.name,
     }));
-    resetPayerIfMissing(rows);
-    if (!customized) setAmounts(equalAmounts(rows, totalAmount));
+    const payer = resolvePayer(rows);
+    if (!customized) setAmounts(equalAmounts(rows, totalAmount, payer));
   }
 
   function handleTotalChange(value: string) {
     setTotalAmount(value);
-    if (!customized) setAmounts(equalAmounts(participantsRefresh(), value));
+    if (!customized) setAmounts(equalAmounts(participantsRefresh(), value, payerId));
   }
 
   function participantsRefresh(): Participant[] {
@@ -269,7 +262,7 @@ export function AddExpenseForm({
   }
 
   function splitEquallyNow() {
-    setAmounts(equalAmounts(participantsRefresh(), totalAmount));
+    setAmounts(equalAmounts(participantsRefresh(), totalAmount, payerId));
     setCustomized(false);
   }
 
@@ -351,9 +344,17 @@ export function AddExpenseForm({
     </div>
   );
 
-  const splitSumCents = participants.reduce((sum, p) => sum + totalCents(amounts[p.id] ?? ''), 0);
+  // The payer's row is rendered read-only and never submitted, so its amount is
+  // not part of the split the server will validate.
+  const splitSumCents = participants.reduce(
+    (sum, p) => (p.id === payerId ? sum : sum + totalCents(amounts[p.id] ?? '')),
+    0,
+  );
   const totalCentsValue = totalCents(totalAmount);
   const diff = totalCentsValue - splitSumCents;
+  // A payer-only participant set has nothing to assign: the server rejects the
+  // resulting 0.00 sum, so say why instead of surfacing that error.
+  const noBorrowers = !participants.some((p) => p.id !== payerId);
 
   const payerName = participants.find((p) => p.id === payerId)?.name ?? 'You';
   const myShareCents = totalCents(amounts[currentUserId] ?? '');
@@ -522,7 +523,17 @@ export function AddExpenseForm({
                 id="paidBy"
                 name="paidById"
                 value={payerId}
-                onChange={(e) => setPayerId(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPayerId(next);
+                  // The payer never owes themselves: zero their row, and unless
+                  // the split was customised, redistribute across the borrowers.
+                  setAmounts((prev) =>
+                    customized
+                      ? { ...prev, [next]: '0.00' }
+                      : equalAmounts(participantsRefresh(), totalAmount, next),
+                  );
+                }}
               >
                 {payerOptions.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -607,28 +618,42 @@ export function AddExpenseForm({
                 </Button>
               </div>
               <div className="space-y-1">
-                {participants.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
-                  >
-                    <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-                    <div className="relative w-28">
-                      <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                        {CURRENCIES[currency].symbol}
+                {participants.map((p) =>
+                  p.id === payerId ? (
+                    // The payer's own share is not a debt: it must stay 0.00, so
+                    // it is shown rather than edited (and never submitted).
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        Paid · {CURRENCIES[currency].symbol}0.00
                       </span>
-                      <Input
-                        name={`amount_${p.id}`}
-                        type="text"
-                        inputMode="decimal"
-                        value={amounts[p.id] ?? ''}
-                        onChange={(e) => handleAmountChange(p.id, e.target.value)}
-                        placeholder="0.00"
-                        className="h-8 pl-6 text-right"
-                      />
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <div
+                      key={p.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
+                      <div className="relative w-28">
+                        <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
+                          {CURRENCIES[currency].symbol}
+                        </span>
+                        <Input
+                          name={`amount_${p.id}`}
+                          type="text"
+                          inputMode="decimal"
+                          value={amounts[p.id] ?? ''}
+                          onChange={(e) => handleAmountChange(p.id, e.target.value)}
+                          placeholder="0.00"
+                          className="h-8 pl-6 text-right"
+                        />
+                      </div>
+                    </div>
+                  ),
+                )}
               </div>
               {balancePreview && (
                 <p
@@ -655,7 +680,11 @@ export function AddExpenseForm({
               />
             </div>
 
-            {diff !== 0 && (
+            {noBorrowers ? (
+              <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground ring-1 ring-border">
+                There&apos;s nobody to share this with yet — add or invite someone first.
+              </p>
+            ) : diff !== 0 ? (
               <p className={`text-xs ${diff > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
                 {diff > 0
                   ? `${formatAmount(diff)} left to assign — splits total ${formatAmount(
@@ -665,7 +694,7 @@ export function AddExpenseForm({
                       Math.abs(diff),
                     )} over the amount.`}
               </p>
-            )}
+            ) : null}
 
             <FormError message={state?.error} />
 
@@ -676,7 +705,7 @@ export function AddExpenseForm({
               </>
             )}
 
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button type="submit" disabled={pending || noBorrowers} className="w-full">
               {initialExpense
                 ? pending
                   ? 'Saving changes...'

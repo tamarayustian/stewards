@@ -34,13 +34,7 @@ function timeAgo(date: Date) {
   return `${days}d ago`;
 }
 
-export function ActivityFeed({
-  items,
-  filter,
-}: {
-  items: ActivityItem[];
-  filter: ActivityFilter;
-}) {
+export function ActivityFeed({ items, filter }: { items: ActivityItem[]; filter: ActivityFilter }) {
   return (
     <>
       <PillTabs searchParam="filter" tabs={filterTabs} currentTab={filter} />
@@ -73,7 +67,7 @@ export function ActivityFeed({
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold">
                     {formatMoney(
-                      item.isPayer ? item.amount : item.myShare,
+                      item.isPayer ? item.amount : item.unsettled ? item.myShare : item.shareAmount,
                       item.currency as Currency,
                     )}
                   </p>
