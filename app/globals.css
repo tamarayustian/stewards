@@ -156,6 +156,43 @@
   }
 }
 
+@media (min-width: 901px) {
+  .app-rail {
+    width: 232px;
+    transition: width 180ms ease;
+  }
+  .rail-active-bar {
+    left: -20px;
+  }
+  html[data-rail='collapsed'] .app-rail {
+    width: 76px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  html[data-rail='collapsed'] .rail-brand,
+  html[data-rail='collapsed'] .rail-label,
+  html[data-rail='collapsed'] .rail-user-text {
+    display: none;
+  }
+  html[data-rail='collapsed'] .rail-active-bar {
+    left: -8px;
+  }
+  html[data-rail='collapsed'] .rail-collapse {
+    justify-content: center;
+  }
+  html[data-rail='collapsed'] .rail-collapse-icon {
+    transform: rotate(180deg);
+  }
+  html[data-rail='collapsed'] .app-rail nav a {
+    justify-content: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-rail {
+    transition: none;
+  }
+}
+
 @keyframes settle-check {
   0% {
     transform: scale(0.5);
