@@ -1,22 +1,22 @@
-import { ArrowDownToLine, ArrowUpFromLine, Plus, ReceiptText, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { ActivityFeed } from '@/components/activity-feed';
+import { BalanceStrip } from '@/components/balance-strip';
 import { FriendJoinedNotice } from '@/components/friend-joined-notice';
 import { GroupJoinedNotice } from '@/components/group-joined-notice';
-import { ActivityFeed } from '@/components/activity-feed';
-import { EmptyState } from '@/components/empty-state';
-import { SettleUpCard } from '@/components/settle-up-card';
+import { Money } from '@/components/money';
+import { PageHead } from '@/components/page-head';
 import { RemindCard } from '@/components/remind-card';
-import { StatCard } from '@/components/stat-card';
+import { SectionLine } from '@/components/section-line';
+import { SettleUpCard } from '@/components/settle-up-card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { getCurrentUser } from '@/lib/auth';
+import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
+import { formatMonthYear } from '@/lib/dates';
 import { getActivity, getBalances, hasAnyActivity, type ActivityFilter } from '@/lib/expenses';
 import { listPendingNotices } from '@/lib/invites';
-import { type Currency } from '@/lib/currencies';
 import { formatMoney } from '@/lib/money';
 
 export default async function DashboardPage({
@@ -34,34 +34,36 @@ export default async function DashboardPage({
   const filter: ActivityFilter =
     filterParam === 'owe' || filterParam === 'owed' || filterParam === 'paid' ? filterParam : 'all';
 
-  const [profile, balances, activity, hasActivity, notices] = await Promise.all([
+  const [profile, balances, activity, hasActivity, notices, expenseCount] = await Promise.all([
     db.user.findUnique({
       where: { id: user.id },
-      select: { name: true, email: true, currency: true },
+      select: { currency: true },
     }),
     getBalances(user.id),
     getActivity(user.id, filter),
     hasAnyActivity(user.id),
     listPendingNotices(user.email, user.id),
+    db.expense.count({ where: { deletedAt: null, splits: { some: { userId: user.id } } } }),
   ]);
 
   const userCurrency = (profile?.currency ?? 'HKD') as Currency;
-  const displayName = profile?.name ?? (user.user_metadata?.name as string | undefined) ?? 'User';
+  const net = balances.youAreOwed.minus(balances.youOwe);
+  const allSquare = balances.youOwe.isZero() && balances.youAreOwed.isZero();
+  const month = formatMonthYear(new Date());
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Welcome, {displayName}</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{profile?.email}</p>
-        </div>
-        <Button nativeButton={false} render={<Link href="/expenses/new" />}>
-          <Plus className="size-4" />
-          Split an expense
-        </Button>
-      </div>
-
-      <Separator />
+    <div className="space-y-6">
+      <PageHead
+        eyebrow={`Personal ledger · ${month}`}
+        title="Your tab, on the record."
+        sub="Everything you owe and everything owed to you, in one place."
+        meta={month}
+        actions={
+          <Button nativeButton={false} render={<Link href="/expenses/new?from=/dashboard" />}>
+            New expense
+          </Button>
+        }
+      />
 
       {notices.map((notice) =>
         notice.kind === 'group' ? (
@@ -75,86 +77,75 @@ export default async function DashboardPage({
         ),
       )}
 
-      {balances.youOwe.gt(0) || balances.youAreOwed.gt(0) ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {balances.youOwe.gt(0) && (
-            <StatCard
-              icon={ArrowUpFromLine}
-              tone="destructive"
-              label="To pay"
-              value={formatMoney(balances.youOwe, userCurrency)}
-            />
-          )}
-          {balances.youAreOwed.gt(0) && (
-            <StatCard
-              icon={ArrowDownToLine}
-              tone="accent"
-              label="To collect"
-              value={formatMoney(balances.youAreOwed, userCurrency)}
-            />
-          )}
+      <BalanceStrip
+        items={[
+          {
+            label: 'To collect',
+            tone: 'hot',
+            value: <Money amount={balances.youAreOwed} currency={userCurrency} />,
+            detail: `across ${balances.owedCount} ${balances.owedCount === 1 ? 'expense' : 'expenses'}`,
+          },
+          {
+            label: 'You owe',
+            value: <Money amount={balances.youOwe} currency={userCurrency} />,
+            detail: `across ${balances.unsettledCount} ${balances.unsettledCount === 1 ? 'expense' : 'expenses'}`,
+          },
+          {
+            label: 'Net position',
+            value: <Money amount={net} currency={userCurrency} />,
+            detail: allSquare ? 'All square.' : 'If everyone settles today',
+          },
+        ]}
+      />
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_296px]">
+        <div>
+          <SectionLine
+            title="Recent expenses"
+            action={
+              hasActivity ? (
+                <Link
+                  href="/expenses?view=feed"
+                  className="font-mono text-[10px] uppercase tracking-[0.12em] text-cobalt underline-offset-4 hover:underline"
+                >
+                  All {expenseCount} expenses →
+                </Link>
+              ) : undefined
+            }
+          />
+          <ActivityFeed
+            items={activity}
+            filter={filter}
+            variant="dashboard"
+            showFilters={hasActivity}
+            emptyAction={
+              <div className="flex flex-col items-center gap-2 sm:flex-row">
+                <Button nativeButton={false} render={<Link href="/expenses/new" />}>
+                  New expense
+                </Button>
+                <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
+                  Invite friends
+                </Button>
+              </div>
+            }
+          />
         </div>
-      ) : (
-        <Card>
-          <CardContent className="flex items-center gap-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10">
-              <ArrowDownToLine className="size-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">All settled</p>
-              <p className="text-xs text-muted-foreground">No outstanding balances</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {balances.youOwe.gt(0) && (
-        <SettleUpCard
-          youOwe={formatMoney(balances.youOwe, userCurrency)}
-          unsettledCount={balances.unsettledCount}
-        />
-      )}
-
-      {balances.youAreOwed.gt(0) && (
-        <RemindCard
-          youAreOwed={formatMoney(balances.youAreOwed, userCurrency)}
-          owedCount={balances.owedCount}
-        />
-      )}
-
-      <div>
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Recent activity</h2>
-          <Button
-            nativeButton={false}
-            render={<Link href="/expenses?view=feed" />}
-            variant="ghost"
-            size="sm"
-            className="text-primary"
-          >
-            View all
-          </Button>
-        </div>
-        {hasActivity ? (
-          <ActivityFeed items={activity} filter={filter} />
-        ) : (
-          <EmptyState
-            className="mt-3"
-            icon={ReceiptText}
-            title="No expenses yet"
-            message="Split your first cost with a group or directly with friends."
-          >
-            <div className="flex flex-col items-center gap-2 sm:flex-row">
-              <Button nativeButton={false} render={<Link href="/expenses/new" />}>
-                <Plus className="size-4" />
-                Split an expense
-              </Button>
-              <Button nativeButton={false} render={<Link href="/settings" />} variant="outline">
-                <UserPlus className="size-4" />
-                Invite friends
-              </Button>
-            </div>
-          </EmptyState>
+        {(balances.youOwe.gt(0) || balances.youAreOwed.gt(0)) && (
+          <aside className="flex flex-col gap-6">
+            {balances.youOwe.gt(0) && (
+              <SettleUpCard
+                youOwe={formatMoney(balances.youOwe, userCurrency)}
+                unsettledCount={balances.unsettledCount}
+              />
+            )}
+            {balances.youAreOwed.gt(0) && (
+              <RemindCard
+                youAreOwed={formatMoney(balances.youAreOwed, userCurrency)}
+                owedCount={balances.owedCount}
+              />
+            )}
+          </aside>
         )}
       </div>
     </div>

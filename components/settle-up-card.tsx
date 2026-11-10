@@ -1,10 +1,8 @@
 'use client';
 
-import { ArrowDownToLine, Check } from 'lucide-react';
 import { useFormStatus } from 'react-dom';
 
 import { settleAll } from '@/app/(app)/actions';
-import { BannerCard } from '@/components/banner-card';
 import { Button } from '@/components/ui/button';
 
 interface SettleUpCardProps {
@@ -19,8 +17,7 @@ function SettleAllButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
-      <Check className="size-4" />
+    <Button type="submit" variant="tang" className="w-full" disabled={pending}>
       {pending ? 'Marking…' : 'Mark all as paid'}
     </Button>
   );
@@ -28,21 +25,18 @@ function SettleAllButton() {
 
 export function SettleUpCard({ youOwe, unsettledCount }: SettleUpCardProps) {
   return (
-    <BannerCard
-      icon={ArrowDownToLine}
-      tone="primary"
-      title="Settle up"
-      message={
-        <>
-          You owe <span className="font-medium text-foreground">{youOwe}</span> across{' '}
-          {unsettledCount} {unsettledCount === 1 ? 'expense' : 'expenses'}.
-        </>
-      }
-      action={
-        <form action={settleAll} className="w-full sm:w-auto">
-          <SettleAllButton />
-        </form>
-      }
-    />
+    <section className="border-t-2 border-cobalt px-4 py-5">
+      <p className="eyebrow text-cobalt">Settlement</p>
+      <h2 className="mt-2 font-heading text-[19px] font-bold tracking-[-0.02em] text-ink">
+        Clear the table.
+      </h2>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-body">
+        You owe <span className="font-medium text-ink">{youOwe}</span> across {unsettledCount}{' '}
+        {unsettledCount === 1 ? 'expense' : 'expenses'}.
+      </p>
+      <form action={settleAll} className="mt-4">
+        <SettleAllButton />
+      </form>
+    </section>
   );
 }

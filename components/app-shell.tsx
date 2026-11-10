@@ -226,7 +226,9 @@ export function AppShell({
         </header>
 
         <main className="flex flex-1 flex-col overflow-y-auto pb-[calc(58px+env(safe-area-inset-bottom))] min-[761px]:pb-0">
-          {children}
+          <div className="mx-auto w-full max-w-[1240px] px-6 py-6 sm:px-10 sm:py-[26px]">
+            {children}
+          </div>
         </main>
 
         {/* Mobile bottom bar */}

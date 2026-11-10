@@ -1,7 +1,5 @@
-import { MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 
-import { BannerCard } from '@/components/banner-card';
 import { Button } from '@/components/ui/button';
 
 interface RemindCardProps {
@@ -11,22 +9,23 @@ interface RemindCardProps {
 
 export function RemindCard({ youAreOwed, owedCount }: RemindCardProps) {
   return (
-    <BannerCard
-      icon={MessageCircle}
-      tone="accent"
-      title="Send a reminder"
-      message={
-        <>
-          <span className="font-medium text-foreground">{youAreOwed}</span> owed to you across{' '}
-          {owedCount} {owedCount === 1 ? 'expense' : 'expenses'}.
-        </>
-      }
-      action={
-        <Button nativeButton={false} render={<Link href="/people" />}>
-          <MessageCircle className="size-4" />
-          Remind friends
-        </Button>
-      }
-    />
+    <section className="border-t-2 border-tangerine px-4 py-5">
+      <p className="eyebrow text-tangerine">Reminders</p>
+      <h2 className="mt-2 font-heading text-[19px] font-bold tracking-[-0.02em] text-ink">
+        Send a nudge.
+      </h2>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-body">
+        <span className="font-medium text-ink">{youAreOwed}</span> owed to you across {owedCount}{' '}
+        {owedCount === 1 ? 'expense' : 'expenses'}.
+      </p>
+      <Button
+        nativeButton={false}
+        render={<Link href="/people" />}
+        variant="tang"
+        className="mt-4 w-full"
+      >
+        Remind friends
+      </Button>
+    </section>
   );
 }
