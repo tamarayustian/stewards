@@ -1,21 +1,26 @@
 import { UserX, Users } from 'lucide-react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { cancelInvite } from '@/app/(app)/actions';
 import { BackLink } from '@/components/back-link';
+import { BalanceStrip } from '@/components/balance-strip';
 import { ConfirmAction } from '@/components/confirm-action';
 import { ActivityFeed } from '@/components/activity-feed';
 import { CounterpartyActions } from '@/components/counterparty-actions';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
+import { Money } from '@/components/money';
+import { PageHead } from '@/components/page-head';
 import { MarkReceivedButton, SettleExpenseButton } from '@/components/settle-expense-button';
+import { StatePill } from '@/components/state-pill';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth';
 import { getPairDetail } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
+import { formatLedgerDate } from '@/lib/dates';
 import { getActivity, getGroup, type ActivityFilter } from '@/lib/expenses';
-import { formatMoney } from '@/lib/money';
 
 export default async function PersonDetailPage({
   params,
@@ -153,76 +158,123 @@ export default async function PersonDetailPage({
     const unreadFromThem = unreadCount > 0;
     const { counterparty } = detail;
 
-    return (
-      <div className="space-y-6 p-6">
-        <BackLink href="/people" label="Back" className="gap-1.5" />
+    const firstShared = [...detail.items].sort((a, b) => a.date.getTime() - b.date.getTime())[0];
+    const lastActivity = detail.items.reduce<Date | null>(
+      (latest, item) => (!latest || item.date > latest ? item.date : latest),
+      null,
+    );
+    const position = detail.net.gt(0) ? 'They owe you' : detail.net.isZero() ? 'All settled' : 'You owe';
 
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold">{counterparty.name}</h1>
-            <p
-              className={`mt-0.5 text-lg font-semibold ${
-                detail.net.gt(0)
-                  ? 'text-accent'
-                  : detail.net.isZero()
-                    ? 'text-muted-foreground'
-                    : 'text-destructive'
-              }`}
-            >
-              {detail.net.gt(0)
-                ? `${counterparty.name} owes you ${formatMoney(detail.net, userCurrency)}`
-                : detail.net.isZero()
-                  ? 'All settled'
-                  : `You owe ${counterparty.name} ${formatMoney(detail.net.abs(), userCurrency)}`}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <CounterpartyActions
-              hasOwedToMe={detail.amountOwedToMe.gt(0)}
-              counterparty={detail.counterparty}
-              items={detail.items}
-              viewerCurrency={userCurrency}
-            >
-              {unreadFromThem && <MarkRemindersReadButton fromId={counterparty.id} />}
-            </CounterpartyActions>
-          </div>
+    return (
+      <div className="mx-auto w-full max-w-[1240px]">
+        <Link
+          href="/people"
+          className="eyebrow inline-flex items-center gap-1 text-cobalt hover:underline"
+        >
+          ← Back to people
+        </Link>
+
+        <div className="mt-4">
+          <PageHead
+            eyebrow="Direct · member"
+            title={counterparty.name}
+            sub={firstShared ? `Since ${formatLedgerDate(firstShared.date)}` : undefined}
+            actions={
+              <CounterpartyActions
+                hasOwedToMe={detail.amountOwedToMe.gt(0)}
+                counterparty={detail.counterparty}
+                items={detail.items}
+                viewerCurrency={userCurrency}
+              >
+                {unreadFromThem && <MarkRemindersReadButton fromId={counterparty.id} />}
+              </CounterpartyActions>
+            }
+          />
         </div>
 
-        <ul className="divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
+        <div className="mt-6">
+          <BalanceStrip
+            items={[
+              {
+                label: position,
+                value: <Money amount={detail.net.abs()} currency={userCurrency} />,
+                detail: `${detail.items.length} open ${detail.items.length === 1 ? 'share' : 'shares'}`,
+                tone: detail.net.lt(0) ? 'hot' : 'default',
+              },
+              {
+                label: 'Last activity',
+                value: lastActivity ? formatLedgerDate(lastActivity) : '—',
+                detail: lastActivity ? 'Most recent shared expense' : 'No shared expenses yet',
+              },
+            ]}
+          />
+        </div>
+
+        <section className="mt-8">
+          <div className="hidden grid-cols-[84px_minmax(0,1fr)_110px_110px_80px_160px] items-center gap-3 border-b border-line py-2 min-[1100px]:grid">
+            {['Date', 'Expense', 'Total', 'Your share', 'State', 'Action'].map((heading) => (
+              <span key={heading} className="eyebrow">
+                {heading}
+              </span>
+            ))}
+          </div>
+
           {detail.items.length === 0 ? (
-            <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing to settle.
-            </li>
+            <div className="border-y border-line px-4 py-10 text-center">
+              <p className="eyebrow">No entries</p>
+              <p className="mt-1 text-[13px] text-body">Nothing to settle.</p>
+            </div>
           ) : (
             detail.items.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div
+                key={item.id}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-b border-line py-3 min-[1100px]:grid-cols-[84px_minmax(0,1fr)_110px_110px_80px_160px] min-[1100px]:items-center min-[1100px]:gap-3"
+              >
+                <span className="num hidden text-[11px] text-ink-muted min-[1100px]:block">
+                  {formatLedgerDate(item.date)}
+                </span>
+
                 <div className="min-w-0">
-                  <p className="text-sm font-medium">{item.note ?? 'Expense'}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Intl.DateTimeFormat('en-HK', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    }).format(item.date)}{' '}
-                    · {item.direction === 'theyOweMe' ? 'You paid' : 'They paid'}
+                  <p className="break-words text-[15px] font-medium text-ink">
+                    {item.note ?? 'Expense'}
+                  </p>
+                  <p className="text-[10.5px] text-ink-muted">
+                    <span className="min-[1100px]:hidden">{formatLedgerDate(item.date)} · </span>
+                    {item.direction === 'theyOweMe' ? 'You paid' : 'They paid'}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <p className="shrink-0 text-sm font-medium">
-                    {item.direction === 'theyOweMe'
-                      ? formatMoney(item.theirShare, item.currency)
-                      : formatMoney(item.myShare, item.currency)}
-                  </p>
+
+                <Money
+                  amount={item.amount}
+                  currency={item.currency}
+                  className="hidden text-[13px] min-[1100px]:block"
+                />
+
+                <Money
+                  amount={item.direction === 'theyOweMe' ? item.theirShare : item.myShare}
+                  currency={item.currency}
+                  className="justify-self-end text-[13px] min-[1100px]:justify-self-start"
+                />
+
+                <StatePill
+                  tone="open"
+                  className="col-start-2 justify-self-end min-[1100px]:col-start-auto min-[1100px]:justify-self-start"
+                />
+
+                <div className="col-span-full flex min-[1100px]:col-span-1 min-[1100px]:justify-end">
                   {item.direction === 'theyOweMe' ? (
-                    <MarkReceivedButton expenseId={item.expenseId} splitUserId={counterparty.id} />
+                    <MarkReceivedButton
+                      expenseId={item.expenseId}
+                      splitUserId={counterparty.id}
+                    />
                   ) : (
                     <SettleExpenseButton expenseId={item.expenseId} />
                   )}
                 </div>
-              </li>
+              </div>
             ))
           )}
-        </ul>
+        </section>
       </div>
     );
   }

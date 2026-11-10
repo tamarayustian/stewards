@@ -1,7 +1,5 @@
 'use client';
 
-import { MessageCircle } from 'lucide-react';
-
 import { buildWhatsAppDraft, waMeNumber, type PairItem } from '@/lib/balance-math';
 import { type Currency } from '@/lib/currencies';
 import { Button } from '@/components/ui/button';
@@ -24,8 +22,7 @@ export function WhatsAppButton({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={openWhatsApp} className="gap-1.5">
-      <MessageCircle className="size-3.5" />
+    <Button type="button" variant="outline" size="sm" onClick={openWhatsApp}>
       WhatsApp
     </Button>
   );

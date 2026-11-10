@@ -1,6 +1,4 @@
 'use client';
-
-import { BellRing } from 'lucide-react';
 import { useEffect, useActionState } from 'react';
 
 import { sendReminder } from '@/app/(app)/actions';
@@ -23,10 +21,9 @@ export function RemindButton({ toId }: { toId: string }) {
         type="submit"
         variant="ghost"
         size="sm"
-        className="gap-1.5 text-primary"
+        className="eyebrow h-8 px-2 text-cobalt hover:bg-tint"
         disabled={pending}
       >
-        <BellRing className="size-3.5" />
         {pending ? 'Reminding…' : 'Remind'}
       </Button>
       <FormError message={state?.error} />

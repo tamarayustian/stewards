@@ -1,7 +1,5 @@
 'use client';
 
-import { Copy } from 'lucide-react';
-
 import { useToast } from '@/components/toast';
 import { buildWhatsAppDraft, type PairItem } from '@/lib/balance-math';
 import { type Currency } from '@/lib/currencies';
@@ -29,8 +27,7 @@ export function CopyMessageButton({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={copyMessage} className="gap-1.5">
-      <Copy className="size-3.5" />
+    <Button type="button" variant="outline" size="sm" onClick={copyMessage}>
       Copy message
     </Button>
   );
