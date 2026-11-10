@@ -1,5 +1,7 @@
 import db from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
+import { toViewerCurrency } from '@/lib/currency-convert';
+import { summarizeGroupBalances, type GroupBalances } from '@/lib/group-balances';
 import { hasOutstandingShare, outstandingDecimal } from '@/lib/outstanding';
 
 export type BalanceSummary = {
@@ -48,15 +50,6 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
 
   const viewerCurrency = (viewer?.currency ?? 'HKD') as string;
 
-  function toHome(
-    splitAmount: Prisma.Decimal,
-    expenseCurrency: string,
-    rate: string | null,
-  ): Prisma.Decimal {
-    if (expenseCurrency === viewerCurrency) return splitAmount;
-    return splitAmount.mul(Number(rate ?? '1'));
-  }
-
   // `settledAt: null` says "not fully settled"; the amount still owed is
   // `amount - settledAmount`. Prisma cannot compare two columns, so zero-share
   // rows (a payer's own zero split, or one the rebuild has just closed) are
@@ -71,10 +64,11 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
   const youOwe = owingRows.reduce(
     (sum, split) =>
       sum.plus(
-        toHome(
+        toViewerCurrency(
           outstandingDecimal(split.amount, split.settledAmount),
           split.expense.currency,
           split.expense.rate,
+          viewerCurrency,
         ),
       ),
     new Prisma.Decimal(0),
@@ -82,10 +76,11 @@ export async function getBalances(userId: string): Promise<BalanceSummary> {
   const youAreOwed = owedRows.reduce(
     (sum, split) =>
       sum.plus(
-        toHome(
+        toViewerCurrency(
           outstandingDecimal(split.amount, split.settledAmount),
           split.expense.currency,
           split.expense.rate,
+          viewerCurrency,
         ),
       ),
     new Prisma.Decimal(0),
@@ -298,21 +293,40 @@ export type GroupDetail = {
   members: { id: string; name: string }[];
   invites: GroupInviteSummary[];
   unsettledCount: number;
+  viewerCurrency: string;
+  balances: GroupBalances;
 };
 
 export async function getGroup(groupId: string, userId: string): Promise<GroupDetail | null> {
-  const group = await db.group.findFirst({
-    where: { id: groupId, deletedAt: null, members: { some: { userId } } },
-    include: {
-      members: { include: { user: { select: { id: true, name: true } } } },
-      invites: { include: { inviter: { select: { name: true } } }, orderBy: { createdAt: 'desc' } },
-      expenses: {
-        where: { deletedAt: null },
-        select: { paidById: true, splits: openShareSelect },
+  const [group, viewer] = await Promise.all([
+    db.group.findFirst({
+      where: { id: groupId, deletedAt: null, members: { some: { userId } } },
+      include: {
+        members: { include: { user: { select: { id: true, name: true } } } },
+        invites: {
+          include: { inviter: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+        expenses: {
+          where: { deletedAt: null },
+          select: {
+            amount: true,
+            currency: true,
+            rate: true,
+            paidById: true,
+            splits: {
+              where: { settledAt: null, amount: { gt: 0 } },
+              select: { userId: true, amount: true, settledAmount: true },
+            },
+          },
+        },
       },
-    },
-  });
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { currency: true } }),
+  ]);
   if (!group) return null;
+
+  const viewerCurrency = viewer?.currency ?? 'HKD';
 
   return {
     id: group.id,
@@ -327,6 +341,8 @@ export async function getGroup(groupId: string, userId: string): Promise<GroupDe
       createdAt: i.createdAt,
     })),
     unsettledCount: unsettledCount(group.expenses),
+    viewerCurrency,
+    balances: summarizeGroupBalances(group.expenses, userId, viewerCurrency),
   };
 }
 
