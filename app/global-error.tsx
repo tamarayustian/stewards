@@ -3,7 +3,7 @@
 import { AlertTriangle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { fraunces, ibmPlexMono, karla } from '@/lib/fonts';
+import { dmSans, jetBrainsMono, syne } from '@/lib/fonts';
 import './globals.css';
 
 export default function GlobalError({
@@ -15,7 +15,7 @@ export default function GlobalError({
   return (
     <html
       lang="en"
-      className={`${karla.variable} ${fraunces.variable} ${ibmPlexMono.variable} h-dvh antialiased`}
+      className={`${syne.variable} ${dmSans.variable} ${jetBrainsMono.variable} h-dvh antialiased`}
     >
       <body className="flex h-dvh flex-col items-center justify-center gap-6 bg-background px-6 text-center">
         <div className="flex size-14 items-center justify-center rounded-full bg-destructive/10">

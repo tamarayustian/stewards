@@ -1,11 +1,10 @@
-import { Fraunces, IBM_Plex_Mono, Karla } from 'next/font/google';
+import { DM_Sans, JetBrains_Mono, Syne } from 'next/font/google';
 
-export const karla = Karla({ variable: '--font-karla', subsets: ['latin'] });
+export const syne = Syne({ subsets: ['latin'], variable: '--font-syne' });
 
-export const fraunces = Fraunces({ variable: '--font-fraunces', subsets: ['latin'] });
+export const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans' });
 
-export const ibmPlexMono = IBM_Plex_Mono({
-  variable: '--font-ibm-plex-mono',
+export const jetBrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500'],
+  variable: '--font-jetbrains-mono',
 });
