@@ -16,7 +16,7 @@ export function Money({
   const { symbol, value } = moneyParts(amount, currency);
   return (
     <span className={cn('num whitespace-nowrap', className)}>
-      <span className={cn('mr-0.5', symbolClassName)}>{symbol}</span>
+      <span className={cn(symbolClassName)}>{symbol}</span>
       {value}
     </span>
   );

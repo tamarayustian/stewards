@@ -1,6 +1,5 @@
 'use client';
 
-import { Check } from 'lucide-react';
 import { useActionState } from 'react';
 
 import { markRemindersRead } from '@/app/(app)/actions';
@@ -16,10 +15,9 @@ export function MarkRemindersReadButton({ fromId }: { fromId?: string }) {
         type="submit"
         variant="ghost"
         size="sm"
-        className="gap-1.5 text-muted-foreground"
+        className="h-auto px-0 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-cobalt underline-offset-4 hover:bg-transparent hover:text-cobalt-deep hover:underline"
         disabled={pending}
       >
-        <Check className="size-3.5" />
         {pending ? 'Marking…' : 'Mark read'}
       </Button>
     </form>
