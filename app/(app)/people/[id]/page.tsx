@@ -1,21 +1,22 @@
-import { UserX, Users } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { cancelInvite } from '@/app/(app)/actions';
-import { BackLink } from '@/components/back-link';
+import { ActivityFeed } from '@/components/activity-feed';
 import { BalanceStrip } from '@/components/balance-strip';
 import { ConfirmAction } from '@/components/confirm-action';
-import { ActivityFeed } from '@/components/activity-feed';
 import { CounterpartyActions } from '@/components/counterparty-actions';
 import { InviteMemberForm } from '@/components/invite-member-form';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
 import { Money } from '@/components/money';
 import { PageHead } from '@/components/page-head';
+import { PersonAvatar } from '@/components/person-avatar';
+import { SectionLine } from '@/components/section-line';
 import { MarkReceivedButton, SettleExpenseButton } from '@/components/settle-expense-button';
 import { StatePill } from '@/components/state-pill';
 import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth';
+import { initials } from '@/lib/avatars';
 import { getPairDetail } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
@@ -44,95 +45,208 @@ export default async function PersonDetailPage({
 
   if (group) {
     const activity = await getActivity(user.id, activeFilter, 50, id);
+    const balances = group.balances;
+
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-8">
         <div>
-          <BackLink href="/people" label="Back to people" className="text-muted-foreground" />
-          <h1 className="mt-2 text-2xl font-semibold">{group.name}</h1>
+          <Link
+            href="/people"
+            className="eyebrow inline-flex items-center gap-1 text-cobalt hover:underline"
+          >
+            ← Back to people
+          </Link>
+          <div className="mt-5 space-y-4">
+            <span
+              className="flex size-10 items-center justify-center rounded-[6px] bg-cobalt font-heading text-sm font-extrabold text-paper"
+              aria-hidden
+            >
+              {initials(group.name)}
+            </span>
+            <PageHead
+              eyebrow={`Group · ${group.name}`}
+              title={group.name}
+              sub={`${group.members.length} member${group.members.length === 1 ? '' : 's'} · ${group.unsettledCount} unsettled expense${group.unsettledCount === 1 ? '' : 's'}`}
+              actions={
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    nativeButton={false}
+                    render={<Link href="#invite" />}
+                  >
+                    Invite
+                  </Button>
+                  <Button
+                    size="sm"
+                    nativeButton={false}
+                    render={<Link href={`/expenses/new?groupId=${group.id}&from=/people/${group.id}`} />}
+                  >
+                    <span aria-hidden>+</span> Add expense
+                  </Button>
+                </>
+              }
+            />
+          </div>
           {group.description && (
-            <p className="mt-1 text-sm text-muted-foreground">{group.description}</p>
+            <p className="mt-4 max-w-[64ch] text-[13px] leading-relaxed text-body">
+              {group.description}
+            </p>
           )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {group.members.length} member{group.members.length === 1 ? '' : 's'}
-            {group.unsettledCount > 0 && ` · ${group.unsettledCount} unsettled`}
-          </p>
         </div>
 
-        <section>
-          <h2 className="text-base font-semibold">Members</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {group.members.map((member) => (
-              <span
-                key={member.id}
-                className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-sm"
-              >
-                <Users className="size-4 text-muted-foreground" />
-                {member.name}
-              </span>
-            ))}
-          </div>
-        </section>
+        <BalanceStrip
+          items={[
+            {
+              label: 'Group total',
+              value: <Money amount={balances.total} currency={group.viewerCurrency} />,
+              detail: 'Every expense on the tab',
+            },
+            {
+              label: 'Owed to you',
+              value: <Money amount={balances.owedToViewer} currency={group.viewerCurrency} />,
+              detail: 'Across open shares',
+              tone: 'hot',
+            },
+            {
+              label: 'You owe',
+              value: <Money amount={balances.viewerOwes} currency={group.viewerCurrency} />,
+              detail: 'What you still have to send',
+            },
+          ]}
+        />
 
-        <section>
-          <h2 className="text-base font-semibold">Invites</h2>
-          <div className="mt-3">
-            <InviteMemberForm groupId={group.id} />
-          </div>
-          {group.invites.length > 0 && (
-            <ul className="mt-4 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
-              {group.invites.map((invite) => {
-                const isJoined = invite.status === 'joined';
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="space-y-10">
+            <section>
+              <SectionLine title="Members" meta={`${group.members.length} on the tab`} />
+              <div className="hidden grid-cols-[minmax(0,1fr)_100px_140px] gap-3 border-b border-line py-2 sm:grid">
+                <span className="eyebrow">Person</span>
+                <span className="eyebrow">Role</span>
+                <span className="eyebrow text-right">Net</span>
+              </div>
+              {group.members.map((member) => {
+                const net = balances.memberNets.get(member.id);
                 return (
-                  <li key={invite.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{invite.email}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {isJoined ? 'Joined' : 'Pending'} · invited by {invite.inviterName}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        {isJoined ? 'Joined' : 'Pending'}
+                  <div
+                    key={member.id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-line py-2.5 sm:grid-cols-[minmax(0,1fr)_100px_140px]"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <PersonAvatar name={member.name} size="xs" />
+                      <span className="truncate text-[15px] font-medium text-ink">
+                        {member.name}
                       </span>
-                      {!isJoined && (
-                        <ConfirmAction
-                          action={cancelInvite}
-                          fields={[
-                            { name: 'inviteId', value: invite.id },
-                            { name: 'groupId', value: group.id },
-                          ]}
-                          title="Cancel invite"
-                          description="Cancel this invite? The person won't be able to join the group."
-                          confirmLabel="Cancel invite"
-                          pendingLabel="Cancelling…"
-                          cancelLabel="Keep invite"
-                          trigger={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground"
-                            >
-                              <UserX className="size-3.5" />
-                              Cancel
-                            </Button>
-                          }
-                        />
-                      )}
                     </div>
-                  </li>
+                    <span className="hidden text-[11px] text-ink-muted sm:block">
+                      {member.id === user.id ? 'You' : 'Member'}
+                    </span>
+                    <span
+                      className={`text-right text-[13px] ${
+                        net?.gt(0) ? 'text-sage' : net?.lt(0) ? 'text-rust' : 'text-ink-muted'
+                      }`}
+                    >
+                      {net?.gt(0) ? '+' : net?.lt(0) ? '−' : null}
+                      {net && !net.isZero() ? (
+                        <Money amount={net.abs()} currency={group.viewerCurrency} />
+                      ) : (
+                        '—'
+                      )}
+                    </span>
+                  </div>
                 );
               })}
-            </ul>
-          )}
-        </section>
+            </section>
 
-        <section>
-          <h2 className="text-base font-semibold">Expenses</h2>
-          <div className="mt-3">
-            <ActivityFeed items={activity} filter={activeFilter} />
+            <section>
+              <SectionLine
+                title="Expenses"
+                action={
+                  <Link href="/expenses" className="eyebrow text-cobalt hover:underline">
+                    All expenses →
+                  </Link>
+                }
+              />
+              <ActivityFeed items={activity} filter={activeFilter} variant="group" />
+            </section>
           </div>
-        </section>
+
+          <aside className="flex flex-col gap-8">
+            <section className="border-t-2 border-ink pt-3">
+              <h2 className="eyebrow text-cobalt">The group</h2>
+              <dl className="mt-3 divide-y divide-line">
+                <div className="flex items-baseline justify-between py-2">
+                  <dt className="text-[11px] text-ink-muted">Members</dt>
+                  <dd className="num text-[13px]">{group.members.length}</dd>
+                </div>
+                <div className="flex items-baseline justify-between py-2">
+                  <dt className="text-[11px] text-ink-muted">Open expenses</dt>
+                  <dd className="num text-[13px]">{group.unsettledCount}</dd>
+                </div>
+                <div className="flex items-baseline justify-between py-2">
+                  <dt className="text-[11px] text-ink-muted">Currency</dt>
+                  <dd className="num text-[13px]">{group.viewerCurrency}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section id="invite" className="scroll-mt-6 border-t-2 border-ink pt-3">
+              <h2 className="eyebrow text-cobalt">Invite</h2>
+              <div className="mt-4">
+                <InviteMemberForm groupId={group.id} />
+              </div>
+              {group.invites.length > 0 && (
+                <ul className="mt-4 divide-y divide-line border-t border-line">
+                  {group.invites.map((invite) => {
+                    const isJoined = invite.status === 'joined';
+                    return (
+                      <li key={invite.id} className="flex items-center justify-between gap-3 py-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-medium text-ink">{invite.email}</p>
+                          <p className="text-[10.5px] text-ink-muted">
+                            Invited by {invite.inviterName}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <StatePill tone={isJoined ? 'settled' : 'pending'}>
+                            {isJoined ? 'Joined' : 'Pending'}
+                          </StatePill>
+                          {!isJoined && (
+                            <ConfirmAction
+                              action={cancelInvite}
+                              fields={[
+                                { name: 'inviteId', value: invite.id },
+                                { name: 'groupId', value: group.id },
+                              ]}
+                              title="Cancel invite"
+                              description="Cancel this invite? The person won't be able to join the group."
+                              confirmLabel="Cancel invite"
+                              pendingLabel="Cancelling…"
+                              cancelLabel="Keep invite"
+                              trigger={
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-rust"
+                                >
+                                  Cancel
+                                </Button>
+                              }
+                            />
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <p className="mt-3 text-[10.5px] leading-relaxed text-ink-muted">
+                Pending invites stay visible to members until the address joins.
+              </p>
+            </section>
+          </aside>
+        </div>
       </div>
     );
   }

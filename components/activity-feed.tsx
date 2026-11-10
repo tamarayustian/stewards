@@ -107,10 +107,15 @@ export function ActivityFeed({
                     {item.note ?? item.context}
                   </p>
                   <p className="mt-0.5 truncate text-[10.5px] text-ink-muted">
-                    {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context} ·{' '}
-                    {isExpenses || variant === 'group'
-                      ? formatLedgerDate(item.createdAt)
-                      : timeAgo(item.createdAt)}
+                    {item.isPayer ? 'You paid' : `${item.paidByName} paid`} · {item.context}
+                    {isExpenses || variant === 'group' ? (
+                      <span className="min-[1240px]:hidden">
+                        {' '}
+                        · {formatLedgerDate(item.createdAt)}
+                      </span>
+                    ) : (
+                      <> · {timeAgo(item.createdAt)}</>
+                    )}
                   </p>
                 </div>
 

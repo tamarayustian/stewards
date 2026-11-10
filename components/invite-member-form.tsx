@@ -1,6 +1,5 @@
 'use client';
 
-import { Send } from 'lucide-react';
 import { useActionState, useState } from 'react';
 
 import { inviteToGroup } from '@/app/(app)/actions';
@@ -14,23 +13,20 @@ export function InviteMemberForm({ groupId }: { groupId: string }) {
   const [state, action, pending] = useActionState(inviteToGroup, undefined);
 
   return (
-    <form action={action} className="max-w-md space-y-2">
+    <form action={action} className="space-y-2">
       <input type="hidden" name="groupId" value={groupId} />
       <Label htmlFor="invite-email">Invite by email</Label>
-      <div className="flex gap-2">
-        <Input
-          id="invite-email"
-          name="email"
-          type="email"
-          placeholder="friend@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <Button type="submit" disabled={pending}>
-          <Send className="size-4" />
-          {pending ? 'Inviting…' : 'Invite'}
-        </Button>
-      </div>
+      <Input
+        id="invite-email"
+        name="email"
+        type="email"
+        placeholder="friend@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <Button type="submit" disabled={pending} className="w-full">
+        {pending ? 'Inviting…' : 'Invite'}
+      </Button>
       <FormError message={state?.error} />
     </form>
   );

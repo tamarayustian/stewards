@@ -179,7 +179,9 @@ export async function getActivity(
     const unsettledBorrowers = e.splits.filter(
       (s) => s.userId !== userId && hasOutstandingShare(s.amount, s.settledAmount),
     );
-    const hasSettled = mySplit !== undefined;
+    const hasSettled = isPayer
+      ? e.splits.some((s) => s.userId !== userId && s.settledAmount.gt(0))
+      : mySplit !== undefined;
     const unsettled = isPayer ? unsettledBorrowers.length > 0 : myShare.gt(0);
     const borrowerId = unsettledBorrowers.length === 1 ? unsettledBorrowers[0].userId : null;
     return {
