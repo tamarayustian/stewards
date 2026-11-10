@@ -27,7 +27,7 @@ function PopoverContent({
       <PopoverPrimitive.Positioner sideOffset={sideOffset} align={align}>
         <PopoverPrimitive.Popup
           className={cn(
-            'z-50 w-48 rounded-xl bg-card p-3 text-sm shadow-lg ring-1 ring-foreground/10 data-[side=bottom]:animate-in data-[side=bottom]:fade-in-0 data-[side=bottom]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2',
+            'z-50 w-48 rounded-lg border border-line-strong bg-paper p-3 text-sm text-ink shadow-[0_18px_40px_-32px_rgba(18,19,26,0.55)] outline-none data-[side=bottom]:animate-in data-[side=bottom]:fade-in-0 data-[side=bottom]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2',
             className,
           )}
           {...props}

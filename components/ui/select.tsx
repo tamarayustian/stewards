@@ -1,9 +1,10 @@
 import { cn } from '@/lib/utils';
 
 const VARIANTS = {
-  default: 'h-10 rounded-md border border-input bg-background px-3 text-sm',
+  default:
+    'h-10 rounded-md border border-line-strong bg-paper px-3 text-[15px] text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-soft disabled:opacity-60',
   compact:
-    'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+    'h-8 w-full rounded-md border border-line-strong bg-paper px-2.5 text-sm text-ink outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-soft disabled:opacity-60',
 } as const;
 
 interface SelectProps extends React.ComponentProps<'select'> {

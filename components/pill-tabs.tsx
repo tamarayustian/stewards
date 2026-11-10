@@ -27,17 +27,17 @@ export function PillTabs({
   );
 
   return (
-    <div className="mt-3 flex w-fit gap-1 rounded-lg bg-muted p-1">
+    <div className="mt-3 inline-flex w-fit rounded-full bg-soft p-0.5">
       {tabs.map((tab) => (
         <button
           key={tab.key}
           type="button"
           onClick={() => setTab(tab.key)}
           className={cn(
-            'rounded-md px-3 py-2 min-h-11 text-xs font-medium md:min-h-0 md:py-1 relative z-10 inline-flex items-center',
+            'relative z-10 inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors md:min-h-0',
             currentTab === tab.key
-              ? 'bg-card text-foreground ring-1 ring-foreground/10'
-              : 'text-muted-foreground hover:text-foreground',
+              ? 'bg-paper text-ink ring-1 ring-line-strong'
+              : 'text-ink-muted hover:text-ink',
           )}
           aria-current={currentTab === tab.key ? 'page' : undefined}
         >
