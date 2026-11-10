@@ -1,14 +1,19 @@
-import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { ActivityFeed } from '@/components/activity-feed';
 import { BalanceList } from '@/components/balance-list';
-import { Button } from '@/components/ui/button';
+import { BalanceStrip } from '@/components/balance-strip';
+import { Money } from '@/components/money';
+import { PageHead } from '@/components/page-head';
 import { PillTabs } from '@/components/pill-tabs';
+import { Button } from '@/components/ui/button';
 import { getCurrentUser } from '@/lib/auth';
 import { getPairOverview } from '@/lib/balances';
-import { getActivity, type ActivityFilter } from '@/lib/expenses';
+import { type Currency } from '@/lib/currencies';
+import db from '@/lib/db';
+import { getActivity, getBalances, type ActivityFilter } from '@/lib/expenses';
+import { formatMonthYear } from '@/lib/dates';
 
 const viewTabs = [
   { key: 'feed', label: 'Feed' },
@@ -33,27 +38,62 @@ export default async function ActivityPage({
       ? params.filter
       : 'all';
 
+  const [balances, profile] = await Promise.all([
+    getBalances(user.id),
+    db.user.findUnique({ where: { id: user.id }, select: { currency: true } }),
+  ]);
+  const currency = (profile?.currency ?? 'HKD') as Currency;
+  const net = balances.youAreOwed.minus(balances.youOwe);
+
+  const header = (
+    <PageHead
+      eyebrow={`Expenses · ${formatMonthYear(new Date())}`}
+      title="Every expense, in order."
+      sub="Newest first. Open, settled and everything between."
+      actions={
+        <Button nativeButton={false} render={<Link href="/expenses/new?from=/expenses" />}>
+          <span aria-hidden="true">+</span> Split an expense
+        </Button>
+      }
+    />
+  );
+
+  const strip = (
+    <BalanceStrip
+      items={[
+        {
+          label: 'You owe',
+          value: <Money amount={balances.youOwe} currency={currency} />,
+          tone: 'hot',
+        },
+        { label: 'Owed to you', value: <Money amount={balances.youAreOwed} currency={currency} /> },
+        { label: 'Net', value: <Money amount={net} currency={currency} /> },
+      ]}
+    />
+  );
+
+  const lens = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <PillTabs
+        variant="lens"
+        searchParam="view"
+        tabs={viewTabs}
+        currentTab={view}
+        className="mt-0"
+      />
+      <span className="eyebrow">{currency} · newest first</span>
+    </div>
+  );
+
   if (view === 'feed') {
     const activity = await getActivity(user.id, filter);
 
     return (
-      <div className="space-y-6 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-semibold">Expenses</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Every expense you&apos;re part of, newest first.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button nativeButton={false} render={<Link href="/expenses/new?from=/expenses" />}>
-              <Plus className="size-4" />
-              Split an expense
-            </Button>
-            <PillTabs searchParam="view" tabs={viewTabs} currentTab={view} />
-          </div>
-        </div>
-        <ActivityFeed items={activity} filter={filter} />
+      <div className="space-y-6">
+        {header}
+        {strip}
+        {lens}
+        <ActivityFeed items={activity} filter={filter} variant="expenses" />
       </div>
     );
   }
@@ -66,22 +106,10 @@ export default async function ActivityPage({
   }));
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-semibold">Expenses</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            What each person owes you and what you owe them.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button nativeButton={false} render={<Link href="/expenses/new?from=/expenses" />}>
-            <Plus className="size-4" />
-            Split an expense
-          </Button>
-          <PillTabs searchParam="view" tabs={viewTabs} currentTab={view} />
-        </div>
-      </div>
+    <div className="space-y-6">
+      {header}
+      {strip}
+      {lens}
       <BalanceList reminders={reminders} rows={rows} userCurrency={viewerCurrency} />
     </div>
   );

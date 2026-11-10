@@ -28,8 +28,8 @@ type Variant = 'dashboard' | 'expenses' | 'group';
 
 const columnClass: Record<Variant, string> = {
   dashboard: 'min-[1240px]:grid-cols-[22px_minmax(0,1fr)_110px_54px_96px_170px]',
-  expenses: 'min-[1240px]:grid-cols-[68px_minmax(0,1.5fr)_140px_94px_94px_86px_170px]',
-  group: 'min-[1240px]:grid-cols-[68px_minmax(0,1fr)_120px_94px_86px_170px]',
+  expenses: 'min-[1240px]:grid-cols-[84px_minmax(0,1.5fr)_140px_94px_94px_86px_170px]',
+  group: 'min-[1240px]:grid-cols-[84px_minmax(0,1fr)_120px_94px_86px_170px]',
 };
 
 const headerCells: Record<Variant, string[]> = {
@@ -97,7 +97,7 @@ export function ActivityFeed({
                 ) : null}
 
                 {isExpenses || variant === 'group' ? (
-                  <span className="num hidden text-[11px] text-ink-muted min-[1240px]:block">
+                  <span className="num hidden whitespace-nowrap text-[11px] text-ink-muted min-[1240px]:block">
                     {formatLedgerDate(item.createdAt)}
                   </span>
                 ) : null}

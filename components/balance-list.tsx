@@ -2,10 +2,12 @@ import Link from 'next/link';
 
 import { CounterpartyActions } from '@/components/counterparty-actions';
 import { MarkRemindersReadButton } from '@/components/mark-reminders-read-button';
-import { Button } from '@/components/ui/button';
+import { Money } from '@/components/money';
+import { PersonAvatar } from '@/components/person-avatar';
+import { SectionLine } from '@/components/section-line';
+import { StatePill } from '@/components/state-pill';
 import { type PairSummary, type PairDetail } from '@/lib/balance-math';
 import { type Currency } from '@/lib/currencies';
-import { formatMoney } from '@/lib/money';
 import { type ReminderRow } from '@/lib/balances';
 
 export function BalanceList({
@@ -20,92 +22,109 @@ export function BalanceList({
   return (
     <>
       {reminders.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Reminders</h2>
-            <MarkRemindersReadButton />
-          </div>
-          <ul className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
+        <SectionLine title="Reminders" action={<MarkRemindersReadButton />}>
+          <ul className="border-t border-line">
             {reminders.map((reminder) => (
               <li
                 key={reminder.id}
-                className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                className="grid gap-2 border-b border-line py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4"
               >
                 <div className="min-w-0">
-                  <p className="text-sm">
-                    <span className="font-medium">{reminder.fromName}</span>{' '}
-                    <span className="text-muted-foreground">
-                      reminded you about {formatMoney(reminder.amountOwed, userCurrency)} across{' '}
+                  <p className="text-[15px]">
+                    <span className="font-medium text-ink">{reminder.fromName}</span>{' '}
+                    <span className="text-body">
+                      reminded you about{' '}
+                      <Money amount={reminder.amountOwed} currency={userCurrency} /> across{' '}
                       {reminder.iOweCount} {reminder.iOweCount === 1 ? 'expense' : 'expenses'}.
                     </span>
                   </p>
                   {!reminder.readAt && (
-                    <p className="mt-0.5 text-xs font-medium text-primary">Unread</p>
+                    <p className="eyebrow mt-1 text-cobalt">Unread</p>
                   )}
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-4">
                   {!reminder.readAt && <MarkRemindersReadButton fromId={reminder.fromId} />}
-                  <Button
-                    nativeButton={false}
-                    variant="ghost"
-                    size="sm"
-                    render={<Link href={`/people/${reminder.fromId}`} />}
+                  <Link
+                    href={`/people/${reminder.fromId}`}
+                    className="text-[10px] font-medium uppercase tracking-[0.12em] text-cobalt underline underline-offset-4"
                   >
                     View breakdown
-                  </Button>
+                  </Link>
                 </div>
               </li>
             ))}
           </ul>
-        </section>
+        </SectionLine>
       )}
 
-      <section>
-        <h2 className="text-base font-semibold">People</h2>
+      <SectionLine title="People">
         {rows.length === 0 ? (
-          <p className="mt-3 rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-            No outstanding balances yet.
-          </p>
+          <div className="border-y border-line px-4 py-10 text-center">
+            <p className="eyebrow">Nothing here</p>
+            <p className="mt-2 text-[13px] text-ink-muted">No outstanding balances yet.</p>
+          </div>
         ) : (
-          <ul className="mt-3 divide-y divide-border rounded-xl bg-card ring-1 ring-foreground/10">
-            {rows.map(({ pair, detail }) => {
-              const { counterparty } = pair;
-              return (
-                <li
-                  key={counterparty.id}
-                  className="flex flex-col justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium">{counterparty.name}</p>
-                    <p className={`text-sm ${pair.net.gt(0) ? 'text-accent' : 'text-destructive'}`}>
-                      {pair.net.gt(0)
-                        ? `${counterparty.name} owes you ${formatMoney(pair.net, userCurrency)}`
-                        : `You owe ${counterparty.name} ${formatMoney(pair.net.abs(), userCurrency)}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <CounterpartyActions
-                      hasOwedToMe={pair.amountOwedToMe.gt(0) && !!detail}
-                      counterparty={pair.counterparty}
-                      items={detail?.items ?? []}
-                      viewerCurrency={userCurrency}
-                    >
-                      <Button
-                        nativeButton={false}
-                        variant="ghost"
-                        size="sm"
-                        render={<Link href={`/people/${counterparty.id}`} />}
+          <>
+            <div className="hidden grid-cols-[minmax(0,1.45fr)_104px_110px_250px] items-center gap-3 border-b border-line py-2 lg:grid">
+              {['Person', 'Direction', 'Net', 'Action'].map((label) => (
+                <span key={label} className="eyebrow">
+                  {label}
+                </span>
+              ))}
+            </div>
+            <ul className="border-b border-line">
+              {rows.map(({ pair, detail }) => {
+                const { counterparty } = pair;
+                return (
+                  <li
+                    key={counterparty.id}
+                    className="grid gap-3 border-b border-line py-3 last:border-b-0 lg:grid-cols-[minmax(0,1.45fr)_104px_110px_250px] lg:items-center"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <PersonAvatar name={counterparty.name} size="sm" />
+                      <div className="min-w-0">
+                        <p className="truncate text-[15px] font-medium text-ink">
+                          {counterparty.name}
+                        </p>
+                        <p className="text-[10.5px] text-ink-muted">
+                          {counterparty.isRegistered ? 'Registered contact' : 'Direct'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <StatePill tone={pair.net.gt(0) ? 'open' : 'part'}>
+                        {pair.net.gt(0) ? 'Owes you' : 'You owe'}
+                      </StatePill>
+                    </div>
+                    <div className="lg:text-right">
+                      <Money
+                        amount={pair.net.abs()}
+                        currency={userCurrency}
+                        className="text-[14.5px] text-ink"
+                      />
+                    </div>
+                    <div className="flex flex-col items-start gap-1.5 lg:items-end">
+                      <CounterpartyActions
+                        hasOwedToMe={pair.amountOwedToMe.gt(0) && !!detail}
+                        counterparty={pair.counterparty}
+                        items={detail?.items ?? []}
+                        viewerCurrency={userCurrency}
                       >
-                        Details
-                      </Button>
-                    </CounterpartyActions>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                        <Link
+                          href={`/people/${counterparty.id}`}
+                          className="text-[10px] font-medium uppercase tracking-[0.12em] text-cobalt underline underline-offset-4"
+                        >
+                          Details
+                        </Link>
+                      </CounterpartyActions>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
-      </section>
+      </SectionLine>
     </>
   );
 }

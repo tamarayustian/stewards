@@ -9,13 +9,18 @@ export function PillTabs({
   searchParam,
   tabs,
   currentTab,
+  variant = 'pill',
+  className,
 }: {
   searchParam: string;
   tabs: { key: string; label: string }[];
   currentTab: string;
+  variant?: 'pill' | 'lens';
+  className?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const isLens = variant === 'lens';
 
   const setTab = useCallback(
     (key: string) => {
@@ -27,7 +32,13 @@ export function PillTabs({
   );
 
   return (
-    <div className="mt-3 inline-flex w-fit rounded-full bg-soft p-0.5">
+    <div
+      className={cn(
+        'mt-3 inline-flex w-fit rounded-full p-0.5',
+        isLens ? 'border border-line-strong' : 'bg-soft',
+        className,
+      )}
+    >
       {tabs.map((tab) => (
         <button
           key={tab.key}
@@ -36,7 +47,9 @@ export function PillTabs({
           className={cn(
             'relative z-10 inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors md:min-h-0',
             currentTab === tab.key
-              ? 'bg-paper text-ink ring-1 ring-line-strong'
+              ? isLens
+                ? 'bg-ink text-paper'
+                : 'bg-paper text-ink ring-1 ring-line-strong'
               : 'text-ink-muted hover:text-ink',
           )}
           aria-current={currentTab === tab.key ? 'page' : undefined}
