@@ -1,32 +1,43 @@
 'use client';
 
-import { Plus } from 'lucide-react';
-import { useActionState, useState } from 'react';
+import { useActionState } from 'react';
 
 import { createGroup } from '@/app/(app)/actions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { FormError } from '@/components/form-message';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 export function GroupForm() {
-  const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(createGroup, undefined);
 
-  if (!open) {
-    return (
-      <Button type="button" onClick={() => setOpen(true)}>
-        <Plus className="size-4" />
-        New group
-      </Button>
-    );
-  }
-
   return (
-    <Card>
-      <CardContent className="space-y-4 pt-6">
-        <form action={action} className="space-y-4">
+    <Dialog>
+      <DialogTrigger
+        render={
+          <Button type="button">
+            <span aria-hidden>+</span>
+            New group
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New group</DialogTitle>
+          <DialogDescription>
+            A shared tab for the people you split with most often.
+          </DialogDescription>
+        </DialogHeader>
+        <form action={action} className="mt-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="group-name">Group name</Label>
             <Input id="group-name" name="name" placeholder="e.g. Roommates" required />
@@ -36,23 +47,20 @@ export function GroupForm() {
             <Input id="group-description" name="description" placeholder="e.g. Flat 4B bills" />
           </div>
           <FormError message={state?.error} />
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setOpen(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
+          <div className="flex justify-end gap-2 pt-1">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline" disabled={pending}>
+                  Cancel
+                </Button>
+              }
+            />
             <Button type="submit" disabled={pending}>
-              <Plus className="size-4" />
               {pending ? 'Creating…' : 'Create group'}
             </Button>
           </div>
         </form>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }

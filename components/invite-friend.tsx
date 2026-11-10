@@ -1,11 +1,9 @@
 'use client';
 
-import { Link2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/toast';
 import { useInviteLink } from '@/components/use-invite-link';
 
@@ -16,48 +14,45 @@ export function InviteFriend() {
   const { copyInviteLink } = useInviteLink();
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium">Invite a friend</p>
-      <p className="text-xs text-muted-foreground">
-        Copy a sign-up link with their details pre-filled. Once they create an account, they&apos;ll
-        appear in the direct-expense picker.
+    <div>
+      <p className="eyebrow">Open invite</p>
+      <h2 className="mt-1.5 font-heading text-[19px] font-bold tracking-[-0.03em]">
+        Bring someone in.
+      </h2>
+      <p className="mt-2 text-[11.5px] leading-relaxed text-ink-muted">
+        Copy a sign-up link with their details pre-filled. They appear in the direct-expense picker
+        once they join.
       </p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="invite-name">Name</Label>
-          <Input
-            id="invite-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Friend's name"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="invite-email">Email</Label>
-          <Input
-            id="invite-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="friend@example.com"
-          />
-        </div>
+      <div className="mt-4 space-y-2">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Friend's name"
+          aria-label="Friend's name"
+        />
+        <Input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          type="email"
+          placeholder="friend@example.com"
+          aria-label="Friend's email"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={async () => {
+            const ok = await copyInviteLink({ name, email });
+            if (ok) {
+              toast({ title: 'Invite link copied', variant: 'success' });
+            } else {
+              toast({ title: 'Could not copy link', variant: 'error' });
+            }
+          }}
+        >
+          Copy invite link
+        </Button>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={async () => {
-          const ok = await copyInviteLink({ name, email });
-          if (ok) {
-            toast({ title: 'Invite link copied', variant: 'success' });
-          } else {
-            toast({ title: 'Could not copy link', variant: 'error' });
-          }
-        }}
-      >
-        <Link2 className="size-4" />
-        Copy invite link
-      </Button>
     </div>
   );
 }

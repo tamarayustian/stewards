@@ -1,12 +1,9 @@
 'use client';
 
-import { UserPlus } from 'lucide-react';
-
 import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 export function PeopleForm() {
   const friend = useAddFriend();
@@ -17,23 +14,24 @@ export function PeopleForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <Label>Add a person</Label>
-      <div className="flex flex-col gap-2 sm:flex-row">
+    <form onSubmit={handleSubmit}>
+      <h2 className="font-heading text-[17px] font-bold tracking-[-0.03em]">Add a person</h2>
+      <p className="mt-1 text-[11px] text-ink-muted">
+        Name is enough. Email or phone finds them later.
+      </p>
+      <div className="mt-4 space-y-2">
         <Input
           value={friend.name}
           onChange={(e) => friend.setName(e.target.value)}
           placeholder="Name"
           aria-label="Name"
-          className="sm:flex-1"
         />
         <Input
           value={friend.email}
           onChange={(e) => friend.setEmail(e.target.value)}
           type="email"
-          placeholder="Email (optional — finds their account)"
+          placeholder="Email (optional)"
           aria-label="Email"
-          className="sm:flex-1"
         />
         <Input
           value={friend.phone}
@@ -41,11 +39,13 @@ export function PeopleForm() {
           type="tel"
           placeholder="Phone (optional)"
           aria-label="Phone"
-          className="sm:flex-1"
         />
-        <Button type="submit" disabled={friend.pending || friend.name.trim().length === 0}>
-          <UserPlus className="size-3.5" />
-          {friend.pending ? 'Adding...' : 'Add'}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={friend.pending || friend.name.trim().length === 0}
+        >
+          {friend.pending ? 'Adding…' : 'Add person'}
         </Button>
       </div>
       <FormError message={friend.error ?? undefined} />

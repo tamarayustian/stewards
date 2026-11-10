@@ -39,8 +39,8 @@ export function ConfirmAction({
         <AlertDialogTrigger render={trigger} />
         <AlertDialogPopup>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <p className="text-sm text-muted-foreground">{description}</p>
-          <div className="mt-5 flex justify-end gap-2">
+          <p className="mt-2 text-[13px] text-body">{description}</p>
+          <div className="mt-6 flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
               {cancelLabel}
             </Button>
