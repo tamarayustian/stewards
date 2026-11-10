@@ -1,16 +1,15 @@
 'use client';
 
-import { Link2, ReceiptText, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useState } from 'react';
 
 import { createExpense, editExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
-import { CurrencySelect } from '@/components/currency-select';
+import { Money } from '@/components/money';
+import { PersonAvatar } from '@/components/person-avatar';
 import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { useInviteLink } from '@/components/use-invite-link';
@@ -298,11 +297,8 @@ export function AddExpenseForm({
   }
 
   const addFriendPanel = (
-    <div className="space-y-2 rounded-lg bg-muted/40 p-3 ring-1 ring-border">
-      <p className="flex items-center gap-1.5 text-xs font-medium">
-        <UserPlus className="size-3.5" />
-        Add a friend by name
-      </p>
+    <div className="mt-2 space-y-2 border border-line bg-soft p-3">
+      <p className="eyebrow">Add a friend by name</p>
       <Input
         value={friend.name}
         onChange={(e) => friend.setName(e.target.value)}
@@ -336,11 +332,10 @@ export function AddExpenseForm({
           {friend.pending ? 'Adding...' : 'Add friend'}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={copyInviteToClipboard}>
-          <Link2 className="size-3.5" />
           {copied ? 'Invite link copied' : 'Copy invite link'}
         </Button>
       </div>
-      {friend.error && <p className="text-sm text-destructive">{friend.error}</p>}
+      {friend.error && <p className="text-[12px] text-rust">{friend.error}</p>}
     </div>
   );
 
@@ -351,6 +346,7 @@ export function AddExpenseForm({
     0,
   );
   const totalCentsValue = totalCents(totalAmount);
+  const borrowerCount = participants.filter((p) => p.id !== payerId).length;
   const diff = totalCentsValue - splitSumCents;
   // A payer-only participant set has nothing to assign: the server rejects the
   // resulting 0.00 sum, so say why instead of surfacing that error.
@@ -379,352 +375,362 @@ export function AddExpenseForm({
     balancePreview === null ? null : payerId === currentUserId ? 'accent' : 'destructive';
 
   return (
-    <div className="flex flex-1 justify-center p-6">
-      <Card className="w-full max-w-md self-start">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ReceiptText className="size-5 text-primary" />
-            {initialExpense ? 'Edit expense' : 'Split an expense'}
-          </CardTitle>
-          <CardDescription>
-            {initialExpense
-              ? 'Update the amount, who paid, or the split amounts.'
-              : 'Split a shared cost with a group or directly with friends.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={action} className="space-y-5">
-            {initialExpense && <input type="hidden" name="expenseId" value={initialExpense.id} />}
+    <form
+      action={action}
+      className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_346px] lg:items-start"
+    >
+      {initialExpense && <input type="hidden" name="expenseId" value={initialExpense.id} />}
 
-            {/* Mode selector */}
-            {!initialExpense && (
-              <div role="radiogroup" aria-label="Split with" className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === 'group'}
-                  onClick={() => chooseMode('group')}
-                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
-                    mode === 'group'
-                      ? 'bg-primary/10 text-primary ring-primary/30'
-                      : 'text-muted-foreground ring-border hover:bg-muted'
-                  }`}
-                >
-                  <Users className="size-4" />
-                  In a group
-                </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === 'direct'}
-                  onClick={() => chooseMode('direct')}
-                  className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium ring-1 transition-colors ${
-                    mode === 'direct'
-                      ? 'bg-primary/10 text-primary ring-primary/30'
-                      : 'text-muted-foreground ring-border hover:bg-muted'
-                  }`}
-                >
-                  <ReceiptText className="size-4" />
-                  Direct
-                </button>
-              </div>
-            )}
-
-            {/* Group picker */}
-            {!initialExpense && mode === 'group' && (
-              <div className="space-y-2">
-                <Label>Group</Label>
-                <Select
-                  variant="compact"
-                  name="groupId"
-                  value={selectedGroupId}
-                  onChange={(e) => selectGroup(e.target.value)}
-                >
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
-
-            {/* Direct friend picker */}
-            {!initialExpense && mode === 'direct' && (
-              <div className="space-y-2">
-                <Label>Split with</Label>
-                <p className="text-xs text-muted-foreground">
-                  You&apos;re included automatically. Select{' '}
-                  {selectedUsers.length === 0 ? '1+ friends' : 'more friends'} to split with.
-                </p>
-
-                {friends.length > 0 ? (
-                  <>
-                    <div className="max-h-48 space-y-1 overflow-y-auto">
-                      {friends.map((u) => {
-                        const checked = selectedUsers.includes(u.id);
-                        return (
-                          <label
-                            key={u.id}
-                            className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm ring-1 transition-colors ${
-                              checked
-                                ? 'bg-primary/10 text-foreground ring-primary/30'
-                                : 'text-muted-foreground ring-border hover:bg-muted'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              name="participantId"
-                              value={u.id}
-                              checked={checked}
-                              onChange={() => toggleUser(u.id)}
-                              className="size-4 accent-primary"
-                            />
-                            {u.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {showAddFriend ? (
-                      addFriendPanel
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowAddFriend(true)}
-                        className="text-primary"
-                      >
-                        <UserPlus className="size-3.5" />
-                        Add a friend by name
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-3 rounded-lg border border-dashed px-4 py-5 text-center">
-                    <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-muted">
-                      <Users className="size-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium">No one to split with yet</p>
-                    <p className="text-sm text-muted-foreground">
-                      Add people on the People page, or add a friend by name below.
-                    </p>
-                    {addFriendPanel}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Who paid */}
-            <div className="space-y-2">
-              <Label htmlFor="paidBy">Who paid?</Label>
-              <Select
-                variant="compact"
-                id="paidBy"
-                name="paidById"
-                value={payerId}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setPayerId(next);
-                  // The payer never owes themselves: zero their row, and unless
-                  // the split was customised, redistribute across the borrowers.
-                  setAmounts((prev) =>
-                    customized
-                      ? { ...prev, [next]: '0.00' }
-                      : equalAmounts(participantsRefresh(), totalAmount, next),
-                  );
-                }}
-              >
-                {payerOptions.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
-              <div className="relative">
-                <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                  {CURRENCIES[currency].symbol}
-                </span>
-                <Input
-                  id="amount"
-                  name="amount"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  className="pl-6"
-                  value={totalAmount}
-                  onChange={(e) => handleTotalChange(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <CurrencySelect
-                className="w-full"
-                id="currency"
-                name="currency"
-                value={currency}
-                onChange={(e) => {
-                  const next = validateCurrency(e.target.value) ?? 'HKD';
-                  setCurrency(next);
-                  if (next === homeCurrency) {
-                    setRateInfo(null);
-                    setRateError(null);
-                    setRateLoading(false);
-                  } else {
-                    setRateLoading(true);
-                    setRateError(null);
-                  }
-                }}
-              />
-              {rateLoading && (
-                <p className="text-xs text-muted-foreground">Fetching exchange rate…</p>
-              )}
-              {rateError && <p className="text-xs text-destructive">{rateError}</p>}
-              {rateInfo && (
-                <p className="text-xs text-muted-foreground">
-                  Rate: 1 {CURRENCIES[rateInfo.from].name} = {rateInfo.rate}{' '}
-                  {CURRENCIES[rateInfo.to].name}
-                </p>
-              )}
-            </div>
-
-            {/* Split */}
-            <div className="space-y-2">
-              <Label>Split</Label>
-              <p className="text-xs text-muted-foreground">
-                Each amount is what that person owes back to {payerName}.
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {canICoveredIt && (
-                  <Button type="button" variant="outline" size="sm" onClick={presetICoveredIt}>
-                    I covered it
-                  </Button>
-                )}
-                {canOtherCoveredIt && (
-                  <Button type="button" variant="outline" size="sm" onClick={presetOtherCoveredIt}>
-                    {payerName} covered it
-                  </Button>
-                )}
-                <Button type="button" variant="ghost" size="sm" onClick={splitEquallyNow}>
-                  Split equally
-                </Button>
-              </div>
-              <div className="space-y-1">
-                {participants.map((p) =>
-                  p.id === payerId ? (
-                    // The payer's own share is not a debt: it must stay 0.00, so
-                    // it is shown rather than edited (and never submitted).
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        Paid · {CURRENCIES[currency].symbol}0.00
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-3 py-2 ring-1 ring-border"
-                    >
-                      <span className="min-w-0 flex-1 truncate text-sm">{p.name}</span>
-                      <div className="relative w-28">
-                        <span className="absolute top-1/2 left-2.5 -translate-y-1/2 text-sm text-muted-foreground">
-                          {CURRENCIES[currency].symbol}
-                        </span>
-                        <Input
-                          name={`amount_${p.id}`}
-                          type="text"
-                          inputMode="decimal"
-                          value={amounts[p.id] ?? ''}
-                          onChange={(e) => handleAmountChange(p.id, e.target.value)}
-                          placeholder="0.00"
-                          className="h-8 pl-6 text-right"
-                        />
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
-              {balancePreview && (
-                <p
-                  className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium ring-1 ${
-                    previewTone === 'accent'
-                      ? 'bg-accent/10 text-accent ring-accent/20'
-                      : 'bg-destructive/10 text-destructive ring-destructive/20'
-                  }`}
-                >
-                  {balancePreview}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="note">Note</Label>
-              <Input
-                id="note"
-                name="note"
-                type="text"
-                placeholder="Dinner at the cafe"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
-
-            {noBorrowers ? (
-              <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground ring-1 ring-border">
-                There&apos;s nobody to share this with yet — add or invite someone first.
-              </p>
-            ) : diff !== 0 ? (
-              <p className={`text-xs ${diff > 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                {diff > 0
-                  ? `${formatAmount(diff)} left to assign — splits total ${formatAmount(
-                      splitSumCents,
-                    )} of ${formatAmount(totalCentsValue)}.`
-                  : `Splits total ${formatAmount(splitSumCents)} — that's ${formatAmount(
-                      Math.abs(diff),
-                    )} over the amount.`}
-              </p>
-            ) : null}
-
-            <FormError message={state?.error} />
-
-            {rateInfo && (
-              <>
-                <input type="hidden" name="rate" value={String(rateInfo.rate)} />
-                <input type="hidden" name="rateCurrency" value={rateInfo.from} />
-              </>
-            )}
-
-            <Button type="submit" disabled={pending || noBorrowers} className="w-full">
-              {initialExpense
-                ? pending
-                  ? 'Saving changes...'
-                  : 'Save changes'
-                : pending
-                  ? 'Splitting...'
-                  : 'Split expense'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => router.push(returnTo)}
+      <div className="min-w-0 border-t-2 border-ink">
+        <section className="border-b border-line py-5">
+          <Label htmlFor="amount">Amount</Label>
+          <div className="mt-2 flex items-baseline gap-3 border-b border-ink pb-2 focus-within:outline-2 focus-within:outline-offset-4 focus-within:outline-ink">
+            <span className="text-[17px] text-ink-muted">{CURRENCIES[currency].symbol}</span>
+            <input
+              id="amount"
+              name="amount"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={totalAmount}
+              onChange={(e) => handleTotalChange(e.target.value)}
+              required
+              className="num min-w-0 flex-1 border-0 bg-transparent p-0 text-[52px] leading-none tracking-[-0.06em] text-tangerine outline-none placeholder:text-ink-muted/40"
+            />
+            <select
+              name="currency"
+              aria-label="Currency"
+              value={currency}
+              onChange={(e) => {
+                const next = validateCurrency(e.target.value) ?? 'HKD';
+                setCurrency(next);
+                if (next === homeCurrency) {
+                  setRateInfo(null);
+                  setRateError(null);
+                  setRateLoading(false);
+                } else {
+                  setRateLoading(true);
+                  setRateError(null);
+                }
+              }}
+              className="num shrink-0 border-0 bg-transparent py-1 text-[13px] text-ink-muted outline-none"
             >
-              Cancel
+              {Object.keys(CURRENCIES).map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
+          {rateLoading && <p className="mt-2 text-[11px] text-ink-muted">Fetching exchange rate…</p>}
+          {rateError && <p className="mt-2 text-[11px] text-rust">{rateError}</p>}
+          {rateInfo && (
+            <p className="mt-2 text-[11px] text-ink-muted">
+              Rate: 1 {CURRENCIES[rateInfo.from].name} = {rateInfo.rate}{' '}
+              {CURRENCIES[rateInfo.to].name}
+            </p>
+          )}
+        </section>
+
+        <section className="border-b border-line py-5">
+          <Label htmlFor="note">Description</Label>
+          <Input
+            id="note"
+            name="note"
+            type="text"
+            placeholder="Dinner at the cafe"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            className="mt-2"
+          />
+        </section>
+
+        {!initialExpense && (
+          <section className="border-b border-line py-5">
+            <Label>Split with</Label>
+            <div role="radiogroup" aria-label="Split with" className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={mode === 'group'}
+                onClick={() => chooseMode('group')}
+                className={`flex items-center justify-center rounded-[7px] px-3 py-2.5 text-[12.5px] font-semibold transition-colors ${
+                  mode === 'group'
+                    ? 'bg-ink text-paper'
+                    : 'border border-line-strong text-ink-muted hover:bg-soft hover:text-ink'
+                }`}
+              >
+                In a group
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={mode === 'direct'}
+                onClick={() => chooseMode('direct')}
+                className={`flex items-center justify-center rounded-[7px] px-3 py-2.5 text-[12.5px] font-semibold transition-colors ${
+                  mode === 'direct'
+                    ? 'bg-ink text-paper'
+                    : 'border border-line-strong text-ink-muted hover:bg-soft hover:text-ink'
+                }`}
+              >
+                Direct
+              </button>
+            </div>
+          </section>
+        )}
+
+        {!initialExpense && mode === 'group' && (
+          <section className="border-b border-line py-5">
+            <Label htmlFor="groupId">Group</Label>
+            <Select
+              id="groupId"
+              variant="compact"
+              name="groupId"
+              className="mt-2"
+              value={selectedGroupId}
+              onChange={(e) => selectGroup(e.target.value)}
+            >
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} · {g.memberCount} {g.memberCount === 1 ? 'member' : 'members'}
+                </option>
+              ))}
+            </Select>
+          </section>
+        )}
+
+        {!initialExpense && mode === 'direct' && (
+          <section className="border-b border-line py-5">
+            <Label>Split with</Label>
+            <p className="mt-1 text-[11px] text-ink-muted">
+              You&apos;re included automatically. Select{' '}
+              {selectedUsers.length === 0 ? '1+ friends' : 'more friends'} to split with.
+            </p>
+
+            {friends.length > 0 ? (
+              <>
+                <div className="mt-3 max-h-56 divide-y divide-line overflow-y-auto border-y border-line">
+                  {friends.map((u) => {
+                    const checked = selectedUsers.includes(u.id);
+                    const share = totalCents(amounts[u.id] ?? '') / 100;
+                    return (
+                      <label
+                        key={u.id}
+                        className={`flex cursor-pointer items-center gap-3 py-2.5 text-[13px] transition-opacity ${
+                          checked ? 'text-ink' : 'text-ink-muted opacity-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          name="participantId"
+                          value={u.id}
+                          checked={checked}
+                          onChange={() => toggleUser(u.id)}
+                          className="size-4 accent-cobalt"
+                        />
+                        <PersonAvatar name={u.name} size="xs" />
+                        <span className="min-w-0 flex-1 truncate">{u.name}</span>
+                        {checked && <Money amount={share} currency={currency} className="text-[12px]" />}
+                      </label>
+                    );
+                  })}
+                </div>
+                {showAddFriend ? (
+                  addFriendPanel
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddFriend(true)}
+                    className="mt-2 text-cobalt"
+                  >
+                    Add a friend by name
+                  </Button>
+                )}
+              </>
+            ) : (
+              <div className="mt-3 border border-dashed border-line-strong px-4 py-5 text-center">
+                <p className="text-[13px] font-medium text-ink">No one to split with yet</p>
+                <p className="mt-1 text-[11px] text-ink-muted">
+                  Add people on the People page, or add a friend by name below.
+                </p>
+                <div className="mt-3 text-left">{addFriendPanel}</div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <section className="border-b border-line py-5">
+          <Label htmlFor="paidBy">Who paid?</Label>
+          <Select
+            id="paidBy"
+            variant="compact"
+            name="paidById"
+            className="mt-2"
+            value={payerId}
+            onChange={(e) => {
+              const next = e.target.value;
+              setPayerId(next);
+              setAmounts((prev) =>
+                customized
+                  ? { ...prev, [next]: '0.00' }
+                  : equalAmounts(participantsRefresh(), totalAmount, next),
+              );
+            }}
+          >
+            {payerOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </section>
+
+        <section className="border-b border-line py-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <Label>Split</Label>
+            <span className="text-[11px] text-ink-muted">
+              Each amount is what that person owes back to {payerName}.
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {canICoveredIt && (
+              <Button type="button" variant="outline" size="sm" onClick={presetICoveredIt}>
+                I covered it
+              </Button>
+            )}
+            {canOtherCoveredIt && (
+              <Button type="button" variant="outline" size="sm" onClick={presetOtherCoveredIt}>
+                {payerName} covered it
+              </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" onClick={splitEquallyNow}>
+              Split equally
             </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+          <div className="mt-3 divide-y divide-line border-y border-line">
+            {participants.map((p) =>
+              p.id === payerId ? (
+                <div key={p.id} className="flex items-center gap-3 py-2.5">
+                  <PersonAvatar name={p.name} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{p.name}</span>
+                  <span className="num text-[11px] text-ink-muted">
+                    Paid · {CURRENCIES[currency].symbol}0.00
+                  </span>
+                </div>
+              ) : (
+                <div key={p.id} className="flex items-center gap-3 py-2.5">
+                  <PersonAvatar name={p.name} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{p.name}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[11px] text-ink-muted">{CURRENCIES[currency].symbol}</span>
+                    <input
+                      name={`amount_${p.id}`}
+                      type="text"
+                      inputMode="decimal"
+                      value={amounts[p.id] ?? ''}
+                      onChange={(e) => handleAmountChange(p.id, e.target.value)}
+                      placeholder="0.00"
+                      aria-label={`${p.name}'s share`}
+                      className="num w-24 border-0 bg-transparent p-0 text-right text-[13px] text-ink outline-none placeholder:text-ink-muted/40"
+                    />
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
+          {balancePreview && (
+            <p
+              className={`mt-3 px-3 py-2 text-[12.5px] font-medium ${
+                previewTone === 'accent' ? 'bg-sage/10 text-sage' : 'bg-rust/10 text-rust'
+              }`}
+            >
+              {balancePreview}
+            </p>
+          )}
+          {noBorrowers ? (
+            <p className="mt-3 border border-line bg-soft px-3 py-2 text-[12px] text-ink-muted">
+              There&apos;s nobody to share this with yet — add or invite someone first.
+            </p>
+          ) : diff !== 0 ? (
+            <p className={`mt-3 text-[11px] ${diff > 0 ? 'text-ink-muted' : 'text-rust'}`}>
+              {diff > 0
+                ? `${formatAmount(diff)} left to assign — splits total ${formatAmount(
+                    splitSumCents,
+                  )} of ${formatAmount(totalCentsValue)}.`
+                : `Splits total ${formatAmount(splitSumCents)} — that's ${formatAmount(
+                    Math.abs(diff),
+                  )} over the amount.`}
+            </p>
+          ) : null}
+        </section>
+
+        <div className="py-5">
+          <FormError message={state?.error} />
+        </div>
+      </div>
+
+      <aside className="border-t-2 border-cobalt bg-tint p-5 lg:sticky lg:top-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="eyebrow text-cobalt">The split</span>
+          <span className="num text-[10px] text-ink-muted">{participants.length} ways</span>
+        </div>
+        <p className="eyebrow mt-5">Each pays</p>
+        <Money
+          amount={totalCentsValue / 100 / Math.max(1, borrowerCount)}
+          currency={currency}
+          className="mt-1 block text-[29px] leading-none text-ink"
+        />
+        <div className="mt-5 divide-y divide-line border-y border-line">
+          {participants.map((p) => (
+            <div key={p.id} className="flex items-center gap-3 py-2.5">
+              <PersonAvatar name={p.name} size="xs" />
+              <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{p.name}</span>
+              <span className="eyebrow">
+                {p.id === currentUserId ? 'You' : initialExpense?.groupId || mode === 'group' ? 'Group' : 'Direct'}
+              </span>
+              <Money
+                amount={p.id === payerId ? 0 : totalCents(amounts[p.id] ?? '') / 100}
+                currency={currency}
+                className="text-[13px] text-ink"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 flex items-baseline justify-between gap-2 text-[11px] text-ink-muted">
+          <span>Total</span>
+          <Money amount={totalCentsValue / 100} currency={currency} className="text-[11px]" />
+        </div>
+        <p className="mt-1 text-[10px] leading-snug text-ink-muted">
+          Remainder cents are assigned automatically when the split doesn&apos;t divide evenly.
+        </p>
+
+        {rateInfo && (
+          <>
+            <input type="hidden" name="rate" value={String(rateInfo.rate)} />
+            <input type="hidden" name="rateCurrency" value={rateInfo.from} />
+          </>
+        )}
+
+        <Button type="submit" disabled={pending || noBorrowers} className="mt-5 w-full">
+          {initialExpense
+            ? pending
+              ? 'Saving changes...'
+              : 'Save changes'
+            : pending
+              ? 'Splitting...'
+              : 'Save expense'}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="mt-2 w-full"
+          onClick={() => router.push(returnTo)}
+        >
+          Cancel
+        </Button>
+      </aside>
+    </form>
   );
 }

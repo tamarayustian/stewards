@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { AddExpenseForm } from '@/components/add-expense-form';
+import { PageHead } from '@/components/page-head';
 import { getCurrentUser } from '@/lib/auth';
 import db from '@/lib/db';
 import { type Currency } from '@/lib/currencies';
@@ -49,12 +50,22 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
   };
 
   return (
-    <AddExpenseForm
-      groups={groups}
-      users={users}
-      currentUserId={user.id}
-      initialExpense={initialExpense}
-      homeCurrency={homeCurrency}
-    />
+    <>
+      <PageHead
+        eyebrow={`Edit entry · ${homeCurrency}`}
+        title="Edit the entry."
+        sub="Split a shared cost with a group or directly with friends."
+        meta="Editing · changes apply immediately"
+      />
+      <div className="mt-8">
+        <AddExpenseForm
+          groups={groups}
+          users={users}
+          currentUserId={user.id}
+          initialExpense={initialExpense}
+          homeCurrency={homeCurrency}
+        />
+      </div>
+    </>
   );
 }

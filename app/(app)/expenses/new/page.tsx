@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { AddExpenseForm } from '@/components/add-expense-form';
+import { PageHead } from '@/components/page-head';
 import { getCurrentUser } from '@/lib/auth';
 import { listGroups, listUsersForDirect } from '@/lib/expenses';
 import db from '@/lib/db';
@@ -26,12 +27,22 @@ export default async function AddExpensePage({
   const homeCurrency = (profile?.currency ?? 'HKD') as Currency;
 
   return (
-    <AddExpenseForm
-      groups={groups}
-      users={users}
-      currentUserId={user.id}
-      homeCurrency={homeCurrency}
-      returnTo={returnTo}
-    />
+    <>
+      <PageHead
+        eyebrow={`New entry · ${homeCurrency}`}
+        title="Enter an expense."
+        sub="Split a shared cost with a group or directly with friends."
+        meta="Draft · not saved"
+      />
+      <div className="mt-8">
+        <AddExpenseForm
+          groups={groups}
+          users={users}
+          currentUserId={user.id}
+          homeCurrency={homeCurrency}
+          returnTo={returnTo}
+        />
+      </div>
+    </>
   );
 }
