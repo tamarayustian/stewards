@@ -23,7 +23,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 function toastIcon(variant: ToastVariant) {
   switch (variant) {
     case 'success':
-      return <CheckCircle className="size-4 text-accent" />;
+      return <CheckCircle className="size-4 text-cobalt" />;
     case 'error':
       return <AlertCircle className="size-4 text-destructive" />;
     case 'info':

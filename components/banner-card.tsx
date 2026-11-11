@@ -6,7 +6,7 @@ type BannerTone = 'primary' | 'accent';
 
 const TONES: Record<BannerTone, { tile: string; icon: string }> = {
   primary: { tile: 'bg-primary/10', icon: 'text-primary' },
-  accent: { tile: 'bg-accent/10', icon: 'text-accent' },
+  accent: { tile: 'bg-soft', icon: 'text-cobalt' },
 };
 
 interface BannerCardProps {

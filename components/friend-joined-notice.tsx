@@ -14,8 +14,8 @@ export function FriendJoinedNotice({ friendName }: { friendName: string }) {
     <Card>
       <CardContent className="flex flex-col items-start justify-between gap-3 py-5 sm:flex-row sm:items-center">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-            <UserPlus className="size-5 text-accent" />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-soft">
+            <UserPlus className="size-5 text-cobalt" />
           </div>
           <div>
             <p className="text-sm font-medium">{friendName} joined Stewards</p>

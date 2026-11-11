@@ -22,7 +22,7 @@ export default function GlobalError({
           <AlertTriangle className="size-6 text-destructive" aria-hidden="true" />
         </div>
         <div className="space-y-3">
-          <h1 className="font-heading text-3xl font-semibold text-balance text-walnut sm:text-4xl">
+          <h1 className="font-heading text-3xl font-semibold text-balance text-ink sm:text-4xl">
             Something broke on our end.
           </h1>
           <p className="mx-auto max-w-[46ch] text-sm text-muted-foreground sm:text-base">
