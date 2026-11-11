@@ -31,7 +31,7 @@ export function ErrorState({
         <div
           className={cn(
             'mb-5 flex size-14 items-center justify-center rounded-[6px]',
-            tone === 'destructive' ? 'bg-rust/10' : 'bg-tint'
+            tone === 'destructive' ? 'bg-rust/10' : 'bg-tint',
           )}
         >
           <Icon

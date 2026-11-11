@@ -24,7 +24,9 @@ export default async function ClaimPage() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 p-6">
-      <h1 className="text-xl font-semibold">{claims.length > 0 ? 'Is this you?' : 'You\u2019re all set'}</h1>
+      <h1 className="text-xl font-semibold">
+        {claims.length > 0 ? 'Is this you?' : 'You\u2019re all set'}
+      </h1>
       <p className="text-sm text-muted-foreground">
         {claims.length > 0
           ? 'These contacts were added before you joined. Claim the ones that are you to bring your expenses together.'
@@ -34,12 +36,16 @@ export default async function ClaimPage() {
       {claims.length > 0 ? (
         <div className="space-y-3">
           {claims.map((claim) => (
-            <div key={claim.claimId} className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+            <div
+              key={claim.claimId}
+              className="space-y-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+            >
               <div>
                 <p className="text-sm font-medium">{claim.ghostName}</p>
                 <p className="text-xs text-muted-foreground">
                   {claim.adderName ? `Added by ${claim.adderName}` : 'Contact record'} ·{' '}
-                  {claim.sharedExpenseCount} shared {claim.sharedExpenseCount === 1 ? 'expense' : 'expenses'}
+                  {claim.sharedExpenseCount} shared{' '}
+                  {claim.sharedExpenseCount === 1 ? 'expense' : 'expenses'}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">

@@ -80,7 +80,9 @@ export default async function PersonDetailPage({
                   <Button
                     size="sm"
                     nativeButton={false}
-                    render={<Link href={`/expenses/new?groupId=${group.id}&from=/people/${group.id}`} />}
+                    render={
+                      <Link href={`/expenses/new?groupId=${group.id}&from=/people/${group.id}`} />
+                    }
                   >
                     <span aria-hidden>+</span> Add expense
                   </Button>
@@ -202,7 +204,9 @@ export default async function PersonDetailPage({
                     return (
                       <li key={invite.id} className="flex items-center justify-between gap-3 py-3">
                         <div className="min-w-0">
-                          <p className="truncate text-[13px] font-medium text-ink">{invite.email}</p>
+                          <p className="truncate text-[13px] font-medium text-ink">
+                            {invite.email}
+                          </p>
                           <p className="text-[10.5px] text-ink-muted">
                             Invited by {invite.inviterName}
                           </p>
@@ -277,7 +281,11 @@ export default async function PersonDetailPage({
       (latest, item) => (!latest || item.date > latest ? item.date : latest),
       null,
     );
-    const position = detail.net.gt(0) ? 'They owe you' : detail.net.isZero() ? 'All settled' : 'You owe';
+    const position = detail.net.gt(0)
+      ? 'They owe you'
+      : detail.net.isZero()
+        ? 'All settled'
+        : 'You owe';
 
     return (
       <div className="mx-auto w-full max-w-[1240px]">
@@ -377,10 +385,7 @@ export default async function PersonDetailPage({
 
                 <div className="col-span-full flex min-[1100px]:col-span-1 min-[1100px]:justify-end">
                   {item.direction === 'theyOweMe' ? (
-                    <MarkReceivedButton
-                      expenseId={item.expenseId}
-                      splitUserId={counterparty.id}
-                    />
+                    <MarkReceivedButton expenseId={item.expenseId} splitUserId={counterparty.id} />
                   ) : (
                     <SettleExpenseButton expenseId={item.expenseId} />
                   )}

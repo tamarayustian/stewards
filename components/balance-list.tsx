@@ -38,9 +38,7 @@ export function BalanceList({
                       {reminder.iOweCount} {reminder.iOweCount === 1 ? 'expense' : 'expenses'}.
                     </span>
                   </p>
-                  {!reminder.readAt && (
-                    <p className="eyebrow mt-1 text-cobalt">Unread</p>
-                  )}
+                  {!reminder.readAt && <p className="eyebrow mt-1 text-cobalt">Unread</p>}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-4">
                   {!reminder.readAt && <MarkRemindersReadButton fromId={reminder.fromId} />}

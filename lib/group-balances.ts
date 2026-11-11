@@ -58,12 +58,7 @@ export function summarizeGroupBalances(
         const open = outstanding(split);
         if (open.lte(0)) continue;
 
-        const converted = toViewerCurrency(
-          open,
-          expense.currency,
-          expense.rate,
-          viewerCurrency,
-        );
+        const converted = toViewerCurrency(open, expense.currency, expense.rate, viewerCurrency);
         owedToViewer = owedToViewer.add(converted);
         memberNets.set(split.userId, ensure(split.userId).add(converted));
       }

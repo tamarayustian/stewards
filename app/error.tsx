@@ -27,7 +27,10 @@ export default function Error({
       </ErrorState>
       <p className="relative mt-8 text-xs text-muted-foreground">
         Still stuck? Email{' '}
-        <a href="mailto:support@stewards.app" className="underline underline-offset-4 hover:text-foreground">
+        <a
+          href="mailto:support@stewards.app"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
           support@stewards.app
         </a>
       </p>

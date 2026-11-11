@@ -34,5 +34,5 @@ Cold/corporate finance apps — no bank app vibes, no Mint-style dashboards, no 
 
 ## Legal
 
-- Privacy Policy: [/privacy](app/(public)/privacy/page.tsx)
-- Terms & Conditions: [/terms](app/(public)/terms/page.tsx)
+- Privacy Policy: [/privacy](<app/(public)/privacy/page.tsx>)
+- Terms & Conditions: [/terms](<app/(public)/terms/page.tsx>)

@@ -73,10 +73,7 @@ export default async function GroupsPage() {
                     key={group.id}
                     className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3"
                   >
-                    <Link
-                      href={`/people/${group.id}`}
-                      className="min-w-0 flex-1 hover:opacity-70"
-                    >
+                    <Link href={`/people/${group.id}`} className="min-w-0 flex-1 hover:opacity-70">
                       <p className="truncate font-heading text-[15px] font-bold tracking-[-0.02em]">
                         {group.name}
                       </p>

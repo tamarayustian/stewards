@@ -375,10 +375,7 @@ export function AddExpenseForm({
     balancePreview === null ? null : payerId === currentUserId ? 'accent' : 'destructive';
 
   return (
-    <form
-      action={action}
-      className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_346px] lg:items-start"
-    >
+    <form action={action} className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_346px] lg:items-start">
       {initialExpense && <input type="hidden" name="expenseId" value={initialExpense.id} />}
 
       <div className="min-w-0 border-t-2 border-ink">
@@ -422,7 +419,9 @@ export function AddExpenseForm({
               ))}
             </select>
           </div>
-          {rateLoading && <p className="mt-2 text-[11px] text-ink-muted">Fetching exchange rate…</p>}
+          {rateLoading && (
+            <p className="mt-2 text-[11px] text-ink-muted">Fetching exchange rate…</p>
+          )}
           {rateError && <p className="mt-2 text-[11px] text-rust">{rateError}</p>}
           {rateInfo && (
             <p className="mt-2 text-[11px] text-ink-muted">
@@ -530,7 +529,9 @@ export function AddExpenseForm({
                         />
                         <PersonAvatar name={u.name} size="xs" />
                         <span className="min-w-0 flex-1 truncate">{u.name}</span>
-                        {checked && <Money amount={share} currency={currency} className="text-[12px]" />}
+                        {checked && (
+                          <Money amount={share} currency={currency} className="text-[12px]" />
+                        )}
                       </label>
                     );
                   })}
@@ -624,7 +625,9 @@ export function AddExpenseForm({
                   <PersonAvatar name={p.name} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{p.name}</span>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[11px] text-ink-muted">{CURRENCIES[currency].symbol}</span>
+                    <span className="text-[11px] text-ink-muted">
+                      {CURRENCIES[currency].symbol}
+                    </span>
                     <input
                       name={`amount_${p.id}`}
                       type="text"
@@ -688,7 +691,11 @@ export function AddExpenseForm({
               <PersonAvatar name={p.name} size="xs" />
               <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{p.name}</span>
               <span className="eyebrow">
-                {p.id === currentUserId ? 'You' : initialExpense?.groupId || mode === 'group' ? 'Group' : 'Direct'}
+                {p.id === currentUserId
+                  ? 'You'
+                  : initialExpense?.groupId || mode === 'group'
+                    ? 'Group'
+                    : 'Direct'}
               </span>
               <Money
                 amount={p.id === payerId ? 0 : totalCents(amounts[p.id] ?? '') / 100}

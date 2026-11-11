@@ -16,11 +16,7 @@ function DialogClose(props: BaseDialog.Close.Props) {
   return <BaseDialog.Close {...props} />;
 }
 
-function DialogContent({
-  className,
-  children,
-  ...props
-}: BaseDialog.Popup.Props) {
+function DialogContent({ className, children, ...props }: BaseDialog.Popup.Props) {
   return (
     <BaseDialog.Portal>
       <BaseDialog.Backdrop className="fixed inset-0 z-50 bg-ink/40" />

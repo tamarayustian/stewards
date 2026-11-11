@@ -60,7 +60,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAuth && user) {
-    return copyRefreshedCookies(supabaseResponse, NextResponse.redirect(new URL('/dashboard', request.url)));
+    return copyRefreshedCookies(
+      supabaseResponse,
+      NextResponse.redirect(new URL('/dashboard', request.url)),
+    );
   }
 
   return copyRefreshedCookies(

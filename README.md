@@ -37,5 +37,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Legal
 
-Privacy Policy: [/privacy](./app/(public)/privacy/page.tsx)  
-Terms & Conditions: [/terms](./app/(public)/terms/page.tsx)
+Privacy Policy: [/privacy](<./app/(public)/privacy/page.tsx>)  
+Terms & Conditions: [/terms](<./app/(public)/terms/page.tsx>)

@@ -9,30 +9,30 @@ export default function PrivacyPolicyPage() {
         <h1>Privacy Policy</h1>
         <p>Last updated: 2026-10-12</p>
         <p>
-          Stewards App (&quot;we&quot;, &quot;us&quot;) is a personal project. We care about your privacy. This policy explains what we
-          collect, why, how we use it, and your choices.
+          Stewards App (&quot;we&quot;, &quot;us&quot;) is a personal project. We care about your
+          privacy. This policy explains what we collect, why, how we use it, and your choices.
         </p>
 
         <h2>What we collect</h2>
         <ul>
           <li>
-            <strong>Account information</strong>: email address, name, and phone number if you provide it when signing
-            up or updating your profile.
+            <strong>Account information</strong>: email address, name, and phone number if you
+            provide it when signing up or updating your profile.
           </li>
           <li>
-            <strong>Contacts</strong>: names and emails/phones you add (friends). Other users may see limited
-            information needed to track shared expenses.
+            <strong>Contacts</strong>: names and emails/phones you add (friends). Other users may
+            see limited information needed to track shared expenses.
           </li>
           <li>
-            <strong>Expense data</strong>: amounts, currencies, exchange rates, who paid, splits, notes, groups, and
-            timestamps to compute balances.
+            <strong>Expense data</strong>: amounts, currencies, exchange rates, who paid, splits,
+            notes, groups, and timestamps to compute balances.
           </li>
           <li>
             <strong>Reminders and activity</strong>: when reminders are sent or marked read.
           </li>
           <li>
-            <strong>Technical data</strong>: IP address, browser/user agent, and basic server logs. This helps keep the
-            service secure.
+            <strong>Technical data</strong>: IP address, browser/user agent, and basic server logs.
+            This helps keep the service secure.
           </li>
           <li>
             <strong>Cookies</strong>: authentication cookies/session tokens needed to sign you in.
@@ -50,12 +50,14 @@ export default function PrivacyPolicyPage() {
         <h2>Who we share it with</h2>
         <ul>
           <li>
-            <strong>Service providers</strong>: Supabase (authentication and database hosting). Vercel (hosting the app).
-            These providers process data only to run the service under their terms.
+            <strong>Service providers</strong>: Supabase (authentication and database hosting).
+            Vercel (hosting the app). These providers process data only to run the service under
+            their terms.
           </li>
           <li>
-            <strong>Other users</strong>: people in shared groups or expense splits see what is needed to understand
-            balances (names, amounts, splits). What others see is limited to what is necessary for the shared expense.
+            <strong>Other users</strong>: people in shared groups or expense splits see what is
+            needed to understand balances (names, amounts, splits). What others see is limited to
+            what is necessary for the shared expense.
           </li>
           <li>
             <strong>Legal</strong>: only if required by law, court order, or to protect safety.
@@ -65,26 +67,38 @@ export default function PrivacyPolicyPage() {
 
         <h2>Data retention</h2>
         <p>
-          We keep your data while your account is active. When you delete something, we may soft-delete it for safety or
-          record-keeping limits. We may delete or anonymize data when it is no longer needed to provide the service,
-          unless law requires us to keep it longer.
+          We keep your data while your account is active. When you delete something, we may
+          soft-delete it for safety or record-keeping limits. We may delete or anonymize data when
+          it is no longer needed to provide the service, unless law requires us to keep it longer.
         </p>
 
         <h2>Your choices</h2>
         <ul>
           <li>You can update or remove some information in the app where available.</li>
-          <li>You can ask us to delete your account or export your data at support@stewards.app.</li>
-          <li>You can block or delete cookies in your browser, but doing so may stop you from signing in.</li>
+          <li>
+            You can ask us to delete your account or export your data at support@stewards.app.
+          </li>
+          <li>
+            You can block or delete cookies in your browser, but doing so may stop you from signing
+            in.
+          </li>
         </ul>
 
         <h2>Security</h2>
-        <p>We use reasonable safeguards to protect your data, but no system is completely secure.</p>
+        <p>
+          We use reasonable safeguards to protect your data, but no system is completely secure.
+        </p>
 
         <h2>Children</h2>
-        <p>This service is not meant for children under 13. If you believe a child under 13 provided information, email support@stewards.app and we will remove it.</p>
+        <p>
+          This service is not meant for children under 13. If you believe a child under 13 provided
+          information, email support@stewards.app and we will remove it.
+        </p>
 
         <h2>Changes</h2>
-        <p>We may update this policy. Changes take effect when posted here with the updated date.</p>
+        <p>
+          We may update this policy. Changes take effect when posted here with the updated date.
+        </p>
 
         <h2>Contact</h2>
         <p>

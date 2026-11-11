@@ -23,7 +23,6 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
-  --color-rule: var(--rule);
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-body: var(--body);
@@ -38,7 +37,6 @@
   --color-tint: var(--tint);
   --color-rust: var(--rust);
   --color-destructive: var(--destructive);
-  --color-walnut: var(--walnut);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -97,7 +95,6 @@
   --destructive: var(--rust);
   --destructive-foreground: var(--paper);
   --border: var(--line);
-  --rule: var(--line);
   --input: var(--line-strong);
   --ring: var(--cobalt);
   --radius: 0.375rem;
@@ -114,7 +111,6 @@
   --chart-3: var(--sage);
   --chart-4: var(--cobalt-deep);
   --chart-5: var(--ink-muted);
-  --walnut: var(--ink);
 }
 
 @layer base {

@@ -83,7 +83,11 @@ export function ActivityFeed({
               : item.unsettled
                 ? item.myShare
                 : item.shareAmount;
-            const tone = !item.unsettled ? 'settled' : item.isPayer && item.hasSettled ? 'part' : 'open';
+            const tone = !item.unsettled
+              ? 'settled'
+              : item.isPayer && item.hasSettled
+                ? 'part'
+                : 'open';
 
             return (
               <div
@@ -136,7 +140,9 @@ export function ActivityFeed({
 
                 {isExpenses ? (
                   item.isPayer ? (
-                    <span className="hidden text-right text-[12px] text-ink-muted min-[1240px]:block">—</span>
+                    <span className="hidden text-right text-[12px] text-ink-muted min-[1240px]:block">
+                      —
+                    </span>
                   ) : (
                     <Money
                       amount={item.unsettled ? item.myShare : item.shareAmount}

@@ -98,9 +98,15 @@ export function AppShell({
     <div className="flex flex-1">
       {/* Desktop rail */}
       <aside className="app-rail hidden flex-col bg-cobalt px-5 py-6 text-paper min-[901px]:flex">
-        <Link href="/dashboard" className="rail-brand flex items-center gap-2.5" aria-label="Stewards">
+        <Link
+          href="/dashboard"
+          className="rail-brand flex items-center gap-2.5"
+          aria-label="Stewards"
+        >
           <BrandMark />
-          <span className="font-heading text-[15px] font-extrabold tracking-[0.04em]">STEWARDS</span>
+          <span className="font-heading text-[15px] font-extrabold tracking-[0.04em]">
+            STEWARDS
+          </span>
         </Link>
 
         <nav className="mt-10 flex flex-col">
@@ -124,7 +130,9 @@ export function AppShell({
                 <span className="num shrink-0 text-[8px] text-paper/60">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="rail-label flex flex-1 items-center gap-2 truncate">{item.label}</span>
+                <span className="rail-label flex flex-1 items-center gap-2 truncate">
+                  {item.label}
+                </span>
                 {item.href === '/expenses' && (
                   <Suspense fallback={null}>
                     <UnreadBadge count={unreadReminders} variant="rail" />

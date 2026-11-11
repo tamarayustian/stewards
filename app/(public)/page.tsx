@@ -19,10 +19,28 @@ const statement = [
 ];
 
 const ledgerRows = [
-  { note: 'Yat Lok · roast goose', meta: 'You paid · 4 ways', total: 1059, share: '264.75', state: 'Open' },
+  {
+    note: 'Yat Lok · roast goose',
+    meta: 'You paid · 4 ways',
+    total: 1059,
+    share: '264.75',
+    state: 'Open',
+  },
   { note: 'Uber · LKF', meta: 'You paid · 3 ways', total: 276, share: '69.00', state: 'Open' },
-  { note: 'Wing Wah · dinner', meta: 'Alex paid · 3 ways', total: 440, share: '146.67', state: 'Settled' },
-  { note: '3rd Space · flat white', meta: 'Sam paid · 2 ways', total: 150, share: '75.00', state: 'Open' },
+  {
+    note: 'Wing Wah · dinner',
+    meta: 'Alex paid · 3 ways',
+    total: 440,
+    share: '146.67',
+    state: 'Settled',
+  },
+  {
+    note: '3rd Space · flat white',
+    meta: 'Sam paid · 2 ways',
+    total: 150,
+    share: '75.00',
+    state: 'Open',
+  },
 ];
 
 const steps = [
@@ -90,7 +108,9 @@ export default function LandingPage() {
         >
           <span aria-hidden className="absolute inset-y-0 left-0 w-[9px] bg-cobalt" />
           <div className="flex items-baseline justify-between gap-4">
-            <span className="font-heading text-[15px] font-bold tracking-[-0.02em]">The tab · open</span>
+            <span className="font-heading text-[15px] font-bold tracking-[-0.02em]">
+              The tab · open
+            </span>
             <span className="font-mono text-[8.5px] uppercase tracking-[0.14em] text-ink-muted">
               4 friends
             </span>
@@ -104,7 +124,10 @@ export default function LandingPage() {
 
           <ul className="mt-6 border-t border-line">
             {people.map((person) => (
-              <li key={person.name} className="flex items-center gap-2.5 border-b border-line py-2.5">
+              <li
+                key={person.name}
+                className="flex items-center gap-2.5 border-b border-line py-2.5"
+              >
                 <PersonAvatar name={person.name} size="xs" />
                 <span className="text-[13px] font-medium text-ink">{person.name}</span>
                 <span
@@ -144,7 +167,9 @@ export default function LandingPage() {
                 index > 0 ? 'border-t border-line sm:border-t-0 sm:border-l' : ''
               }`}
             >
-              <span className="font-mono text-[8px] tracking-[0.16em] text-ink-muted">{number}</span>
+              <span className="font-mono text-[8px] tracking-[0.16em] text-ink-muted">
+                {number}
+              </span>
               <span className="font-mono text-[8.5px] uppercase tracking-[0.14em] text-ink">
                 {label}
               </span>
@@ -251,8 +276,8 @@ export default function LandingPage() {
             Then everybody&rsquo;s square.
           </h2>
           <p className="max-w-[54ch] text-[15px] leading-[1.65] text-paper/80">
-            Open a tab for the table, the flat or the trip. Add the first expense in under a
-            minute; the ledger does the rest.
+            Open a tab for the table, the flat or the trip. Add the first expense in under a minute;
+            the ledger does the rest.
           </p>
           <Button
             size="lg"

@@ -45,7 +45,7 @@ function ToastItemView({
           ? 'animate-out fade-out-0 slide-out-to-bottom-2'
           : 'animate-in fade-in-0 slide-in-from-bottom-2',
         'bg-card ring-1 ring-foreground/10 rounded-xl px-4 py-3 shadow-lg',
-        'flex items-center gap-3'
+        'flex items-center gap-3',
       )}
     >
       <div className="shrink-0">{toastIcon(t.variant)}</div>
@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const dismiss = useCallback(
     (id: string) => {
       setToasts((prev) =>
-        prev.map((t) => (t.id === id && !t.closing ? { ...t, closing: true } : t))
+        prev.map((t) => (t.id === id && !t.closing ? { ...t, closing: true } : t)),
       );
       const timer = setTimeout(() => {
         timeouts.current.delete(id);
@@ -89,7 +89,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }, 200);
       timeouts.current.set(id, timer);
     },
-    [remove]
+    [remove],
   );
 
   const toast = useCallback(
@@ -115,7 +115,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       }, duration);
       timeouts.current.set(id, timer);
     },
-    [dismiss, remove]
+    [dismiss, remove],
   );
 
   return (

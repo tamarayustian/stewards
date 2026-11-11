@@ -56,10 +56,7 @@ export default async function SettingsPage() {
       />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[200px_minmax(0,1fr)]">
-        <nav
-          aria-label="Settings sections"
-          className="min-w-0 lg:sticky lg:top-6 lg:self-start"
-        >
+        <nav aria-label="Settings sections" className="min-w-0 lg:sticky lg:top-6 lg:self-start">
           <p className="eyebrow">Sections</p>
           <ul className="mt-3 flex gap-5 overflow-x-auto pb-2 lg:flex-col lg:gap-0 lg:overflow-visible lg:pb-0">
             {indexItems.map((item) => (

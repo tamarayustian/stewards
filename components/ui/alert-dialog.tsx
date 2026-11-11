@@ -43,7 +43,10 @@ function AlertDialogPopup({ className, ...props }: AlertDialog.Popup.Props) {
 function AlertDialogTitle({ className, ...props }: AlertDialog.Title.Props) {
   return (
     <AlertDialog.Title
-      className={cn('font-heading text-[20px] leading-tight font-extrabold tracking-[-0.03em]', className)}
+      className={cn(
+        'font-heading text-[20px] leading-tight font-extrabold tracking-[-0.03em]',
+        className,
+      )}
       {...props}
     />
   );

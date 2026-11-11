@@ -37,7 +37,13 @@ export async function resolveInvitesForEmail(email: string | null | undefined): 
 
 export type NoticeItem =
   | { kind: 'group'; inviteId: string; groupName: string; inviterName: string; resolvedAt: Date }
-  | { kind: 'friend'; noticeId: string; friendName: string; friendId: string | null; createdAt: Date };
+  | {
+      kind: 'friend';
+      noticeId: string;
+      friendName: string;
+      friendId: string | null;
+      createdAt: Date;
+    };
 
 export async function listPendingNotices(
   email: string | null | undefined,
