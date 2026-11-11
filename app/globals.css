@@ -152,6 +152,10 @@
   }
 }
 
+.app-rail :focus-visible {
+  outline-color: var(--paper);
+}
+
 @media (min-width: 901px) {
   .app-rail {
     width: 232px;

@@ -172,6 +172,7 @@ export function AppShell({
               render={
                 <button
                   type="button"
+                  aria-label={`${userName} — account menu`}
                   className="flex w-full items-center gap-3 rounded-[4px] py-1 text-left transition-opacity hover:opacity-90"
                 />
               }
