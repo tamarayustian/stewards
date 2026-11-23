@@ -30,10 +30,12 @@ export function ExpensesToolbar({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(query);
+  const [syncedQuery, setSyncedQuery] = useState(query);
 
-  useEffect(() => {
+  if (query !== syncedQuery) {
+    setSyncedQuery(query);
     setSearch(query);
-  }, [query]);
+  }
 
   useEffect(() => {
     if (search === query) return;
