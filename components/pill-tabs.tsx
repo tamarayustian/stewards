@@ -13,7 +13,7 @@ export function PillTabs({
   className,
 }: {
   searchParam: string;
-  tabs: { key: string; label: string }[];
+  tabs: { key: string; label: string; count?: number }[];
   currentTab: string;
   variant?: 'pill' | 'lens';
   className?: string;
@@ -55,6 +55,9 @@ export function PillTabs({
           aria-current={currentTab === tab.key ? 'page' : undefined}
         >
           {tab.label}
+          {typeof tab.count === 'number' && (
+            <span className="num ml-1.5 text-[10px] opacity-70">{tab.count}</span>
+          )}
         </button>
       ))}
     </div>
