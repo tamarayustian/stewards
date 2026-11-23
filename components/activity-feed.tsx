@@ -52,12 +52,16 @@ export function ActivityFeed({
   variant = 'dashboard',
   showFilters = true,
   emptyAction,
+  emptyTitle,
+  emptyMessage: emptyMessageOverride,
 }: {
   items: ActivityItem[];
   filter: ActivityFilter;
   variant?: Variant;
   showFilters?: boolean;
   emptyAction?: ReactNode;
+  emptyTitle?: string;
+  emptyMessage?: string;
 }) {
   const headers = headerCells[variant];
   const isExpenses = variant === 'expenses';
@@ -221,8 +225,12 @@ export function ActivityFeed({
         </div>
       ) : (
         <div className="mt-3 border-y border-line px-4 py-10 text-center">
-          <p className="eyebrow">{filter === 'all' ? 'No entries' : 'Nothing here'}</p>
-          <p className="mt-2 text-[13px] text-body">{emptyMessage(filter)}</p>
+          <p className="eyebrow">
+            {emptyTitle ?? (filter === 'all' ? 'No entries' : 'Nothing here')}
+          </p>
+          <p className="mt-2 text-[13px] text-body">
+            {emptyMessageOverride ?? emptyMessage(filter)}
+          </p>
           {emptyAction ? (
             <div className="mt-4 flex flex-wrap justify-center gap-2">{emptyAction}</div>
           ) : null}

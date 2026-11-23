@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { ActivityFeed } from '@/components/activity-feed';
 import { BalanceList } from '@/components/balance-list';
 import { BalanceStrip } from '@/components/balance-strip';
+import { ExpensesToolbar } from '@/components/expenses-toolbar';
 import { Money } from '@/components/money';
 import { PageHead } from '@/components/page-head';
 import { PillTabs } from '@/components/pill-tabs';
@@ -12,7 +13,8 @@ import { getCurrentUser } from '@/lib/auth';
 import { getPairOverview } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
-import { getActivity, getBalances, type ActivityFilter } from '@/lib/expenses';
+import { getActivityPage, getBalances } from '@/lib/expenses';
+import { parseActivityFilter, parseExpenseGroup, parseExpenseQuery } from '@/lib/expense-search';
 import { formatMonthYear } from '@/lib/dates';
 
 const viewTabs = [
@@ -23,7 +25,7 @@ const viewTabs = [
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; filter?: string }>;
+  searchParams: Promise<{ view?: string; filter?: string; q?: string; group?: string }>;
 }) {
   const user = await getCurrentUser();
 
@@ -33,10 +35,9 @@ export default async function ActivityPage({
 
   const params = await searchParams;
   const view: string = params.view === 'people' ? 'people' : 'feed';
-  const filter: ActivityFilter =
-    params.filter === 'owe' || params.filter === 'owed' || params.filter === 'paid'
-      ? params.filter
-      : 'all';
+  const q = parseExpenseQuery(params.q);
+  const group = parseExpenseGroup(params.group);
+  const filter = parseActivityFilter(params.filter);
 
   const [balances, profile] = await Promise.all([
     getBalances(user.id),
@@ -86,14 +87,41 @@ export default async function ActivityPage({
   );
 
   if (view === 'feed') {
-    const activity = await getActivity(user.id, filter);
+    const { items, counts, total, group: resolvedGroup, groups } = await getActivityPage(
+      user.id,
+      { q, group, filter },
+    );
+    const hasScope = q.length > 0 || resolvedGroup !== 'all';
 
     return (
       <div className="space-y-6">
         {header}
         {strip}
         {lens}
-        <ActivityFeed items={activity} filter={filter} variant="expenses" />
+        <ExpensesToolbar
+          query={q}
+          group={resolvedGroup}
+          filter={filter}
+          counts={counts}
+          groups={groups}
+          shown={items.length}
+          total={total}
+        />
+        <ActivityFeed
+          items={items}
+          filter={filter}
+          variant="expenses"
+          showFilters={false}
+          emptyTitle={hasScope ? 'No matches' : undefined}
+          emptyMessage={hasScope ? 'No expenses match this search and filter.' : undefined}
+          emptyAction={
+            hasScope ? (
+              <Button nativeButton={false} variant="outline" render={<Link href="/expenses" />}>
+                Clear filters
+              </Button>
+            ) : undefined
+          }
+        />
       </div>
     );
   }
