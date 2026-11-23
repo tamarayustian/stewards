@@ -20,12 +20,9 @@
 import 'dotenv/config';
 
 import db from '../lib/db';
+import { expenseDateKey, parseExpenseDate } from '../lib/expense-date';
 
 const BATCH_SIZE = 100;
-
-function startOfUtcDay(date: Date): Date {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
@@ -53,7 +50,9 @@ async function main(): Promise<void> {
             batch.map((row) =>
               tx.expense.update({
                 where: { id: row.id },
-                data: { occurredAt: startOfUtcDay(row.createdAt) },
+                // A canonical `YYYY-MM-DD` key parsed back is UTC midnight, so the
+                // date rule stays defined only in `lib/expense-date`.
+                data: { occurredAt: parseExpenseDate(expenseDateKey(row.createdAt))! },
               }),
             ),
           ),
