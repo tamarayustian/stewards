@@ -20,7 +20,7 @@ import { initials } from '@/lib/avatars';
 import { getPairDetail } from '@/lib/balances';
 import { type Currency } from '@/lib/currencies';
 import db from '@/lib/db';
-import { formatLedgerDate } from '@/lib/dates';
+import { formatExpenseDate } from '@/lib/expense-date';
 import { getActivity, getGroup, type ActivityFilter } from '@/lib/expenses';
 
 export default async function PersonDetailPage({
@@ -300,7 +300,7 @@ export default async function PersonDetailPage({
           <PageHead
             eyebrow="Direct · member"
             title={counterparty.name}
-            sub={firstShared ? `Since ${formatLedgerDate(firstShared.date)}` : undefined}
+            sub={firstShared ? `Since ${formatExpenseDate(firstShared.date)}` : undefined}
             actions={
               <CounterpartyActions
                 hasOwedToMe={detail.amountOwedToMe.gt(0)}
@@ -325,7 +325,7 @@ export default async function PersonDetailPage({
               },
               {
                 label: 'Last activity',
-                value: lastActivity ? formatLedgerDate(lastActivity) : '—',
+                value: lastActivity ? formatExpenseDate(lastActivity) : '—',
                 detail: lastActivity ? 'Most recent shared expense' : 'No shared expenses yet',
               },
             ]}
@@ -353,7 +353,7 @@ export default async function PersonDetailPage({
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 border-b border-line py-3 min-[1100px]:grid-cols-[84px_minmax(0,1fr)_110px_110px_80px_160px] min-[1100px]:items-center min-[1100px]:gap-3"
               >
                 <span className="num hidden text-[11px] text-ink-muted min-[1100px]:block">
-                  {formatLedgerDate(item.date)}
+                  {formatExpenseDate(item.date)}
                 </span>
 
                 <div className="min-w-0">
@@ -361,7 +361,7 @@ export default async function PersonDetailPage({
                     {item.note ?? 'Expense'}
                   </p>
                   <p className="text-[10.5px] text-ink-muted">
-                    <span className="min-[1100px]:hidden">{formatLedgerDate(item.date)} · </span>
+                    <span className="min-[1100px]:hidden">{formatExpenseDate(item.date)} · </span>
                     {item.direction === 'theyOweMe' ? 'You paid' : 'They paid'}
                   </p>
                 </div>

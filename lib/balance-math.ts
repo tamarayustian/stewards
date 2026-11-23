@@ -1,6 +1,7 @@
 import type { Prisma } from '@/lib/generated/prisma/client';
 import { Prisma as PrismaValue } from '@/lib/generated/prisma/browser';
 import { CURRENCIES, type Currency } from '@/lib/currencies';
+import { formatExpenseDay } from '@/lib/expense-date';
 import { formatMoney } from '@/lib/money';
 
 export type Direction = 'theyOweMe' | 'iOweThem';
@@ -147,10 +148,8 @@ export function buildPairDetail(
   };
 }
 
-const dayFormatter = new Intl.DateTimeFormat('en-HK', { day: 'numeric', month: 'short' });
-
 export function formatDay(date: Date) {
-  return dayFormatter.format(date);
+  return formatExpenseDay(date);
 }
 
 function formatRate(rate: number): string {

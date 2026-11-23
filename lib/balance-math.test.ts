@@ -167,6 +167,24 @@ describe('buildWhatsAppDraft', () => {
     expect(lines[0]).toBe('Tamara — you owe me HK$150.00 across 2 expenses');
     expect(lines).toHaveLength(4);
   });
+
+  it('formats the date-only draft date in UTC', () => {
+    const items = [
+      {
+        id: 's1',
+        expenseId: 'e1',
+        date: new Date('2026-11-20T00:00:00.000Z'),
+        note: 'Lunch',
+        amount: 20,
+        currency: 'HKD',
+        myShare: 0,
+        theirShare: 20,
+        convertedAmount: 20,
+        direction: 'theyOweMe' as const,
+      },
+    ];
+    expect(buildWhatsAppDraft('Alex', items, 'https://stewards.app')).toContain('20 Nov · Lunch');
+  });
 });
 
 describe('computePairSummaries with convertedAmount', () => {

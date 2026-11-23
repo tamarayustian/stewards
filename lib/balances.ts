@@ -27,6 +27,7 @@ const owedToMeSelect = {
     select: {
       id: true,
       createdAt: true,
+      occurredAt: true,
       note: true,
       amount: true,
       currency: true,
@@ -44,6 +45,7 @@ const iOweSelect = {
     select: {
       id: true,
       createdAt: true,
+      occurredAt: true,
       note: true,
       amount: true,
       currency: true,
@@ -68,7 +70,7 @@ function toOwedToMeRow(split: OwedToMeSplit, viewerCurrency: Currency): ShareRow
   return {
     splitId: split.id,
     expenseId: split.expense.id,
-    date: split.expense.createdAt,
+    date: split.expense.occurredAt ?? split.expense.createdAt,
     note: split.expense.note,
     amount: split.expense.amount,
     currency: split.expense.currency,
@@ -89,7 +91,7 @@ function toIOweRow(split: IOweSplit, viewerCurrency: Currency): ShareRow {
   return {
     splitId: split.id,
     expenseId: split.expense.id,
-    date: split.expense.createdAt,
+    date: split.expense.occurredAt ?? split.expense.createdAt,
     note: split.expense.note,
     amount: split.expense.amount,
     currency: split.expense.currency,
@@ -288,6 +290,7 @@ export async function getPairDetail(
           select: {
             id: true,
             createdAt: true,
+            occurredAt: true,
             note: true,
             amount: true,
             currency: true,
@@ -310,6 +313,7 @@ export async function getPairDetail(
           select: {
             id: true,
             createdAt: true,
+            occurredAt: true,
             note: true,
             amount: true,
             currency: true,
@@ -340,7 +344,7 @@ export async function getPairDetail(
       return {
         splitId: split.id,
         expenseId: split.expense.id,
-        date: split.expense.createdAt,
+        date: split.expense.occurredAt ?? split.expense.createdAt,
         note: split.expense.note,
         amount: split.expense.amount,
         currency: split.expense.currency,
@@ -359,7 +363,7 @@ export async function getPairDetail(
       return {
         splitId: split.id,
         expenseId: split.expense.id,
-        date: split.expense.createdAt,
+        date: split.expense.occurredAt ?? split.expense.createdAt,
         note: split.expense.note,
         amount: split.expense.amount,
         currency: split.expense.currency,

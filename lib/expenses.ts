@@ -101,6 +101,8 @@ export type ActivityItem = {
   note: string | null;
   context: string;
   paidByName: string;
+  /** The calendar day the expense happened; falls back to `createdAt` for legacy rows. */
+  occurredAt: Date;
   createdAt: Date;
   isPayer: boolean;
   unsettled: boolean;
@@ -162,7 +164,7 @@ export async function getActivity(
       },
       _count: { select: { splits: true } },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ occurredAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     take,
   });
 
@@ -191,6 +193,7 @@ export async function getActivity(
       note: e.note,
       context: e.group?.name ?? 'Direct',
       paidByName: e.paidBy.name,
+      occurredAt: e.occurredAt ?? e.createdAt,
       createdAt: e.createdAt,
       isPayer,
       unsettled,

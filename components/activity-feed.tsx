@@ -14,7 +14,7 @@ import {
 } from '@/components/settle-expense-button';
 import { StatePill } from '@/components/state-pill';
 import { Button } from '@/components/ui/button';
-import { timeAgo, formatLedgerDate } from '@/lib/dates';
+import { expenseDateAgo, formatExpenseDate } from '@/lib/expense-date';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
 
 const filterTabs = [
@@ -102,7 +102,7 @@ export function ActivityFeed({
 
                 {isExpenses || variant === 'group' ? (
                   <span className="num hidden whitespace-nowrap text-[11px] text-ink-muted min-[1240px]:block">
-                    {formatLedgerDate(item.createdAt)}
+                    {formatExpenseDate(item.occurredAt)}
                   </span>
                 ) : null}
 
@@ -115,10 +115,10 @@ export function ActivityFeed({
                     {isExpenses || variant === 'group' ? (
                       <span className="min-[1240px]:hidden">
                         {' '}
-                        · {formatLedgerDate(item.createdAt)}
+                        · {formatExpenseDate(item.occurredAt)}
                       </span>
                     ) : (
-                      <> · {timeAgo(item.createdAt)}</>
+                      <> · {expenseDateAgo(item.occurredAt)}</>
                     )}
                   </p>
                 </div>
