@@ -7,6 +7,7 @@ import { ConfirmAction } from '@/components/confirm-action';
 import { Money } from '@/components/money';
 import { PersonAvatar } from '@/components/person-avatar';
 import { PillTabs } from '@/components/pill-tabs';
+import { RelativeDate } from '@/components/relative-date';
 import {
   MarkReceivedButton,
   MarkUnpaidButton,
@@ -14,7 +15,7 @@ import {
 } from '@/components/settle-expense-button';
 import { StatePill } from '@/components/state-pill';
 import { Button } from '@/components/ui/button';
-import { expenseDateAgo, formatExpenseDate } from '@/lib/expense-date';
+import { formatExpenseDate } from '@/lib/expense-date';
 import { type ActivityFilter, type ActivityItem } from '@/lib/expenses';
 
 const filterTabs = [
@@ -118,7 +119,7 @@ export function ActivityFeed({
                         · {formatExpenseDate(item.occurredAt)}
                       </span>
                     ) : (
-                      <> · {expenseDateAgo(item.occurredAt)}</>
+                      <> · <RelativeDate date={item.occurredAt} /></>
                     )}
                   </p>
                 </div>
