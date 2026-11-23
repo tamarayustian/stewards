@@ -25,7 +25,12 @@ const viewTabs = [
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; filter?: string; q?: string; group?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    filter?: string | string[];
+    q?: string | string[];
+    group?: string | string[];
+  }>;
 }) {
   const user = await getCurrentUser();
 

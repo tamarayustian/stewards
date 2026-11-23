@@ -11,12 +11,14 @@ export function PillTabs({
   currentTab,
   variant = 'pill',
   className,
+  onSelect,
 }: {
   searchParam: string;
   tabs: { key: string; label: string; count?: number }[];
   currentTab: string;
   variant?: 'pill' | 'lens';
   className?: string;
+  onSelect?: (key: string) => void;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,11 +26,15 @@ export function PillTabs({
 
   const setTab = useCallback(
     (key: string) => {
+      if (onSelect) {
+        onSelect(key);
+        return;
+      }
       const next = new URLSearchParams(searchParams);
       next.set(searchParam, key);
       router.replace(`?${next.toString()}`, { scroll: false });
     },
-    [router, searchParams, searchParam],
+    [router, searchParams, searchParam, onSelect],
   );
 
   return (

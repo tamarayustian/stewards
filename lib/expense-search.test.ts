@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildActivityWhere,
+  mergeExpenseSearchParams,
   parseActivityFilter,
   parseExpenseGroup,
   parseExpenseQuery,
@@ -79,5 +80,38 @@ describe('buildActivityWhere', () => {
     expect(and).not.toEqual(expect.arrayContaining([{ groupId: null }]));
     expect(and.some((clause) => 'OR' in (clause as object))).toBe(true);
     expect(and).toHaveLength(2);
+  });
+});
+
+describe('repeated query parameters', () => {
+  it('uses the first value', () => {
+    expect(parseExpenseQuery([' dinner ', 'taxi'])).toBe('dinner');
+    expect(parseExpenseGroup([' direct ', 'group-1'])).toBe('direct');
+    expect(parseActivityFilter(['owed', 'paid'])).toBe('owed');
+  });
+});
+
+describe('mergeExpenseSearchParams', () => {
+  it('merges filters while preserving unrelated params', () => {
+    const merged = mergeExpenseSearchParams(
+      new URLSearchParams('view=feed&filter=owe&group=direct&q=old'),
+      { q: ' dinner ', group: 'group-1', filter: 'paid' },
+    );
+
+    expect(merged.get('view')).toBe('feed');
+    expect(merged.get('q')).toBe('dinner');
+    expect(merged.get('group')).toBe('group-1');
+    expect(merged.get('filter')).toBe('paid');
+  });
+
+  it('removes a blank query and null controls', () => {
+    const merged = mergeExpenseSearchParams(
+      new URLSearchParams('q=old&group=direct&filter=owe'),
+      { q: '  ', group: null, filter: null },
+    );
+
+    expect(merged.has('q')).toBe(false);
+    expect(merged.has('group')).toBe(false);
+    expect(merged.has('filter')).toBe(false);
   });
 });

@@ -2,17 +2,52 @@ import type { Prisma } from '@/lib/generated/prisma/client';
 
 export type ActivityFilter = 'all' | 'owe' | 'owed' | 'paid';
 
-export function parseExpenseQuery(value?: string): string {
-  return (value ?? '').trim().slice(0, 80);
+type ParamValue = string | string[] | undefined;
+
+const firstValue = (value: ParamValue): string | undefined =>
+  Array.isArray(value) ? value[0] : value;
+
+export function parseExpenseQuery(value?: ParamValue): string {
+  return (firstValue(value) ?? '').trim().slice(0, 80);
 }
 
-export function parseExpenseGroup(value?: string): string {
-  return value?.trim() || 'all';
+export function parseExpenseGroup(value?: ParamValue): string {
+  return firstValue(value)?.trim() || 'all';
 }
 
-export function parseActivityFilter(value?: string): ActivityFilter {
-  if (value === 'owe' || value === 'owed' || value === 'paid') return value;
+export function parseActivityFilter(value?: ParamValue): ActivityFilter {
+  const first = firstValue(value);
+  if (first === 'owe' || first === 'owed' || first === 'paid') return first;
   return 'all';
+}
+
+export interface ExpenseSearchPatch {
+  q?: string;
+  group?: string | null;
+  filter?: string | null;
+}
+
+export function mergeExpenseSearchParams(
+  current: URLSearchParams,
+  patch: ExpenseSearchPatch,
+): URLSearchParams {
+  const next = new URLSearchParams(current);
+
+  if (patch.q !== undefined) {
+    const q = patch.q.trim();
+    if (q) next.set('q', q);
+    else next.delete('q');
+  }
+  if (patch.group !== undefined) {
+    if (patch.group) next.set('group', patch.group);
+    else next.delete('group');
+  }
+  if (patch.filter !== undefined) {
+    if (patch.filter) next.set('filter', patch.filter);
+    else next.delete('filter');
+  }
+
+  return next;
 }
 
 function statusWhere(userId: string, filter: ActivityFilter): Prisma.ExpenseWhereInput | null {

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { PillTabs } from '@/components/pill-tabs';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import type { ActivityFilter } from '@/lib/expense-search';
+import { mergeExpenseSearchParams, type ActivityFilter } from '@/lib/expense-search';
 
 interface ExpensesToolbarProps {
   query: string;
@@ -28,33 +28,46 @@ export function ExpensesToolbar({
   total,
 }: ExpensesToolbarProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [search, setSearch] = useState(query);
-  const [syncedQuery, setSyncedQuery] = useState(query);
+  const [lastQuery, setLastQuery] = useState(query);
+  const [lastSubmitted, setLastSubmitted] = useState(query);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  if (query !== syncedQuery) {
-    setSyncedQuery(query);
-    setSearch(query);
+  if (query !== lastQuery) {
+    setLastQuery(query);
+    if (query !== lastSubmitted) {
+      setLastSubmitted(query);
+      setSearch(query);
+    }
   }
+
+  const clearTimer = useCallback(() => {
+    if (timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+
+  const navigate = useCallback(
+    (draft: string, patch: { group?: string | null; filter?: string | null }) => {
+      clearTimer();
+      const trimmed = draft.trim();
+      setLastSubmitted(trimmed);
+      const next = mergeExpenseSearchParams(new URLSearchParams(window.location.search), {
+        q: trimmed,
+        ...patch,
+      });
+      router.replace(`?${next.toString()}`, { scroll: false });
+    },
+    [clearTimer, router],
+  );
 
   useEffect(() => {
     if (search === query) return;
-    const timer = setTimeout(() => {
-      const next = new URLSearchParams(searchParams);
-      const trimmed = search.trim();
-      if (trimmed) next.set('q', trimmed);
-      else next.delete('q');
-      router.replace(`?${next.toString()}`, { scroll: false });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, query, router, searchParams]);
-
-  const setParam = (key: string, value: string | null) => {
-    const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    router.replace(`?${next.toString()}`, { scroll: false });
-  };
+    clearTimer();
+    timer.current = setTimeout(() => navigate(search, {}), 300);
+    return clearTimer;
+  }, [search, query, clearTimer, navigate]);
 
   return (
     <div className="mt-4 border-y border-line py-3">
@@ -73,7 +86,9 @@ export function ExpensesToolbar({
           <Select
             value={group}
             onChange={(event) =>
-              setParam('group', event.target.value === 'all' ? null : event.target.value)
+              navigate(search, {
+                group: event.target.value === 'all' ? null : event.target.value,
+              })
             }
             aria-label="Filter by group"
             className="sm:w-44"
@@ -97,6 +112,7 @@ export function ExpensesToolbar({
           className="mt-0"
           searchParam="filter"
           currentTab={filter}
+          onSelect={(key) => navigate(search, { filter: key === 'all' ? null : key })}
           tabs={[
             { key: 'all', label: 'All', count: counts.all },
             { key: 'owe', label: 'You owe', count: counts.owe },
