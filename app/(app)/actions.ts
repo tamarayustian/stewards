@@ -660,7 +660,9 @@ export async function settleAll() {
           id: true,
           amount: true,
           settledAmount: true,
-          expense: { select: { paidById: true, currency: true, createdAt: true } },
+          expense: {
+            select: { paidById: true, currency: true, occurredAt: true, createdAt: true },
+          },
         },
       });
 
@@ -673,8 +675,8 @@ export async function settleAll() {
           currency: split.expense.currency,
           splitId: split.id,
           amountCents,
-          // Splits carry no date of their own; the expense is the ledger date.
-          occurredAt: split.expense.createdAt,
+          // The expense date is the ledger date; legacy rows fall back to creation.
+          occurredAt: split.expense.occurredAt ?? split.expense.createdAt,
           createdAt: split.expense.createdAt,
         });
       }

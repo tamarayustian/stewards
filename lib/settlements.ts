@@ -34,6 +34,8 @@ export type AllocationSplitSource = {
     /** The creditor (the person who paid). */
     paidById: string;
     currency: string;
+    /** The calendar day the expense happened; null falls back to `createdAt`. */
+    occurredAt: Date | null;
     createdAt: Date;
   };
 };
@@ -84,9 +86,10 @@ export function toAllocationSplit(row: AllocationSplitSource): AllocationSplit {
     amountCents: toCents(row.amount),
     settledCents: toCents(row.settledAmount),
     currency: row.expense.currency,
-    // Splits carry no timestamp of their own; the expense date is the ledger
-    // date, and the engine breaks same-date ties by id.
-    occurredAt: row.expense.createdAt,
+    // The expense date is the ledger date; splits carry none of their own. The
+    // pre-date rows fall back to creation time, and the engine breaks same-date
+    // ties by creation time, then id.
+    occurredAt: row.expense.occurredAt ?? row.expense.createdAt,
     createdAt: row.expense.createdAt,
   };
 }
@@ -141,6 +144,7 @@ const pairSplitSelect = {
     select: {
       paidById: true,
       currency: true,
+      occurredAt: true,
       createdAt: true,
       deletedAt: true,
     },

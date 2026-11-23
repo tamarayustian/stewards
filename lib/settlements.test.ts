@@ -30,6 +30,7 @@ describe('toAllocationSplit', () => {
         expense: {
           paidById: 'tam',
           currency: 'HKD',
+          occurredAt: new Date(2025, 11, 20),
           createdAt: new Date(2026, 0, 1),
           rate: null,
         },
@@ -41,6 +42,26 @@ describe('toAllocationSplit', () => {
       amountCents: 10025,
       settledCents: 2525,
       currency: 'HKD',
+      occurredAt: new Date(2025, 11, 20),
+      createdAt: new Date(2026, 0, 1),
+    });
+  });
+
+  it('falls back to the creation date when the expense has no occurrence date', () => {
+    expect(
+      toAllocationSplit({
+        id: 's1',
+        userId: 'alex',
+        amount: '100.00',
+        settledAmount: '0.00',
+        expense: {
+          paidById: 'tam',
+          currency: 'HKD',
+          occurredAt: null,
+          createdAt: new Date(2026, 0, 1),
+        },
+      } as never),
+    ).toMatchObject({
       occurredAt: new Date(2026, 0, 1),
       createdAt: new Date(2026, 0, 1),
     });
@@ -52,11 +73,60 @@ describe('toAllocationSplit', () => {
       userId: 'alex',
       amount: '0.10',
       settledAmount: '0.00',
-      expense: { paidById: 'tam', currency: 'HKD', createdAt: new Date(2026, 0, 1) },
+      expense: {
+        paidById: 'tam',
+        currency: 'HKD',
+        occurredAt: new Date(2026, 0, 1),
+        createdAt: new Date(2026, 0, 1),
+      },
     } as never);
 
     expect(split.amountCents).toBe(10);
     expect(split.settledCents).toBe(0);
+  });
+
+  it('uses the occurrence date for ledger order, not the creation time', () => {
+    const earlyOccurrence = toAllocationSplit({
+      id: 's1',
+      userId: 'alex',
+      amount: '100.00',
+      settledAmount: '0.00',
+      expense: {
+        paidById: 'tam',
+        currency: 'HKD',
+        occurredAt: new Date(2026, 0, 1),
+        createdAt: new Date(2026, 1, 10),
+      },
+    } as never);
+    const lateOccurrence = toAllocationSplit({
+      id: 's2',
+      userId: 'alex',
+      amount: '100.00',
+      settledAmount: '0.00',
+      expense: {
+        paidById: 'tam',
+        currency: 'HKD',
+        occurredAt: new Date(2026, 1, 5),
+        createdAt: new Date(2026, 1, 2),
+      },
+    } as never);
+    const payment = toAllocationPayment({
+      id: 'p1',
+      fromUserId: 'alex',
+      toUserId: 'tam',
+      amount: '100.00',
+      currency: 'HKD',
+      occurredAt: new Date(2026, 1, 3),
+      createdAt: new Date(2026, 1, 3),
+      pinnedSplitId: null,
+    } as never);
+
+    expect(
+      allocateSettlements({
+        splits: [lateOccurrence, earlyOccurrence],
+        payments: [payment],
+      }).allocations,
+    ).toEqual([{ settlementId: 'p1', splitId: 's1', amountCents: 10000 }]);
   });
 });
 
@@ -109,6 +179,7 @@ describe('toAllocationPayment', () => {
       expense: {
         paidById: 'tam',
         currency: 'HKD',
+        occurredAt: new Date(2026, 0, 1),
         createdAt: new Date(2026, 0, 1),
       },
     } as never);
@@ -120,6 +191,7 @@ describe('toAllocationPayment', () => {
       expense: {
         paidById: 'tam',
         currency: 'HKD',
+        occurredAt: new Date(2026, 0, 2),
         createdAt: new Date(2026, 0, 2),
       },
     } as never);
@@ -143,6 +215,10 @@ describe('toAllocationPayment', () => {
 describe('pairSettlementSelect', () => {
   it('loads the pin column the rebuild maps into the engine', () => {
     expect(pairSettlementSelect).toMatchObject({ pinnedSplitId: true });
+  });
+
+  it('loads the occurrence date the engine orders by', () => {
+    expect(pairSettlementSelect).toMatchObject({ occurredAt: true });
   });
 });
 
