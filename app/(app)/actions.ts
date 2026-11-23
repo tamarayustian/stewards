@@ -17,6 +17,7 @@ import { Prisma } from '@/lib/generated/prisma/client';
 import { resolveInvitesForEmail } from '@/lib/invites';
 import { createServerClient } from '@/lib/supabase';
 import { type Currency, validateCurrency } from '@/lib/currencies';
+import { isFutureExpenseDate, parseExpenseDate } from '@/lib/expense-date';
 import { fetchExchangeRate } from '@/lib/rates';
 import { validatePhone } from '@/lib/auth-validation';
 import { addContact } from '@/lib/users';
@@ -61,6 +62,13 @@ export async function createExpense(_prev: unknown, formData: FormData) {
     return { error: 'Enter an amount greater than zero.' };
   }
   const totalCents = amount.times(100);
+
+  const occurredAtValue = (formData.get('occurredAt') as string) ?? '';
+  const occurredAt = parseExpenseDate(occurredAtValue);
+  if (!occurredAt) return { error: 'Choose the date the expense happened.' };
+  if (isFutureExpenseDate(occurredAtValue)) {
+    return { error: 'The date cannot be in the future.' };
+  }
 
   let finalParticipantIds: string[];
 
@@ -160,6 +168,7 @@ export async function createExpense(_prev: unknown, formData: FormData) {
           rate,
           rateCurrency,
           note,
+          occurredAt,
           splits: { create: splits },
         },
         include: { splits: { select: { userId: true } } },
@@ -1074,6 +1083,13 @@ export async function editExpense(_prev: unknown, formData: FormData) {
   }
   const totalCents = amount.times(100);
 
+  const occurredAtValue = (formData.get('occurredAt') as string) ?? '';
+  const occurredAt = parseExpenseDate(occurredAtValue);
+  if (!occurredAt) return { error: 'Choose the date the expense happened.' };
+  if (isFutureExpenseDate(occurredAtValue)) {
+    return { error: 'The date cannot be in the future.' };
+  }
+
   const expense = await db.expense.findFirst({
     where: {
       id: expenseId,
@@ -1124,6 +1140,8 @@ export async function editExpense(_prev: unknown, formData: FormData) {
 
   // A payer change moves the creditor, so both the old pairs and the new ones
   // must be rebuilt; otherwise the old creditor's pair keeps a phantom debt.
+  // A changed date can also reorder the pair's allocation order (oldest-first),
+  // so the rebuild covers it too.
   const pairs = affectedPairsForExpenses([
     expense,
     { paidById: payerId, splits: finalParticipantIds.map((userId) => ({ userId })) },
@@ -1134,7 +1152,7 @@ export async function editExpense(_prev: unknown, formData: FormData) {
     async (tx) => {
       await tx.expense.update({
         where: { id: expenseId },
-        data: { paidById: payerId, amount, note },
+        data: { paidById: payerId, amount, note, occurredAt },
       });
       for (const split of splits) {
         await tx.expenseSplit.upsert({

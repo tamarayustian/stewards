@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useEffect, useState, useSyncExternalStore } from 'react';
 
 import { createExpense, editExpense } from '@/app/(app)/actions';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
+import { localExpenseDateKey } from '@/lib/expense-date';
 import { formatMoney } from '@/lib/money';
 import { fetchExchangeRate } from '@/lib/rates';
 import { equalAmounts, formatAmount, totalCents } from '@/lib/splits';
@@ -42,6 +43,7 @@ export type InitialExpense = {
   groupId: string | null;
   amount: string;
   note: string | null;
+  occurredAt?: string;
   paidById: string;
   participants: Participant[];
   splits: Record<string, string>;
@@ -96,6 +98,8 @@ export function AddExpenseForm({
     return initial;
   });
   const [note, setNote] = useState(initialExpense?.note ?? '');
+  const [occurredAt, setOccurredAt] = useState(initialExpense?.occurredAt ?? '');
+  const today = useSyncExternalStore(() => () => {}, () => localExpenseDateKey(), () => '');
   const [customized, setCustomized] = useState(Boolean(initialExpense));
   const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
   const [currency, setCurrency] = useState<Currency>(initialExpense?.currency ?? 'HKD');
@@ -432,16 +436,34 @@ export function AddExpenseForm({
         </section>
 
         <section className="border-b border-line py-5">
-          <Label htmlFor="note">Description</Label>
-          <Input
-            id="note"
-            name="note"
-            type="text"
-            placeholder="Dinner at the cafe"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="mt-2"
-          />
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_170px]">
+            <div>
+              <Label htmlFor="note">Description</Label>
+              <Input
+                id="note"
+                name="note"
+                type="text"
+                placeholder="Dinner at the cafe"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label htmlFor="occurredAt">Date</Label>
+              <Input
+                id="occurredAt"
+                name="occurredAt"
+                type="date"
+                required
+                max={today || undefined}
+                value={occurredAt || today}
+                onChange={(e) => setOccurredAt(e.target.value)}
+                className="mt-2"
+              />
+              <p className="mt-1 text-[10px] text-ink-muted">The day the money was spent.</p>
+            </div>
+          </div>
         </section>
 
         {!initialExpense && (

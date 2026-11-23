@@ -5,6 +5,7 @@ import { PageHead } from '@/components/page-head';
 import { getCurrentUser } from '@/lib/auth';
 import db from '@/lib/db';
 import { type Currency } from '@/lib/currencies';
+import { expenseDateKey } from '@/lib/expense-date';
 import { listGroups, listUsersForDirect } from '@/lib/expenses';
 
 export default async function EditExpensePage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +42,7 @@ export default async function EditExpensePage({ params }: { params: Promise<{ id
     groupId: expense.groupId,
     amount: expense.amount.toFixed(2),
     note: expense.note,
+    occurredAt: expenseDateKey(expense.occurredAt ?? expense.createdAt),
     paidById: expense.paidById,
     participants: expense.splits.map((s) => ({
       id: s.userId,
