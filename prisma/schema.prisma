@@ -87,6 +87,7 @@ model Expense {
   note      String?
   rate         String?
   rateCurrency String?
+  occurredAt DateTime? @db.Date
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

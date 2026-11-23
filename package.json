@@ -12,6 +12,7 @@
     "prisma:studio": "prisma studio",
     "db:backfill": "tsx scripts/backfill-settlements.ts",
     "db:reconcile": "tsx scripts/reconcile-settlements.ts",
+    "db:backfill-expense-dates": "tsx scripts/backfill-expense-dates.ts",
     "lint": "eslint",
     "test": "vitest run",
     "format": "prettier --write .",

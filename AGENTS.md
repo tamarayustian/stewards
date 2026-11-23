@@ -22,6 +22,7 @@ pnpm prisma:push      # Push schema to DB
 pnpm prisma:studio    # Prisma Studio
 pnpm db:backfill      # Synthetic settlements for legacy settled splits (--dry-run to plan)
 pnpm db:reconcile     # Rebuild every pair and assert ledger invariants
+pnpm db:backfill-expense-dates  # Fill Expense.occurredAt from createdAt (--dry-run to plan)
 tsc --noEmit          # Type check (no script for this)
 ```
 
@@ -83,6 +84,7 @@ tsc --noEmit          # Type check (no script for this)
 - Models: `User`, `Group`, `GroupMember`, `Contact`, `Expense`, `ExpenseSplit`, `GroupInvite`, `Reminder`, `Feedback`, `UserClaim`, `Notice`, `Settlement`, `SettlementAllocation`, `LedgerEvent` — UUID PKs, `Decimal(12,2)` for money, soft delete via `deletedAt DateTime?` where the model carries it. `User.email` is nullable — contacts (friends added by name) are `User` rows with `email: null`; `User.phone` is nullable and only set by the person adding the contact (powers the WhatsApp button). `User.currency` stores the user's home currency (default HKD). `Expense.rate` and `Expense.rateCurrency` store the exchange rate snapshot at creation time (null for same-currency expenses).
 - After schema changes: `pnpm prisma:generate && pnpm prisma:push`.
 - **Deploy order for the settlement ledger**: `pnpm prisma:push` → `pnpm db:backfill` → deploy the code → `pnpm db:reconcile`. A settle between the push and the backfill runs a rebuild that silently zeroes legacy `settledAt` rows; only `pnpm db:reconcile`'s pre-flight guard catches that today, so it must run (and pass) after the code is live.
+- **Deploy order for `Expense.occurredAt`**: `pnpm prisma:push` → `pnpm db:backfill-expense-dates` → deploy the code. The column is nullable so the push can add it to a populated table; the backfill seeds every existing row from the UTC day of `createdAt`, and app writes own the value afterwards.
 - `pnpm db:backfill [--dry-run]` plans and writes one synthetic `Settlement` per legacy settled split (`requestId = backfill:<splitId>`, `note = 'Backfilled'`, pinned to the split) and writes the projection directly — it never rebuilds. `pnpm db:reconcile` rebuilds every pair the ledger has rows for and asserts the invariants; it has no `--fix`.
 
 ## Settlement model (implemented)
