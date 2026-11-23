@@ -3,6 +3,7 @@ import { Prisma } from '@/lib/generated/prisma/client';
 import { toViewerCurrency } from '@/lib/currency-convert';
 import { summarizeGroupBalances, type GroupBalances } from '@/lib/group-balances';
 import { hasOutstandingShare, outstandingDecimal } from '@/lib/outstanding';
+import { buildActivityWhere, type ActivityFilter } from '@/lib/expense-search';
 
 export type BalanceSummary = {
   youOwe: Prisma.Decimal;
@@ -115,99 +116,133 @@ export type ActivityItem = {
   borrowerId: string | null;
 };
 
-export type ActivityFilter = 'all' | 'owe' | 'owed' | 'paid';
+export type { ActivityFilter } from '@/lib/expense-search';
 
-// Recent expenses where the user paid or was split — group and direct combined.
+const activityInclude = {
+  paidBy: { select: { name: true } },
+  group: { select: { name: true } },
+  splits: { select: { settledAmount: true, amount: true, userId: true } },
+  _count: { select: { splits: true } },
+} satisfies Prisma.ExpenseInclude;
+
+const activityOrderBy = [
+  { occurredAt: { sort: 'desc', nulls: 'last' } },
+  { createdAt: 'desc' },
+] satisfies Prisma.ExpenseOrderByWithRelationInput[];
+
+type ActivityRow = Prisma.ExpenseGetPayload<{ include: typeof activityInclude }>;
+
+function mapActivityItem(e: ActivityRow, userId: string): ActivityItem {
+  const mySplit = e.splits.find((s) => s.userId === userId);
+  const myShare = mySplit
+    ? outstandingDecimal(mySplit.amount, mySplit.settledAmount)
+    : new Prisma.Decimal(0);
+  const isPayer = e.paidById === userId;
+  const unsettledBorrowers = e.splits.filter(
+    (s) => s.userId !== userId && hasOutstandingShare(s.amount, s.settledAmount),
+  );
+  const hasSettled = isPayer
+    ? e.splits.some((s) => s.userId !== userId && s.settledAmount.gt(0))
+    : mySplit !== undefined;
+  const unsettled = isPayer ? unsettledBorrowers.length > 0 : myShare.gt(0);
+  const borrowerId = unsettledBorrowers.length === 1 ? unsettledBorrowers[0].userId : null;
+
+  return {
+    id: e.id,
+    amount: e.amount,
+    currency: e.currency,
+    note: e.note,
+    context: e.group?.name ?? 'Direct',
+    paidByName: e.paidBy.name,
+    occurredAt: e.occurredAt ?? e.createdAt,
+    createdAt: e.createdAt,
+    isPayer,
+    unsettled,
+    hasSettled,
+    myShare,
+    shareAmount: mySplit ? mySplit.amount : new Prisma.Decimal(0),
+    participantCount: e._count.splits,
+    borrowerId,
+  };
+}
+
 export async function getActivity(
   userId: string,
   filter: ActivityFilter = 'all',
   take = 20,
   groupId?: string,
 ): Promise<ActivityItem[]> {
-  const baseAnd: Prisma.ExpenseWhereInput[] = [
-    { OR: [{ groupId: null }, { group: { deletedAt: null } }] },
-    { OR: [{ paidById: userId }, { splits: { some: { userId } } }] },
-  ];
-  if (groupId) {
-    baseAnd.push({ groupId });
-  }
-  let filterClause: Prisma.ExpenseWhereInput | null = null;
-  switch (filter) {
-    case 'owe':
-      filterClause = {
-        paidById: { not: userId },
-        splits: { some: { userId, settledAt: null, amount: { gt: 0 } } },
-      };
-      break;
-    case 'owed':
-      filterClause = {
-        paidById: userId,
-        splits: { some: { settledAt: null, amount: { gt: 0 }, userId: { not: userId } } },
-      };
-      break;
-    case 'paid':
-      filterClause = {
-        OR: [
-          { paidById: { not: userId }, splits: { some: { userId, settledAt: { not: null } } } },
-          { paidById: userId, splits: { none: { settledAt: null, amount: { gt: 0 } } } },
-        ],
-      };
-      break;
-  }
   const expenses = await db.expense.findMany({
-    where: { deletedAt: null, AND: filterClause ? [...baseAnd, filterClause] : baseAnd },
-    include: {
-      paidBy: { select: { name: true } },
-      group: { select: { name: true } },
-      splits: {
-        select: { settledAmount: true, amount: true, userId: true },
-      },
-      _count: { select: { splits: true } },
-    },
-    orderBy: [{ occurredAt: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
+    where: buildActivityWhere(userId, filter, groupId ? { group: groupId } : {}),
+    include: activityInclude,
+    orderBy: activityOrderBy,
     take,
   });
 
-  return expenses.map((e) => {
-    const mySplit = e.splits.find((s) => s.userId === userId);
-    // `myShare` is what is still owed on the viewer's own share; a partially
-    // paid share stays visible with its reduced amount.
-    const myShare = mySplit
-      ? outstandingDecimal(mySplit.amount, mySplit.settledAmount)
-      : new Prisma.Decimal(0);
-    const isPayer = e.paidById === userId;
-    // Zero-share splits never count: fully settled borrowers drop out here, and
-    // the payer's own 0.00 share is ignored on both sides.
-    const unsettledBorrowers = e.splits.filter(
-      (s) => s.userId !== userId && hasOutstandingShare(s.amount, s.settledAmount),
-    );
-    const hasSettled = isPayer
-      ? e.splits.some((s) => s.userId !== userId && s.settledAmount.gt(0))
-      : mySplit !== undefined;
-    const unsettled = isPayer ? unsettledBorrowers.length > 0 : myShare.gt(0);
-    const borrowerId = unsettledBorrowers.length === 1 ? unsettledBorrowers[0].userId : null;
-    return {
-      id: e.id,
-      amount: e.amount,
-      currency: e.currency,
-      note: e.note,
-      context: e.group?.name ?? 'Direct',
-      paidByName: e.paidBy.name,
-      occurredAt: e.occurredAt ?? e.createdAt,
-      createdAt: e.createdAt,
-      isPayer,
-      unsettled,
-      hasSettled,
-      myShare,
-      shareAmount: mySplit ? mySplit.amount : new Prisma.Decimal(0),
-      participantCount: e._count.splits,
-      borrowerId,
-    };
+  return expenses.map((expense) => mapActivityItem(expense, userId));
+}
+
+export type ActivityCounts = Record<ActivityFilter, number>;
+
+export type ActivityPage = {
+  items: ActivityItem[];
+  counts: ActivityCounts;
+  total: number;
+  group: string;
+  groups: { id: string; name: string }[];
+};
+
+export async function listGroupOptions(
+  userId: string,
+): Promise<{ id: string; name: string }[]> {
+  return db.group.findMany({
+    where: { deletedAt: null, members: { some: { userId } } },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
   });
 }
 
-// Cheap existence check: filtered dashboard views only need to know whether the
-// user has any activity at all, not a second copy of the full feed.
+export async function getActivityPage(
+  userId: string,
+  options: { q?: string; group?: string; filter?: ActivityFilter; take?: number } = {},
+): Promise<ActivityPage> {
+  const { q = '', group = 'all', filter = 'all', take = 50 } = options;
+  const groups = await listGroupOptions(userId);
+  const resolvedGroup =
+    group === 'all' || group === 'direct'
+      ? group
+      : groups.some((option) => option.id === group)
+        ? group
+        : 'all';
+  const filters: ActivityFilter[] = ['all', 'owe', 'owed', 'paid'];
+  const [expenses, counts] = await Promise.all([
+    db.expense.findMany({
+      where: buildActivityWhere(userId, filter, { q, group: resolvedGroup }),
+      include: activityInclude,
+      orderBy: activityOrderBy,
+      take,
+    }),
+    Promise.all(
+      filters.map((status) =>
+        db.expense.count({
+          where: buildActivityWhere(userId, status, { q, group: resolvedGroup }),
+        }),
+      ),
+    ),
+  ]);
+  const countsByFilter = Object.fromEntries(
+    filters.map((status, index) => [status, counts[index]]),
+  ) as ActivityCounts;
+
+  return {
+    items: expenses.map((expense) => mapActivityItem(expense, userId)),
+    counts: countsByFilter,
+    total: countsByFilter[filter],
+    group: resolvedGroup,
+    groups,
+  };
+}
+
 export async function hasAnyActivity(userId: string): Promise<boolean> {
   const count = await db.expense.count({
     where: {
