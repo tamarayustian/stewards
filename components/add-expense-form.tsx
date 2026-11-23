@@ -14,7 +14,7 @@ import { FormError } from '@/components/form-message';
 import { useAddFriend } from '@/components/use-add-friend';
 import { useInviteLink } from '@/components/use-invite-link';
 import { CURRENCIES, type Currency, validateCurrency } from '@/lib/currencies';
-import { localExpenseDateKey } from '@/lib/expense-date';
+import { expenseDateMax, localExpenseDateKey } from '@/lib/expense-date';
 import { formatMoney } from '@/lib/money';
 import { fetchExchangeRate } from '@/lib/rates';
 import { equalAmounts, formatAmount, totalCents } from '@/lib/splits';
@@ -100,6 +100,7 @@ export function AddExpenseForm({
   const [note, setNote] = useState(initialExpense?.note ?? '');
   const [occurredAt, setOccurredAt] = useState(initialExpense?.occurredAt ?? '');
   const today = useSyncExternalStore(() => () => {}, () => localExpenseDateKey(), () => '');
+  const dateMax = expenseDateMax(today, initialExpense?.occurredAt);
   const [customized, setCustomized] = useState(Boolean(initialExpense));
   const [payerId, setPayerId] = useState<string>(initialExpense?.paidById ?? currentUserId);
   const [currency, setCurrency] = useState<Currency>(initialExpense?.currency ?? 'HKD');
@@ -456,7 +457,7 @@ export function AddExpenseForm({
                 name="occurredAt"
                 type="date"
                 required
-                max={today || undefined}
+                max={dateMax || undefined}
                 value={occurredAt || today}
                 onChange={(e) => setOccurredAt(e.target.value)}
                 className="mt-2"

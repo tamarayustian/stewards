@@ -200,6 +200,26 @@ it('leaves a zero-amount payment with no allocation and no credit', () => {
   expect(r.settledCents.get('s1')).toBe(0);
   expect(r.creditCents.has('HKD')).toBe(false);
 });
+it('moves cleared money when an expense date changes, keeping the total', () => {
+  const splits = [split('later', 100_00, 5), split('earlier', 100_00, 1)];
+  const payment = pay('p1', 150_00, 3);
+
+  const before = allocateSettlements({ splits, payments: [payment] });
+  expect(before.settledCents.get('earlier')).toBe(100_00);
+  expect(before.settledCents.get('later')).toBe(50_00);
+  const totalBefore = [...before.settledCents.values()].reduce((sum, cents) => sum + cents, 0);
+
+  const edited = splits.map((entry) =>
+    entry.id === 'later' ? { ...entry, occurredAt: day(0) } : entry,
+  );
+  const after = allocateSettlements({ splits: edited, payments: [payment] });
+  expect(after.settledCents.get('later')).toBe(100_00);
+  expect(after.settledCents.get('earlier')).toBe(50_00);
+  const totalAfter = [...after.settledCents.values()].reduce((sum, cents) => sum + cents, 0);
+
+  expect(totalAfter).toBe(totalBefore);
+});
+
 it('never mutates its inputs', () => {
   const splits = [split('s2', 100_00, 2), split('s1', 100_00, 1)];
   const payments = [pay('p2', 120_00, 6), pay('p1', 80_00, 5)];

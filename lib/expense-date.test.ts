@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   expenseDateAgo,
   expenseDateKey,
+  expenseDateMax,
   formatExpenseDate,
   formatExpenseDay,
   isFutureExpenseDate,
@@ -54,6 +55,22 @@ describe('expenseDateAgo', () => {
 
   it('labels a date ahead of the viewer local day', () => {
     expect(expenseDateAgo(new Date('2026-11-21T00:00:00.000Z'), now)).toBe('Tomorrow');
+  });
+});
+
+describe('expenseDateMax', () => {
+  it('caps a new expense at the viewer local today', () => {
+    expect(expenseDateMax('2026-11-20')).toBe('2026-11-20');
+    expect(expenseDateMax('2026-11-20', '2026-11-19')).toBe('2026-11-20');
+  });
+
+  it('keeps an existing later date selectable when editing', () => {
+    expect(expenseDateMax('2026-11-20', '2026-11-21')).toBe('2026-11-21');
+  });
+
+  it('falls back to the existing date before hydration supplies today', () => {
+    expect(expenseDateMax('', '2026-11-21')).toBe('2026-11-21');
+    expect(expenseDateMax('')).toBe('');
   });
 });
 

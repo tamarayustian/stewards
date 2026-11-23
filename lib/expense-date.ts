@@ -48,6 +48,16 @@ export function formatExpenseDay(date: Date): string {
 }
 
 /**
+ * Upper bound for the date input. New expenses cap at the viewer's local today;
+ * editing keeps an existing later date selectable so an unrelated edit does not
+ * trip the native range check.
+ */
+export function expenseDateMax(today: string, existing?: string | null): string {
+  if (!today) return existing ?? '';
+  return existing && existing > today ? existing : today;
+}
+
+/**
  * Relative label for an expense date, measured against the viewer's local day:
  * `Today`, `Yesterday`, `Tomorrow`, `4d ago`, `in 2d`.
  */
